@@ -55,5 +55,5 @@ def pipeline(data, k=None):
 
 
 # pipeline(datasets, k=1)  # BestRank
-pipeline(datasets)  # Top-k
+# pipeline(datasets)  # Top-k
 
