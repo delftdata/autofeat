@@ -1,0 +1,13 @@
+dataset,accuracy,algorithm,criterion,max_depth
+football/football.csv,40.08,CART,entropy,1.0
+football/football.csv,45.99,ID3,,
+football/football.csv,54.43,XGBoost,,4.0
+kidney-disease/kidney_disease.csv,71.25,CART,gini,3.0
+kidney-disease/kidney_disease.csv,50.0,ID3,,
+kidney-disease/kidney_disease.csv,73.75,XGBoost,,1.0
+steel-plate-fault/steel_plate_fault.csv,87.66,CART,entropy,8.0
+steel-plate-fault/steel_plate_fault.csv,42.16,ID3,,
+steel-plate-fault/steel_plate_fault.csv,86.63,XGBoost,,2.0
+titanic/titanic.csv,65.36,CART,entropy,1.0
+titanic/titanic.csv,34.64,ID3,,
+titanic/titanic.csv,65.36,XGBoost,,1.0
