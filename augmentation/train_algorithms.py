@@ -98,6 +98,7 @@ def train_ID3(X, y):
 
     decision_tree = GadId3Classifier()
     decision_tree.fit(X_train, y_train)
+    # print(decision_tree.tree)
     y_pred = decision_tree.predict(X_test)
     acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
     print(f'\t\tAccuracy ID3: {acc_decision_tree}')

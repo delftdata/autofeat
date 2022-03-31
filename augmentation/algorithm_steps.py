@@ -6,9 +6,10 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-from augmentation.neo4j_utils import get_nodes_with_pk_from_table
+from utils.neo4j_utils import get_nodes_with_pk_from_table
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from feat_sel import FeatSel
+from algorithms import CART, ID3, XGB
 
 logging.basicConfig(level=logging.INFO)
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -172,12 +173,15 @@ def train_augmented(ranked: dict, paths: dict, label: str, algorithm: str, runti
         print(X.columns)
 
         params = None
-        if algorithm == 'CART':
+        if algorithm == CART:
             accuracy, params = train_CART(X, y)
-        elif algorithm == 'ID3':
+        elif algorithm == ID3:
             accuracy = train_ID3(X, y)
-        else:
+        elif algorithm == XGB:
             accuracy, params = train_XGBoost(X, y)
+        else:
+            ValueError('The algorithm does not exist')
+            return tables_acc
 
         end_train = timer()
         logging.info(f'Acc aug dataset: {accuracy}')

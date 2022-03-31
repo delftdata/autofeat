@@ -5,9 +5,10 @@ import pandas as pd
 from augmentation.algorithm_steps import select_join_paths, process_join_paths, rank_join_paths, \
     get_top_k_from_dict, train_augmented
 from feat_sel import FeatSel
+from algorithms import CART, ID3, XGB
 
 ALL_FEAT_SEL = [FeatSel.SU, FeatSel.GAIN, FeatSel.GINI, FeatSel.CORR, FeatSel.RELIEF]
-ALGORITHMS = ['CART', 'ID3', 'XGBoost']
+ALGORITHMS = [CART, ID3, XGB]
 
 datasets = {
     "other-data/decision-trees-split/football/football.csv": ["win", "id"],
