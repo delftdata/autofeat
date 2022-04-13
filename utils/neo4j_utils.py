@@ -26,6 +26,12 @@ def get_nodes_with_pk_from_table(table_name: str) -> list:
     return result
 
 
+def create_table_node(table_name, table_path):
+    with driver.session() as session:
+        node = session.write_transaction(_create_table_node, table_name, table_path)
+    return node
+
+
 def create_node(source, source_path, label):
     with driver.session() as session:
         node = session.write_transaction(_create_node, source, source_path, label)
@@ -40,9 +46,20 @@ def create_relation(from_node_id, to_node_id, relation_name):
 
 def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b, relation_name):
     with driver.session() as session:
-        relation = session.write_transaction(_create_relation_with_path, from_node_id, to_node_id, path_name_a, path_name_b,
+        relation = session.write_transaction(_create_relation_with_path, from_node_id, to_node_id, path_name_a,
+                                             path_name_b,
                                              relation_name)
     return relation
+
+
+def _create_table_node(tx, table_name, table_path):
+    tx_result = tx.run("MERGE (n:Node {id: $table_path}) "
+                       "ON CREATE "
+                       "SET n.label = $table_name "
+                       "RETURN n as node", table_name=table_name, table_path=table_path)
+
+    result = tx_result.single()
+    return result["node"]
 
 
 def _create_node(tx, source, source_path, label):
@@ -65,7 +82,15 @@ def create_subsumption_relation(source):
 
 def set_relation_properties(a_id, b_id, a_path_name, b_path_name, relation_name, **kwargs):
     with driver.session() as session:
-        result = session.write_transaction(_set_properties, a_id, b_id, a_path_name, b_path_name, relation_name, **kwargs)
+        result = session.write_transaction(_set_properties, a_id, b_id, a_path_name, b_path_name, relation_name,
+                                           **kwargs)
+
+
+def create_relation_between_table_nodes(from_id, to_id, from_key, to_key, weight=1):
+    with driver.session() as session:
+        result = session.write_transaction(_create_relation_between_table_nodes, from_id, to_id,
+                                           from_key, to_key, weight)
+    return result
 
 
 def _create_subsumption_relation(tx, source):
@@ -89,6 +114,17 @@ def _create_relation(tx, a_id, b_id, relation_name):
     for record in tx_result:
         result.append(record['relation'])
     return result
+
+
+def _create_relation_between_table_nodes(tx, a_id, b_id, from_key, to_key, weight):
+    tx_result = tx.run("MATCH (a:Node {id: $a_id}) WITH a "
+                       "MATCH (b:Node {id: $b_id}) "
+                       "MERGE (a)-[r:RELATED {from_key: $from_key, to_key: $to_key, weight: $weight}]->(b) "
+                       "RETURN r as relation", a_id=a_id, b_id=b_id,
+                       from_key=from_key, to_key=to_key, weight=weight)
+
+    record = tx_result.single()
+    return record['relation']
 
 
 def _create_relation_with_path(tx, a_id, b_id, path_name_a, path_name_b, relation_name):

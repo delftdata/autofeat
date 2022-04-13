@@ -6,32 +6,29 @@ from numpy import genfromtxt
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from utils import relation_types
-from utils.neo4j_utils import create_node, create_subsumption_relation, create_relation, create_relation_with_path, \
-    set_relation_properties
-from utils.relation_types import PK_FK
+from utils.neo4j_utils import create_table_node, create_relation_between_table_nodes
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.7
 
 
-def ingest_fabricated_data(directory_path: str):
+def ingest_fabricated_data(directory_path: str) -> dict:
     path = os.path.join(folder_name, "../", directory_path)
+    mapping = {}
     for f in os.listdir(path):
         file_path = f"{path}/{f}"
         table_path = f"{directory_path}/{f}"
         table_name = f
+        mapping[table_name] = table_path
+
         if "connections" not in f and f.endswith("csv"):
-            print(f)
-            df = pd.read_csv(file_path, header=0, engine="python", encoding="utf8", quotechar='"',
-                             escapechar='\\')
-            for col in df.columns:
-                node = create_node(table_name, table_path, col)
+            node = create_table_node(table_name, table_path)
+            print(node)
 
-            result = create_subsumption_relation(table_name)
+    return mapping
 
 
-def ingest_connections(directory_path: str):
+def ingest_connections(directory_path: str, mapping: dict):
     path = os.path.join(folder_name, "../", directory_path, "connections.csv")
 
     connections = list(map(lambda x: ((x[0], x[1]), (x[2], x[3])), genfromtxt(path, delimiter=',', dtype='str')))
@@ -39,10 +36,10 @@ def ingest_connections(directory_path: str):
     for link in connections:
         print(link)
         ((source_name, source_id), (target_name, target_id)) = link
-        create_relation(f"{source_name}/{source_id}", f"{target_name}/{target_id}", PK_FK)
+        create_relation_between_table_nodes(mapping[source_name], mapping[target_name], source_id, target_id)
 
 
-def profile_valentine_all(directory_path):
+def profile_valentine_all(directory_path: str, mapping: dict):
     path = os.path.join(folder_name, "../", directory_path)
     all_files = list(filter(lambda x: "connections" not in x and x.endswith("csv"), os.listdir(path)))
 
@@ -56,8 +53,5 @@ def profile_valentine_all(directory_path):
             if similarity > threshold:
                 print(f"{tab1}/{col_from}")
                 print(f"{tab2}/{col_to}")
-                create_relation_with_path(f"{tab1}/{col_from}", f"{tab2}/{col_to}", f"{directory_path}/{tab1}",
-                                          f"{directory_path}/{tab2}", relation_types.MATCH)
-                set_relation_properties(f"{tab1}/{col_from}", f"{tab2}/{col_to}", f"{directory_path}/{tab1}",
-                                        f"{directory_path}/{tab2}", relation_types.MATCH,
-                                        coma=similarity)
+
+                create_relation_between_table_nodes(mapping[tab1], mapping[tab2], col_from, col_to, similarity)
