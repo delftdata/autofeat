@@ -1,8 +1,3 @@
-from subprocess import check_call
-
-import matplotlib.pyplot as plt
-from PIL.Image import Image
-from PIL.ImageDraw import ImageDraw
 from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -23,10 +18,13 @@ def train_CART(X, y):
     grids = GridSearchCV(decision_tree, parameters, n_jobs=4, scoring='accuracy', cv=15)
     grids.fit(X_train, y_train)
     params = grids.best_params_
+
+    #TODO Store all the accuracies and the trees and see how the trees look
     print(f'Hyper-params: {params} for best score: {grids.best_score_}')
 
     print(f'\t Training ... ')
-    decision_tree = tree.DecisionTreeClassifier(max_depth=params['max_depth'], criterion=params['criterion'])
+    decision_tree = tree.DecisionTreeClassifier(max_depth=params['max_depth'], criterion=params['criterion'],
+                                                random_state=24)
     decision_tree.fit(X_train, y_train)
     y_pred = decision_tree.predict(X_test)
     acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)

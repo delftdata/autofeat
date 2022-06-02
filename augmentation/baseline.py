@@ -73,7 +73,10 @@ def baseline(data):
     print(results)
 
     df = pd.DataFrame(results)
-    df.to_csv('../results/baseline.csv', index=False)
+    df.to_csv('../results/auto-fabricated/baseline.csv', index=False)
 
 
-baseline(datasets)
+data_path = {
+    "other-data/auto-fabricated/titanic/random_overlap/table_0_0.csv": ["Survived", "PassengerId"],
+}
+baseline(data_path)

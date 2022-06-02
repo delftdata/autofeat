@@ -154,3 +154,62 @@ def _set_properties(tx, a_id, b_id, path_name_a, path_name_b, relation_name, **k
     for record in tx_result:
         result.append(record['relation'])
     return result
+
+
+def _create_virtual_graph(tx, name):
+    result = tx.run("CALL gds.graph.create("
+                    "$name, "
+                    "'Node', "
+                    "{ LINK: "
+                    "{ type: 'RELATED', "
+                    "orientation: 'UNDIRECTED'}})", name=name)
+
+
+def _drop_graph(tx, name):
+    tx.run(f"CALL gds.graph.drop('{name}')")
+
+
+def drop_graph(name):
+    with driver.session() as session:
+        session.write_transaction(_drop_graph, name)
+
+
+def init_graph(name):
+    with driver.session() as session:
+        session.write_transaction(_create_virtual_graph, name)
+
+
+def _enumerate_all_paths(tx, name):
+    tx_result = tx.run(f"CALL gds.alpha.allShortestPaths.stream('{name}') "
+                       "YIELD sourceNodeId, targetNodeId, distance "
+                       "WITH sourceNodeId, targetNodeId, distance "
+                       "WHERE distance=1 "
+                       "MATCH (source:Node) WHERE id(source) = sourceNodeId "
+                       "MATCH (target:Node) WHERE id(target) = targetNodeId "
+                       "WITH source, target, distance WHERE source <> target "
+                       "RETURN source.label AS source, target.label AS target, distance "
+                       "ORDER BY distance ASC, source ASC, target ASC")
+    values = []
+    for record in tx_result:
+        values.append(record.values())
+    return values
+
+
+def enumerate_all_paths(name):
+    with driver.session() as session:
+        result = session.write_transaction(_enumerate_all_paths, name)
+
+    return result
+
+
+def _get_relation_properties(tx, from_id, to_id):
+    result = tx.run("match (n {id: $from_id})-[r:RELATED]-(m {id: $to_id}) return r.from_key, r.to_key",
+                    from_id=from_id, to_id=to_id)
+    return result.values()[0]
+
+
+def get_relation_properties(from_id, to_id):
+    with driver.session() as session:
+        result = session.write_transaction(_get_relation_properties, from_id, to_id)
+
+    return result
