@@ -1,0 +1,4 @@
+from_table,from_key,to_table,to_key
+kidney_disease.csv,id,patient_disease.csv,kd_id
+kidney_disease.csv,id,blood_analysis.csv,kd_id
+blood_analysis.csv,id,cell_info.csv,ba_id

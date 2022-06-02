@@ -1,0 +1,10 @@
+from_table,from_key,to_table,to_key
+football.csv,id,differences_stats.csv,ft_id
+football.csv,id,strong_team.csv,ft_id
+strong_team.csv,id,strong_building.csv,st_id
+strong_team.csv,id,strong_strategy.csv,st_id
+strong_strategy.csv,id,strong_change_creation.csv,ss_id
+football.csv,id,weak_team.csv,ft_id
+weak_team.csv,id,weak_strategy.csv,wt_id
+weak_team.csv,id,weak_building.csv,wt_id
+weak_strategy.csv,id,weak_change_creation.csv,ws_id
