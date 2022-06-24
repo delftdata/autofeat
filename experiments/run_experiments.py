@@ -52,13 +52,13 @@ def plot(X, y, max_depth=25, n_splits=10):
     print_plot(table_cross.to_numpy(), table_holdout.to_numpy())
 
 
-def calculate_accuracy(x_train, x_test, y_train, y_test, max_depth):
+def calculate_accuracy(X_train, X_test, y_train, y_test, max_depth):
     decision_tree = DecisionTreeClassifier(max_depth=max_depth, random_state=42, criterion='gini')
-    decision_tree.fit(x_train, y_train)
+    decision_tree.fit(X_train, y_train)
 
     # Calculate accuracy
-    y_predict_test = decision_tree.predict(x_test)
-    y_predict_train = decision_tree.predict(x_train)
+    y_predict_test = decision_tree.predict(X_test)
+    y_predict_train = decision_tree.predict(X_train)
     test_accuracy = np.sum(np.abs(np.array(y_predict_test) - np.array(y_test).flatten())) / len(y_predict_test)
     train_accuracy = np.sum(np.abs(np.array(y_predict_train) - np.array(y_train).flatten())) / len(y_predict_train)
 
