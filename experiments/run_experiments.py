@@ -10,13 +10,13 @@ def read_data(path, y_column_name):
     return data.drop([y_column_name], axis=1), data[[y_column_name]]
 
 
-def plot(X, y, n_splits=10):
+def plot(X, y, max_depth=25, n_splits=10):
     columns = ['Max depth', 'Train accuracy with id', 'Train accuracy without id',
                'Test accuracy with id', 'Test accuracy without id']
     table_cross = pd.DataFrame(columns=columns)
     table_holdout = pd.DataFrame(columns=columns)
 
-    for i in range(1, 26):
+    for i in range(1, max_depth+1):
         row_cross = np.zeros(5)
         row_cross[0] = i
 
