@@ -40,9 +40,9 @@ def plot(X, y, max_depth=25, n_splits=10):
 
         row_holdout = np.zeros(5)
         row_holdout[0] = i
-        X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.2, random_state=10)
-        row_holdout[1], row_holdout[2] = calculate_accuracy(X_train, X_test, Y_train, Y_test, i)
-        row_holdout[3], row_holdout[4] = calculate_accuracy(X_train.T[1:].T, X_test.T[1:].T, Y_train, Y_test, i)
+        X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        row_holdout[1], row_holdout[3] = calculate_accuracy(X_train, X_test, Y_train, Y_test, i)
+        row_holdout[2], row_holdout[4] = calculate_accuracy(X_train.T[1:].T, X_test.T[1:].T, Y_train, Y_test, i)
 
         table_cross = pd.concat([table_cross, pd.DataFrame(row_cross.reshape(-1, len(row_cross)), columns=columns)],
                                 ignore_index=True)
