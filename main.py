@@ -86,5 +86,5 @@ if __name__ == '__main__':
     # test_train_and_rank()
     # test_train_baseline()
     # test_prepare_data()
-    # test_ground_truth()
-    train_logistic_regression()
+    test_ground_truth()
+    # train_logistic_regression()
