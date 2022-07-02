@@ -32,10 +32,10 @@ def train_CART(X, y):
     acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
     print(f'\t\tAccuracy CART: {acc_decision_tree}')
 
-    return acc_decision_tree, params
+    return acc_decision_tree, params, decision_tree.feature_importances_
 
 
-def train_CART_and_print(X, y, dataset_name, path):
+def train_CART_and_print(X, y, dataset_name, plot_path):
     print('Split data')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
     print(f'X train {X_train.shape}, X_test {X_test.shape}')
@@ -56,7 +56,7 @@ def train_CART_and_print(X, y, dataset_name, path):
     acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
     print(f'\t\tAccuracy CART: {acc_decision_tree}')
 
-    with open(f"{path}/tree.dot", 'w') as f:
+    with open(f"{plot_path}/tree.dot", 'w') as f:
         tree.export_graphviz(decision_tree,
                              out_file=f,
                              max_depth=params['max_depth'],
@@ -67,7 +67,7 @@ def train_CART_and_print(X, y, dataset_name, path):
                              filled=True)
 
     # Convert .dot to .png to allow display in web notebook
-    check_call(['dot', '-Tpng', f'{path}/tree.dot', '-o', f'{path}/{dataset_name}.png'])
+    check_call(['dot', '-Tpng', f'{plot_path}/tree.dot', '-o', f'{plot_path}/{dataset_name}.png'])
 
     # tree.plot_tree(decision_tree, fontsize=10)
     # plt.savefig(f'tree-img/tree-{dataset_name}.png', dpi=300, bbox_inches="tight")

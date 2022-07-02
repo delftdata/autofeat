@@ -6,10 +6,10 @@ from os.path import isfile, join
 import numpy as np
 import pandas as pd
 
-from augmentation.feat_sel import FeatSel
 from augmentation.train_algorithms import train_CART, train_CART_and_print
 from data_ingestion import ingest_data
 from utils.neo4j_utils import init_graph, enumerate_all_paths, drop_graph, get_relation_properties
+from feature_selection.feature_selection_algorithms import FSAlgorithms
 
 sys_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../")
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -43,28 +43,35 @@ def path_enumeration(graph_name="graph") -> dict:
     return all_paths
 
 
-def join_tables_recursive(all_paths: dict, mapping, base_table, target_column, path, allp, joined_mapping=None):
+def join_tables_recursive(all_paths: dict, mapping, current_table, target_column, path, allp, joined_mapping=None):
     if not joined_mapping:
         joined_mapping = {}
 
     # Join and save the join result
     if not path == "":
+        # get the name of the table from the path we created
         left_table = path.split("--")[-1]
+        # get the location of the table we want to join with
         partial_join = mapping[left_table]
 
+        # If we already joined the tables on the path, we retrieve the join result
         if path in joined_mapping:
             partial_join = joined_mapping[path]
 
-        path = f"{path}--{base_table}"
-        joined_path, joined_df, left_table_features = join_and_save(partial_join, mapping[left_table], mapping[base_table], path)
+        # Add the current table to the path
+        path = f"{path}--{current_table}"
+        joined_path, joined_df, left_table_features = join_and_save(partial_join, mapping[left_table], mapping[current_table], path)
         joined_mapping[path] = joined_path
     else:
-        path = base_table
+        # Just started traversing, the path is the current table
+        path = current_table
 
     print(path)
     allp.append(path)
 
-    for table in all_paths[base_table]:
+    # Depth First Search recursively
+    for table in all_paths[current_table]:
+        # Break the cycles in the data, only visit new nodes
         if table not in path:
             join_path = join_tables_recursive(all_paths, mapping, table, target_column, path, allp, joined_mapping)
             # print(f"{join_path}")
@@ -81,13 +88,14 @@ def apply_feat_sel(joined_dataframe, base_table_features, target_column):
     X = np.array(df.drop(columns=[target_column]))
     y = np.array(df[target_column])
 
+    fs = FSAlgorithms()
     # create dataset to feed to the classifier
-    result = {'columns': [], FeatSel.GINI: [], FeatSel.RELIEF: [], FeatSel.CORR: [], FeatSel.SU: [], FeatSel.GAIN: []}
+    result = {'columns': [], FSAlgorithms.T_SCORE: [], FSAlgorithms.CHI_SQ: [], FSAlgorithms.FISHER: [], FSAlgorithms.SU: [], FSAlgorithms.MIFS: [], FSAlgorithms.CIFE: []}
     result['columns'] = list(df.drop(columns=[target_column]).columns)
 
     # For each feature selection algorithm, get the score
-    for alg in FeatSel.ALGORITHMS:
-        scores = FeatSel().feature_selection(alg, X, y)
+    for alg in fs.ALGORITHMS:
+        scores = fs.feature_selection(alg, X, y)
         result[alg] = list(scores)
 
     dataframe = pd.DataFrame.from_dict(result)
