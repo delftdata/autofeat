@@ -2,8 +2,9 @@ import json
 import os
 
 from augmentation import pipeline
-from augmentation.pipeline import join_tables_recursive
-from augmentation.weight_training import create_features_dataframe, create_ground_truth, train_logistic_regression
+from augmentation.data_preparation_pipeline import path_enumeration, join_tables_recursive
+from augmentation.weight_training_pipeline import create_features_dataframe, create_ground_truth, \
+    train_logistic_regression
 from data_ingestion import ingest_data
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -45,7 +46,7 @@ def test_profile_valentine():
 
 
 def test_path_enumeration():
-    all_paths = pipeline.path_enumeration(mappings_path)
+    all_paths = path_enumeration(mappings_path)
 
 
 def test_join_tables_recursively():
@@ -56,7 +57,8 @@ def test_join_tables_recursively():
 
     with open(f"{os.path.join(folder_name, mappings_path)}/enumerated-paths.json", 'r') as fp:
         all_paths = json.load(fp)
-    path = join_tables_recursive(all_paths, mapping, base_table, label_column, "", allp, join_result_path, joined_mapping)
+    path = join_tables_recursive(all_paths, mapping, base_table, label_column, "", allp, join_result_path,
+                                 joined_mapping)
 
     with open(f"{os.path.join(folder_name, mappings_path)}/joined-paths.json", 'w') as fp:
         json.dump(allp, fp)
@@ -72,11 +74,11 @@ def test_train_and_rank():
 
 
 def test_prepare_data():
-    create_features_dataframe(base_table_path, join_path, label_column, mappings_path)
+    create_features_dataframe(label_column, base_table_path, join_path, mappings_path)
 
 
 def test_ground_truth():
-    create_ground_truth(join_path, label_column, base_table_path, mappings_path)
+    create_ground_truth(label_column, base_table_path, join_path, mappings_path)
 
 
 if __name__ == '__main__':

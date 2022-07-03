@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, GridSearchCV
 from xgboost import XGBClassifier
 
-from augmentation.id3_alg import GadId3Classifier
+from utils.id3_alg import GadId3Classifier
 
 
 def train_CART(X, y):

@@ -3,32 +3,34 @@ from operator import itemgetter
 from os import listdir
 from os.path import isfile, join
 
-import numpy as np
 import pandas as pd
-from tqdm import tqdm
-
-from sklearn.metrics import accuracy_score, mean_squared_error
-from sklearn.linear_model import LogisticRegressionCV, LassoLarsCV
+from joblib import dump
+from sklearn.linear_model import LassoLarsCV
+from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from tqdm import tqdm
 
-from joblib import dump, load
-
-from augmentation.train_algorithms import train_CART_and_print, train_CART
+from augmentation.train_algorithms import train_CART
 from feature_selection.feature_selection_algorithms import FSAlgorithms
+from utils.file_naming_convention import TRAINING_DATASET
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
-# mapping_path = f"{folder_name}/../mappings"
-# joined_path = f"{folder_name}/../joined-df/football"
-results_filename = "results.csv"
 
 
-def create_features_dataframe(base_table_path, joined_data_path, target_column, mappings_path):
+def classification_pipeline(label_column, base_table_path, joined_data_path, mappings_path):
+    create_features_dataframe(label_column, base_table_path, joined_data_path, mappings_path)
+    create_ground_truth(label_column, base_table_path, joined_data_path, mappings_path)
+    train_logistic_regression(mappings_path)
+
+
+def create_features_dataframe(label_column, base_table_path, joined_data_path, mappings_path):
     base_table = pd.read_csv(base_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
                              escapechar='\\', nrows=1)
-    base_table_features = list(base_table.drop(columns=[target_column]).columns)
+    base_table_features = list(base_table.drop(columns=[label_column]).columns)
 
-    result = {'columns': [], FSAlgorithms.T_SCORE: [], FSAlgorithms.CHI_SQ: [], FSAlgorithms.FISHER: [], FSAlgorithms.SU: [], FSAlgorithms.MIFS: [], FSAlgorithms.CIFE: []}
+    result = {'columns': [], FSAlgorithms.T_SCORE: [], FSAlgorithms.CHI_SQ: [], FSAlgorithms.FISHER: [],
+              FSAlgorithms.SU: [], FSAlgorithms.MIFS: [], FSAlgorithms.CIFE: []}
     for f in listdir(joined_data_path):
         filename = join(joined_data_path, f)
         if isfile(filename):
@@ -39,20 +41,23 @@ def create_features_dataframe(base_table_path, joined_data_path, target_column, 
             df = joined_table.apply(lambda x: pd.factorize(x)[0])
             joined_table_no_base = df.drop(
                 columns=set(df.columns).intersection(set(base_table_features)))
-            df_features = list(map(lambda x: f"{filename}/{x}", joined_table_no_base.drop(columns=[target_column]).columns))
+            df_features = list(
+                map(lambda x: f"{filename}/{x}", joined_table_no_base.drop(columns=[label_column]).columns))
 
             result['columns'] = result['columns'] + df_features
-            X = joined_table_no_base.drop(columns=[target_column])
-            y = joined_table_no_base[target_column].astype(int)
+            X = joined_table_no_base.drop(columns=[label_column])
+            y = joined_table_no_base[label_column].astype(int)
 
             scaler = MinMaxScaler()
             scaled_X = scaler.fit_transform(X)
             normalized_X = pd.DataFrame(scaled_X, columns=X.columns)
 
-            all_features = dict(zip(list(range(0, len(df.drop(columns=[target_column]).columns))), df.drop(columns=[target_column]).columns))
+            all_features = dict(zip(list(range(0, len(df.drop(columns=[label_column]).columns))),
+                                    df.drop(columns=[label_column]).columns))
             left_features = dict(filter(lambda x: x[1] in base_table_features, all_features.items()))
-            right_features = dict(filter(lambda x: x[1] in joined_table_no_base.columns and x[1] not in base_table_features,
-                                       all_features.items()))
+            right_features = dict(
+                filter(lambda x: x[1] in joined_table_no_base.columns and x[1] not in base_table_features,
+                       all_features.items()))
 
             fs = FSAlgorithms()
             for alg in fs.ALGORITHMS:
@@ -63,20 +68,22 @@ def create_features_dataframe(base_table_path, joined_data_path, target_column, 
                 # print(f"\t\tScores: {scores}")
 
             scaler = MinMaxScaler()
-            scaled_X = scaler.fit_transform(df.drop(columns=[target_column]))
-            normalized_X = pd.DataFrame(scaled_X, columns=df.drop(columns=[target_column]).columns)
+            scaled_X = scaler.fit_transform(df.drop(columns=[label_column]))
+            normalized_X = pd.DataFrame(scaled_X, columns=df.drop(columns=[label_column]).columns)
             for alg in fs.ALGORITHM_FOREIGN_TABLE:
-                scores = fs.feature_selection_foreign_table(alg, list(left_features.keys()), list(right_features.keys()), normalized_X, joined_table[target_column])
+                scores = fs.feature_selection_foreign_table(alg, list(left_features.keys()),
+                                                            list(right_features.keys()), normalized_X,
+                                                            joined_table[label_column])
                 result[alg] = result[alg] + list(scores)
 
     result_dataframe = pd.DataFrame.from_dict(result)
-    filepath = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+    filepath = f"{os.path.join(folder_name, '../', mappings_path)}/{TRAINING_DATASET}"
     previous_result = pd.read_csv(filepath)
     pd.concat([previous_result, result_dataframe]).to_csv(filepath, index=False)
 
 
-def create_ground_truth(join_path, label_column, base_table_path, mappings_path):
-    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+def create_ground_truth(label_column, base_table_path, join_path, mappings_path):
+    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{TRAINING_DATASET}"
     results_dataframe = pd.read_csv(result_path)
     base_table = pd.read_csv(base_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
                              escapechar='\\', nrows=1)
@@ -110,7 +117,7 @@ def create_ground_truth(join_path, label_column, base_table_path, mappings_path)
 
 
 def train_logistic_regression(mappings_path):
-    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{TRAINING_DATASET}"
     dataframe = pd.read_csv(result_path, header=0, engine="python", encoding="utf8",
                             quotechar='"',
                             escapechar='\\')
