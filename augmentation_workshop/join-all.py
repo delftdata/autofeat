@@ -5,7 +5,7 @@ from timeit import default_timer as timer
 
 import pandas as pd
 
-from augmentation.neo4j_utils import get_nodes_with_pk_from_table
+from utils.neo4j_utils import get_nodes_with_pk_from_table
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 
 datasets = {

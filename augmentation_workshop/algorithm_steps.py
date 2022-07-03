@@ -8,8 +8,8 @@ import pandas as pd
 
 from utils.neo4j_utils import get_nodes_with_pk_from_table
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
-from feat_sel import FeatSel
-from algorithms import CART, ID3, XGB
+from FeatSel import FeatSel
+from augmentation.algorithms import CART, ID3, XGB
 
 logging.basicConfig(level=logging.INFO)
 folder_name = os.path.abspath(os.path.dirname(__file__))

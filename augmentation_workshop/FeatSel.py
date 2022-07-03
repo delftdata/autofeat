@@ -8,6 +8,8 @@ class FeatSel:
     CORR = 'spearman-correlation'
     RELIEF = 'reliefF'
 
+    ALGORITHMS = [GINI, SU, GAIN, CORR, RELIEF]
+
     def feature_selection(self, selection_method, X, y):
         feat_sel = self._get_feat_sel(selection_method)
         return feat_sel(X, y)

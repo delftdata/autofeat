@@ -26,6 +26,12 @@ def get_nodes_with_pk_from_table(table_name: str) -> list:
     return result
 
 
+def create_table_node(table_name, table_path):
+    with driver.session() as session:
+        node = session.write_transaction(_create_table_node, table_name, table_path)
+    return node
+
+
 def create_node(source, source_path, label):
     with driver.session() as session:
         node = session.write_transaction(_create_node, source, source_path, label)
@@ -36,6 +42,24 @@ def create_relation(from_node_id, to_node_id, relation_name):
     with driver.session() as session:
         relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name)
     return relation
+
+
+def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b, relation_name):
+    with driver.session() as session:
+        relation = session.write_transaction(_create_relation_with_path, from_node_id, to_node_id, path_name_a,
+                                             path_name_b,
+                                             relation_name)
+    return relation
+
+
+def _create_table_node(tx, table_name, table_path):
+    tx_result = tx.run("MERGE (n:Node {id: $table_path}) "
+                       "ON CREATE "
+                       "SET n.label = $table_name "
+                       "RETURN n as node", table_name=table_name, table_path=table_path)
+
+    result = tx_result.single()
+    return result["node"]
 
 
 def _create_node(tx, source, source_path, label):
@@ -54,6 +78,19 @@ def _create_node(tx, source, source_path, label):
 def create_subsumption_relation(source):
     with driver.session() as session:
         relation = session.write_transaction(_create_subsumption_relation, source)
+
+
+def set_relation_properties(a_id, b_id, a_path_name, b_path_name, relation_name, **kwargs):
+    with driver.session() as session:
+        result = session.write_transaction(_set_properties, a_id, b_id, a_path_name, b_path_name, relation_name,
+                                           **kwargs)
+
+
+def create_relation_between_table_nodes(from_id, to_id, from_key, to_key, weight=1):
+    with driver.session() as session:
+        result = session.write_transaction(_create_relation_between_table_nodes, from_id, to_id,
+                                           from_key, to_key, weight)
+    return result
 
 
 def _create_subsumption_relation(tx, source):
@@ -79,3 +116,100 @@ def _create_relation(tx, a_id, b_id, relation_name):
     return result
 
 
+def _create_relation_between_table_nodes(tx, a_id, b_id, from_key, to_key, weight):
+    tx_result = tx.run("MATCH (a:Node {id: $a_id}) WITH a "
+                       "MATCH (b:Node {id: $b_id}) "
+                       "MERGE (a)-[r:RELATED {from_key: $from_key, to_key: $to_key, weight: $weight}]->(b) "
+                       "RETURN r as relation", a_id=a_id, b_id=b_id,
+                       from_key=from_key, to_key=to_key, weight=weight)
+
+    record = tx_result.single()
+    return record['relation']
+
+
+def _create_relation_with_path(tx, a_id, b_id, path_name_a, path_name_b, relation_name):
+    tx_result = tx.run("MATCH (a:Node {id: $a_id, source_path: $path_name_a}) WITH a "
+                       "MATCH (b:Node {id: $b_id, source_path: $path_name_b}) "
+                       f"MERGE (a)-[r:{relation_name}]->(b) "
+                       "RETURN r as relation", a_id=a_id, b_id=b_id, path_name_a=path_name_a, path_name_b=path_name_b)
+
+    result = []
+    for record in tx_result:
+        result.append(record['relation'])
+    return result
+
+
+def _set_properties(tx, a_id, b_id, path_name_a, path_name_b, relation_name, **kwargs):
+    set_query = 'SET '
+    for i, key in enumerate(kwargs.keys()):
+        set_query += 'r.{} = ${} '.format(key, key)
+        if i < len(kwargs.keys()) - 1:
+            set_query += ', '
+
+    tx_result = tx.run("MATCH (a:Node)-[r:{}]->(b:Node) WHERE a.id = $a_id and a.source_path = $path_name_a and "
+                       "b.id = $b_id and b.source_path = $path_name_b {} RETURN r as relation"
+                       .format(relation_name, set_query), a_id=a_id, b_id=b_id, path_name_a=path_name_a,
+                       path_name_b=path_name_b, **kwargs)
+    result = []
+    for record in tx_result:
+        result.append(record['relation'])
+    return result
+
+
+def _create_virtual_graph(tx, name):
+    result = tx.run("CALL gds.graph.create("
+                    "$name, "
+                    "'Node', "
+                    "{ LINK: "
+                    "{ type: 'RELATED', "
+                    "orientation: 'UNDIRECTED'}})", name=name)
+
+
+def _drop_graph(tx, name):
+    tx.run(f"CALL gds.graph.drop('{name}')")
+
+
+def drop_graph(name):
+    with driver.session() as session:
+        session.write_transaction(_drop_graph, name)
+
+
+def init_graph(name):
+    with driver.session() as session:
+        session.write_transaction(_create_virtual_graph, name)
+
+
+def _enumerate_all_paths(tx, name):
+    tx_result = tx.run(f"CALL gds.alpha.allShortestPaths.stream('{name}') "
+                       "YIELD sourceNodeId, targetNodeId, distance "
+                       "WITH sourceNodeId, targetNodeId, distance "
+                       "WHERE distance=1 "
+                       "MATCH (source:Node) WHERE id(source) = sourceNodeId "
+                       "MATCH (target:Node) WHERE id(target) = targetNodeId "
+                       "WITH source, target, distance WHERE source <> target "
+                       "RETURN source.label AS source, target.label AS target, distance "
+                       "ORDER BY distance ASC, source ASC, target ASC")
+    values = []
+    for record in tx_result:
+        values.append(record.values())
+    return values
+
+
+def enumerate_all_paths(name):
+    with driver.session() as session:
+        result = session.write_transaction(_enumerate_all_paths, name)
+
+    return result
+
+
+def _get_relation_properties(tx, from_id, to_id):
+    result = tx.run("match (n {id: $from_id})-[r:RELATED]-(m {id: $to_id}) return r.from_key, r.to_key",
+                    from_id=from_id, to_id=to_id)
+    return result.values()[0]
+
+
+def get_relation_properties(from_id, to_id):
+    with driver.session() as session:
+        result = session.write_transaction(_get_relation_properties, from_id, to_id)
+
+    return result
