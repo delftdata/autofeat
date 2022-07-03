@@ -13,7 +13,7 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.7
 
 
-def ingest_fabricated_data(directory_path: str) -> dict:
+def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
     path = os.path.join(folder_name, "../", directory_path)
     mapping = {}
     for f in os.listdir(path):
@@ -26,7 +26,7 @@ def ingest_fabricated_data(directory_path: str) -> dict:
             node = create_table_node(table_name, table_path)
             # print(node)
 
-    with open(f"{os.path.join(folder_name, '../mappings')}/mapping.json", 'w') as fp:
+    with open(f"{os.path.join(folder_name, '../', mappings_path)}/mapping.json", 'w') as fp:
         json.dump(mapping, fp)
     return mapping
 

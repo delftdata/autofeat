@@ -13,7 +13,7 @@ from feature_selection.feature_selection_algorithms import FSAlgorithms
 
 sys_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../")
 folder_name = os.path.abspath(os.path.dirname(__file__))
-join_path = f"{sys_path}joined-df/dt"
+# join_path = f"{sys_path}joined-df/football"
 
 
 def data_ingestion(path: str):
@@ -23,7 +23,7 @@ def data_ingestion(path: str):
     return mapping
 
 
-def path_enumeration(graph_name="graph") -> dict:
+def path_enumeration(mappings_path: str, graph_name="graph") -> dict:
     try:
         drop_graph(graph_name)
     except Exception as err:
@@ -38,12 +38,12 @@ def path_enumeration(graph_name="graph") -> dict:
         key, value, _ = pair
         all_paths.setdefault(key, []).append(value)
 
-    with open(f"{os.path.join(folder_name, '../mappings')}/enumerated-paths.json", 'w') as fp:
+    with open(f"{os.path.join(folder_name, '../', mappings_path)}/enumerated-paths.json", 'w') as fp:
         json.dump(all_paths, fp)
     return all_paths
 
 
-def join_tables_recursive(all_paths: dict, mapping, current_table, target_column, path, allp, joined_mapping=None):
+def join_tables_recursive(all_paths: dict, mapping, current_table, target_column, path, allp, join_result_path, joined_mapping=None):
     if not joined_mapping:
         joined_mapping = {}
 
@@ -60,7 +60,7 @@ def join_tables_recursive(all_paths: dict, mapping, current_table, target_column
 
         # Add the current table to the path
         path = f"{path}--{current_table}"
-        joined_path, joined_df, left_table_features = join_and_save(partial_join, mapping[left_table], mapping[current_table], path)
+        joined_path, joined_df, left_table_features = join_and_save(partial_join, mapping[left_table], mapping[current_table], join_result_path, path)
         joined_mapping[path] = joined_path
     else:
         # Just started traversing, the path is the current table
@@ -73,7 +73,7 @@ def join_tables_recursive(all_paths: dict, mapping, current_table, target_column
     for table in all_paths[current_table]:
         # Break the cycles in the data, only visit new nodes
         if table not in path:
-            join_path = join_tables_recursive(all_paths, mapping, table, target_column, path, allp, joined_mapping)
+            join_path = join_tables_recursive(all_paths, mapping, table, target_column, path, allp, join_result_path, joined_mapping)
             # print(f"{join_path}")
     return path
 
@@ -109,7 +109,7 @@ def classify_and_rank(join_path_name, features_dataframe, classifier, ranking):
     ranking[join_path_name] = (max_score, n_rows)
 
 
-def join_and_save(partial_join_path, left_table_path, right_table_path, join_result_name):
+def join_and_save(partial_join_path, left_table_path, right_table_path, join_result_path, join_result_name):
     # Getting the join keys
     from_col, to_col = get_relation_properties(left_table_path, right_table_path)
     # Read left side table
@@ -134,7 +134,7 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     duplicate_col.append(from_col)
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
-    joined_path = f"{join_path}/{join_result_name}"
+    joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, list(left_table_df.columns)

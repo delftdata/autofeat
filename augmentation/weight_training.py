@@ -5,22 +5,25 @@ from os.path import isfile, join
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.linear_model import LogisticRegressionCV, LassoLarsCV
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-from augmentation.train_algorithms import train_CART_and_print
+from joblib import dump, load
+
+from augmentation.train_algorithms import train_CART_and_print, train_CART
 from feature_selection.feature_selection_algorithms import FSAlgorithms
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
-mapping_path = f"{folder_name}/../mappings"
-joined_path = f"{folder_name}/../joined-df/dt"
+# mapping_path = f"{folder_name}/../mappings"
+# joined_path = f"{folder_name}/../joined-df/football"
 results_filename = "results.csv"
 
 
-def create_features_dataframe(base_table_path, joined_data_path, target_column):
+def create_features_dataframe(base_table_path, joined_data_path, target_column, mappings_path):
     base_table = pd.read_csv(base_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
                              escapechar='\\', nrows=1)
     base_table_features = list(base_table.drop(columns=[target_column]).columns)
@@ -29,14 +32,14 @@ def create_features_dataframe(base_table_path, joined_data_path, target_column):
     for f in listdir(joined_data_path):
         filename = join(joined_data_path, f)
         if isfile(filename):
-            # print(f"DATASET: {f}")
+            print(f"DATASET: {f}")
             joined_table = pd.read_csv(filename, header=0, engine="python", encoding="utf8", quotechar='"',
                                        escapechar='\\')
 
             df = joined_table.apply(lambda x: pd.factorize(x)[0])
             joined_table_no_base = df.drop(
                 columns=set(df.columns).intersection(set(base_table_features)))
-            df_features = list(map(lambda x: f"{f}/{x}", joined_table_no_base.drop(columns=[target_column]).columns))
+            df_features = list(map(lambda x: f"{filename}/{x}", joined_table_no_base.drop(columns=[target_column]).columns))
 
             result['columns'] = result['columns'] + df_features
             X = joined_table_no_base.drop(columns=[target_column])
@@ -67,38 +70,48 @@ def create_features_dataframe(base_table_path, joined_data_path, target_column):
                 result[alg] = result[alg] + list(scores)
 
     result_dataframe = pd.DataFrame.from_dict(result)
-    previous_result = pd.read_csv(f"{mapping_path}/{results_filename}")
-    pd.concat([previous_result, result_dataframe]).to_csv(f"{mapping_path}/{results_filename}", index=False)
+    filepath = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+    previous_result = pd.read_csv(filepath)
+    pd.concat([previous_result, result_dataframe]).to_csv(filepath, index=False)
 
 
-def create_ground_truth(join_path, label_column, base_table_path):
-    results_dataframe = pd.read_csv(f"{mapping_path}/{results_filename}")
+def create_ground_truth(join_path, label_column, base_table_path, mappings_path):
+    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+    results_dataframe = pd.read_csv(result_path)
     base_table = pd.read_csv(base_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
                              escapechar='\\', nrows=1)
     base_table_features = list(base_table.drop(columns=[label_column]).columns)
-    for f in listdir(join_path):
-        if isfile(join(join_path, f)):
-            table = pd.read_csv(join(join_path, f), header=0, engine="python", encoding="utf8", quotechar='"',
+    for f in tqdm(listdir(join_path)):
+        filename = join(join_path, f)
+        if isfile(filename):
+            print(f"DATASET: {f}")
+            table = pd.read_csv(filename, header=0, engine="python", encoding="utf8", quotechar='"',
                                 escapechar='\\')
             df = table.apply(lambda x: pd.factorize(x)[0])
             X = df.drop(columns=[label_column])
             y = df[label_column]
 
+            scaler = MinMaxScaler()
+            scaled_X = scaler.fit_transform(X)
+            normalized_X = pd.DataFrame(scaled_X, columns=X.columns)
+
             # acc_decision_tree, params = train_CART(X, y)
-            acc_decision_tree, params, feat_score = train_CART_and_print(X, y, f, f"{join_path}/trees")
+            # acc_decision_tree, params, feat_score = train_CART_and_print(X, y, f, f"{join_path}/trees")
+            acc_decision_tree, params, feat_score = train_CART(normalized_X, y)
             columns_index = [i for i, col in enumerate(X.columns) if col not in base_table_features]
             column_names = itemgetter(*columns_index)(list(X.columns))
-            column_mapping = list(map(lambda x: f"{f}/{x}", column_names))
+            column_mapping = list(map(lambda x: f"{filename}/{x}", column_names))
             results_dataframe.loc[results_dataframe['columns'].isin(column_mapping), 'score'] = itemgetter(
                 *columns_index)(feat_score)
             results_dataframe.loc[results_dataframe['columns'].isin(column_mapping), 'accuracy'] = acc_decision_tree
             results_dataframe.loc[results_dataframe['columns'].isin(column_mapping), 'depth'] = params['max_depth']
 
-    results_dataframe.to_csv(f"{mapping_path}/{results_filename}", index=False)
+    results_dataframe.to_csv(result_path, index=False)
 
 
-def train_logistic_regression():
-    dataframe = pd.read_csv(f"{mapping_path}/{results_filename}", header=0, engine="python", encoding="utf8",
+def train_logistic_regression(mappings_path):
+    result_path = f"{os.path.join(folder_name, '../', mappings_path)}/{results_filename}"
+    dataframe = pd.read_csv(result_path, header=0, engine="python", encoding="utf8",
                             quotechar='"',
                             escapechar='\\')
     X = dataframe.drop(columns=['score', 'depth', 'columns', 'accuracy'])
@@ -108,6 +121,10 @@ def train_logistic_regression():
 
     # clf = LogisticRegressionCV(cv=5, random_state=24, class_weight='balanced').fit(X, y)
     clf = LassoLarsCV(cv=10, normalize=False).fit(X, y)
+
+    clf_path = f"{os.path.join(folder_name, '../', mappings_path)}/regressor.joblib"
+
+    dump(clf, clf_path)
     y_pred = clf.predict(X_test)
     acc = mean_squared_error(y_test, y_pred, squared=False)
     print(acc)
