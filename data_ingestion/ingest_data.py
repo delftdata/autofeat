@@ -8,12 +8,13 @@ from valentine import valentine_match
 from valentine.algorithms import Coma
 
 from utils.neo4j_utils import create_table_node, create_relation_between_table_nodes
+from utils.file_naming_convention import MAPPING, CONNECTIONS
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.7
 
 
-def ingest_fabricated_data(directory_path: str) -> dict:
+def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
     path = os.path.join(folder_name, "../", directory_path)
     mapping = {}
     for f in os.listdir(path):
@@ -26,13 +27,13 @@ def ingest_fabricated_data(directory_path: str) -> dict:
             node = create_table_node(table_name, table_path)
             # print(node)
 
-    with open(f"{os.path.join(folder_name, '../mappings')}/mapping.json", 'w') as fp:
+    with open(f"{os.path.join(folder_name, '../', mappings_path)}/{MAPPING}", 'w') as fp:
         json.dump(mapping, fp)
     return mapping
 
 
 def ingest_connections(directory_path: str, mapping: dict):
-    path = os.path.join(folder_name, "../", directory_path, "connections.csv")
+    path = os.path.join(folder_name, "../", directory_path, CONNECTIONS)
 
     connections = list(map(lambda x: ((x[0], x[1]), (x[2], x[3])), genfromtxt(path, delimiter=',', dtype='str')))
 
