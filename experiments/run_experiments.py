@@ -92,6 +92,6 @@ def print_plot(table_cross, table_holdout):
     ax2.set_title("Hold-out")
     ax2.set(xlabel="Decision Tree depth", ylabel="Error")
 
-    fig.set_size_inches(10, 4)
+    fig.set_size_inches(13, 6)
     fig.show()
 
