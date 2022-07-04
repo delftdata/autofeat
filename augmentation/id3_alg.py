@@ -125,3 +125,16 @@ class GadId3Classifier:
                     return self.make_prediction(sample, result)
                 else:
                     return result
+
+    def depth(self):
+        return self.__calculate_depth__(self.tree)
+
+    def __calculate_depth__(self, tree):
+        if type(tree) is not dict or len(tree) == 0:
+            return 0
+
+        max_depth = 0
+        for id in tree:
+            max_depth = max(max_depth, self.__calculate_depth__(tree[id]))
+
+        return max_depth + 1
