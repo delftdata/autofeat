@@ -128,8 +128,7 @@ def train_XGBoost(X, y):
     return acc_decision_tree, params
 
 
-def apply_cross_validation(X, y, depth, n_splits=10):
-    decision_tree = tree.DecisionTreeClassifier(max_depth=depth)
-    scores = cross_val_score(estimator=decision_tree, X=X, y=y, cv=n_splits)
+def apply_cross_validation(X, y, tree, n_splits=10):
+    scores = cross_val_score(estimator=tree, X=X, y=y, cv=n_splits)
     return scores.mean()
 
