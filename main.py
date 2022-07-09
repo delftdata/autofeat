@@ -1,20 +1,25 @@
 import json
 import os
 
+import pandas as pd
+
 from augmentation import pipeline
-from augmentation.data_preparation_pipeline import path_enumeration, join_tables_recursive
+from augmentation.data_preparation_pipeline import path_enumeration, join_tables_recursive, data_preparation
+from augmentation.pipeline import ranking_join_no_pruning
 from augmentation.weight_training_pipeline import create_features_dataframe, create_ground_truth, \
     train_logistic_regression
 from data_ingestion import ingest_data
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
-join_result_path = 'joined-df/titanic'
+join_result_path = 'joined-df/wstitanic'
 join_path = f"{folder_name}/{join_result_path}"
 label_column = "Survived"
-base_table = "table_0_0.csv"
-path = "other-data/auto-fabricated/titanic/random_overlap"
+# base_table = "table_0_0.csv"
+base_table = "titanic.csv"
+# path = "other-data/auto-fabricated/titanic/random_overlap"
+path = "other-data/decision-trees-split/titanic"
 base_table_path = f"{os.path.join(folder_name, path, base_table)}"
-mappings_path = "mappings"
+mappings_path = "mappings/wstitanic"
 
 
 def main():
@@ -81,6 +86,34 @@ def test_ground_truth():
     create_ground_truth(label_column, base_table_path, join_path, mappings_path)
 
 
+def test_data_preparation_pipeline():
+    join_result_path = 'joined-df/wstitanic'
+    join_path = f"{folder_name}/{join_result_path}"
+    label_column = "Survived"
+    base_table = "titanic.csv"
+    path = "other-data/decision-trees-split/titanic"
+    base_table_path = f"{os.path.join(folder_name, path, base_table)}"
+    mappings_path = "mappings/wstitanic"
+    data_preparation(base_table, label_column, path, mappings_path, join_result_path)
+
+
+def evaluate_ranking_join_no_pruning():
+    with open(f"{os.path.join(folder_name, mappings_path)}/mapping.json", 'r') as fp:
+        mapping = json.load(fp)
+
+    with open(f"{os.path.join(folder_name, mappings_path)}/enumerated-paths.json", 'r') as fp:
+        all_paths = json.load(fp)
+
+    allp = []
+    ranking = {}
+    jm = {}
+    ranking_join_no_pruning(all_paths, mapping, base_table, label_column, "", allp, join_result_path, ranking, jm)
+    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1], reverse=True))
+    with open(f"{os.path.join(folder_name, mappings_path)}/ranking.json", 'w') as fp:
+        json.dump(sorted_ranking, fp)
+    print(ranking)
+
+
 if __name__ == '__main__':
     # main()
     # test_ingest_data()
@@ -91,4 +124,6 @@ if __name__ == '__main__':
     # test_train_baseline()
     # test_prepare_data()
     # test_ground_truth()
-    train_logistic_regression(mappings_path)
+    # train_logistic_regression(mappings_path)
+    evaluate_ranking_join_no_pruning()
+    # test_data_preparation_pipeline()
