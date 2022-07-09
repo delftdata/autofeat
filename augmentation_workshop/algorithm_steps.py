@@ -143,10 +143,6 @@ def rank_join_paths(join_paths: dict, label: str, selection_method):
     return ranked
 
 
-def get_top_k_from_dict(join_paths: dict, k: int):
-    return {key: join_paths[key] for i, key in enumerate(join_paths) if i < k}
-
-
 def train_augmented(ranked: dict, paths: dict, label: str, algorithm: str, runtime, feat_sel) -> list:
     tables_acc = []
 
