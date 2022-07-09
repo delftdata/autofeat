@@ -71,7 +71,7 @@ def join_tables_recursive(all_paths: dict, mapping, current_table, target_column
 
         # Add the current table to the path
         path = f"{path}--{current_table}"
-        joined_path, joined_df, left_table_features = join_and_save(partial_join, mapping[left_table],
+        joined_path, _, _ = join_and_save(partial_join, mapping[left_table],
                                                                     mapping[current_table], join_result_path, path)
         joined_mapping[path] = joined_path
     else:
@@ -98,7 +98,7 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     left_table_df = pd.read_csv(partial_join_path, header=0, engine="python", encoding="utf8", quotechar='"',
                                 escapechar='\\')
     if from_col not in left_table_df.columns:
-        print(f"ERROR! Key {from_col} not in table")
+        print(f"ERROR! Key {from_col} not in table {left_table_df}")
         return None
 
     right_table_df = pd.read_csv(right_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
@@ -109,15 +109,15 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
 
     print(f"\tJoining {partial_join_path} with {right_table_path}\n\tOn keys: {from_col} - {to_col}")
     joined_df = pd.merge(left_table_df, right_table_df, how="left", left_on=from_col, right_on=to_col,
-                         suffixes=("", "_b"))
+                         suffixes=("_b", ""))
 
     # If both tables have the same column, drop one of them
     duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
     # Drop the FK key from the left table
-    duplicate_col.append(from_col)
+    # duplicate_col.append(from_col)
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
     joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"
     joined_df.to_csv(joined_path, index=False)
 
-    return joined_path, joined_df, list(left_table_df.columns)
+    return joined_path, joined_df, left_table_df
