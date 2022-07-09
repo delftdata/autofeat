@@ -4,11 +4,11 @@ import os
 import pandas as pd
 
 from augmentation import pipeline
-from augmentation.data_preparation_pipeline import path_enumeration, join_tables_recursive, data_preparation
+from augmentation.data_preparation_pipeline import _path_enumeration, join_tables_recursive, data_preparation
 from augmentation.pipeline import ranking_join_no_pruning
 from augmentation.weight_training_pipeline import create_features_dataframe, create_ground_truth, \
     train_logistic_regression
-from data_ingestion import ingest_data
+from data_preparation import ingest_data
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 join_result_path = 'joined-df/wstitanic'
@@ -51,7 +51,7 @@ def test_profile_valentine():
 
 
 def test_path_enumeration():
-    all_paths = path_enumeration(mappings_path)
+    all_paths = _path_enumeration(mappings_path)
 
 
 def test_join_tables_recursively():
