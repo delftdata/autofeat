@@ -69,7 +69,7 @@ def _compute_ranking_score(dependent_features_scores: dict, foreign_features_sco
             feat_scores[feat] = foreign_features_scores[feat] * dependent_features_scores[feat]
 
     # Sort the features ascending based on the score
-    feat_scores = dict(sorted(feat_scores.items(), key=lambda item: abs(item[1])))
+    feat_scores = dict(sorted(feat_scores.items(), key=lambda item: item[1]))
     # TODO: Improve the selection
     selected_features = get_elements_less_than_value(feat_scores, threshold)
 

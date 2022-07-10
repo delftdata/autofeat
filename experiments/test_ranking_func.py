@@ -1,3 +1,4 @@
+import math
 import os
 
 import pandas as pd
@@ -5,12 +6,11 @@ import pandas as pd
 from augmentation.train_algorithms import train_CART
 from utils.util_functions import prepare_data_for_ml
 
-
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 def verify_ranking_func(ranking: dict, mapping: dict, joined_data_path: str, base_table_name: str,
-                           target_column: str):
+                        target_column: str):
     data = {}
     # 0. Get the baseline params
     print(f"Processing case 0: Baseline")
@@ -21,8 +21,12 @@ def verify_ranking_func(ranking: dict, mapping: dict, joined_data_path: str, bas
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
 
     for path in ranking.keys():
+        score, features = ranking[path]
+
+        if score == math.inf:
+            continue
+
         result = {'base-table': (acc_b, params_b['max_depth'])}
-        _, features = ranking[path]
         joined_df = pd.read_csv(f"{folder_name}/../{joined_data_path}/{path}", header=0,
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         # Three type of experiments
@@ -47,6 +51,7 @@ def verify_ranking_func(ranking: dict, mapping: dict, joined_data_path: str, bas
         result['keep-all-but-ranked'] = (acc, params['max_depth'])
         print(X.columns)
         print(result)
-        data[path] = result
+        data[path] = {'features': features}
+        data[path].update(result)
 
     return data

@@ -4,7 +4,6 @@ import pandas as pd
 
 from utils.neo4j_utils import get_relation_properties
 
-
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -12,6 +11,8 @@ def join_tables_recursive(all_paths: dict, mapping, current_table, target_column
                           joined_mapping=None):
     if not joined_mapping:
         joined_mapping = {}
+
+    print(f"Current table: {current_table}")
 
     # Join and save the join result
     if not path == "":
@@ -27,7 +28,7 @@ def join_tables_recursive(all_paths: dict, mapping, current_table, target_column
         # Add the current table to the path
         path = f"{path}--{current_table}"
         joined_path, _, _ = join_and_save(partial_join, mapping[left_table],
-                                                                    mapping[current_table], join_result_path, path)
+                                          mapping[current_table], join_result_path, path)
         joined_mapping[path] = joined_path
     else:
         # Just started traversing, the path is the current table
@@ -50,16 +51,16 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     # Getting the join keys
     from_col, to_col = get_relation_properties(left_table_path, right_table_path)
     # Read left side table
-    left_table_df = pd.read_csv(partial_join_path, header=0, engine="python", encoding="utf8", quotechar='"',
-                                escapechar='\\')
+    left_table_df = pd.read_csv(os.path.join(folder_name, "../", partial_join_path), header=0, engine="python",
+                                encoding="utf8", quotechar='"', escapechar='\\')
     if from_col not in left_table_df.columns:
-        print(f"ERROR! Key {from_col} not in table {left_table_df}")
+        print(f"ERROR! Key {from_col} not in table {partial_join_path}")
         return None
 
-    right_table_df = pd.read_csv(right_table_path, header=0, engine="python", encoding="utf8", quotechar='"',
-                                 escapechar='\\')
+    right_table_df = pd.read_csv(os.path.join(folder_name, "../", right_table_path), header=0, engine="python",
+                                 encoding="utf8", quotechar='"', escapechar='\\')
     if to_col not in right_table_df.columns:
-        print(f"ERROR! Key {to_col} not in table {right_table_df}")
+        print(f"ERROR! Key {to_col} not in table {right_table_path}")
         return None
 
     print(f"\tJoining {partial_join_path} with {right_table_path}\n\tOn keys: {from_col} - {to_col}")
@@ -69,12 +70,10 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     # If both tables have the same column, drop one of them
     duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
     # Drop the FK key from the left table
-    # duplicate_col.append(from_col)
+    duplicate_col.append(to_col)
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
     joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df
-
-
