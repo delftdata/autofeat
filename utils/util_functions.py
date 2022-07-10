@@ -1,3 +1,5 @@
+import statistics
+
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
@@ -19,12 +21,13 @@ def normalize_dict_values(dictionary: dict):
         return dictionary
 
     aux_dict = dictionary.copy()
-    min_value = min(dictionary.values())
-    if min_value < 0:
-        aux_dict = {k: v - min_value for k, v in aux_dict.items()}
-
+    min_neg_value = min(dictionary.values())
+    if min_neg_value < 0:
+        aux_dict = {k: v - min_neg_value for k, v in aux_dict.items()}
+    avg = statistics.mean(aux_dict.values())
     max_value = max(aux_dict.values())
-    return {key: value/max_value for key, value in aux_dict.items()}
+    min_value = min(aux_dict.values())
+    return {key: (value - avg)/(max_value - min_value) for key, value in aux_dict.items()}
 
 
 def prepare_data_for_ml(dataframe, target_column):

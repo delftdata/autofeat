@@ -28,11 +28,10 @@ def pipeline(data: dict, prepare_data=False, test_ranking=False):
         all_paths = json.load(fp)
 
     allp = []
-    ranking = {}
     jm = {}
 
-    ranking_func(all_paths, mapping, base_table_name, label_column, "", allp, join_result_folder_path, ranking, jm)
-    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0]))
+    ranking_func(all_paths, mapping, base_table_name, label_column, "", allp, join_result_folder_path, jm, None)
+    sorted_ranking = dict(sorted(jm.items(), key=lambda item: item[1][2]))
     print(sorted_ranking)
 
     with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{RANKING_FUNCTION}", 'w') as fp:
@@ -77,9 +76,9 @@ def data_pipeline():
         'mappings_folder_name': "mappings/kidney-disease"
     }
 
-    prepare_data = True
+    prepare_data = False
     test_ranking = True
-    pipeline(steel_data, prepare_data, test_ranking)
+    pipeline(football_data, prepare_data, test_ranking)
 
 
 if __name__ == '__main__':

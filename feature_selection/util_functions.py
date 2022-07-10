@@ -44,7 +44,7 @@ def apply_feat_sel(joined_df, base_table_df, target_column, path):
     return dataframe
 
 
-def select_dependent_features(X, y):
+def select_dependent_features(X, y) -> dict:
     fs = FSAlgorithms()
     # Use Symmetrical uncertainty to compute dependency
     scores = fs.feature_selection(fs.SU, X, y)
@@ -52,34 +52,38 @@ def select_dependent_features(X, y):
     result = dict(zip(X.columns, scores))
     # Sort the scores in descending order
     sorted_result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
-    print(f"Sorted result:\n\t{sorted_result}")
+    # print(f"Sorted result:\n\t{sorted_result}")
     # Select the columns with SU > 0.4 - empirically showed that features with SU > 0.4 are selected by decision trees
     # selected_columns = dict(filter(lambda x: x[1] > 0.4, sorted_result.items()))
     return sorted_result
 
 
-def select_dependent_right_features(base_table_features, joined_df, target_column):
+def select_dependent_right_features(left_table_features: list, joined_df: pd.DataFrame, target_column: str) -> dict:
     print(f"Selecting dependent features on column: {target_column}...")
     # Remove the features from the base table
-    joined_table_no_base = joined_df.drop(columns=base_table_features)
+    joined_table_no_base = joined_df.drop(columns=left_table_features)
 
     # Fill NaN with 0, normalise data and split into X, y
     X, y = prepare_data_for_ml(joined_table_no_base, target_column)
 
-    # Get the dependent features on the target column
+    # Get the score of dependency: foreign features on target column
     dependent_features = select_dependent_features(X, y)
     print(f"Dependent features:\n\t{dependent_features}")
     return dependent_features
 
 
-def select_uncorrelated_with_selected(base_table_features, joined_df, target_column):
+def select_uncorrelated_with_selected(left_table_features, features_to_compare, joined_df, target_column):
     print(f"Selecting un-correlated features...")
+    all_columns = list(joined_df.columns)
+    all_columns.remove(target_column)
+    to_drop_features = [feat for feat in all_columns if feat not in left_table_features and feat not in features_to_compare]
+    df = joined_df.drop(columns=to_drop_features)
 
-    X, y = prepare_data_for_ml(joined_df, target_column)
+    X, y = prepare_data_for_ml(df, target_column)
 
     all_features = dict(zip(list(range(0, len(X.columns))), X.columns))
-    left_features = dict(filter(lambda x: x[1] in base_table_features, all_features.items()))
-    right_features = dict(filter(lambda x: x[1] not in base_table_features, all_features.items()))
+    left_features = dict(filter(lambda x: x[1] in left_table_features, all_features.items()))
+    right_features = dict(filter(lambda x: x[1] in features_to_compare, all_features.items()))
 
     fs = FSAlgorithms()
     scores = fs.feature_selection_foreign_table(fs.CIFE, list(left_features.keys()), list(right_features.keys()), X, y)

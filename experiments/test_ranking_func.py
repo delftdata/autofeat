@@ -21,7 +21,7 @@ def verify_ranking_func(ranking: dict, mapping: dict, joined_data_path: str, bas
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
 
     for path in ranking.keys():
-        score, features = ranking[path]
+        _, features, score = ranking[path]
 
         if score == math.inf:
             continue
