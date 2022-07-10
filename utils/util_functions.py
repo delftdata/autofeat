@@ -6,6 +6,10 @@ def get_top_k_from_dict(join_paths: dict, k: int):
     return {key: join_paths[key] for i, key in enumerate(join_paths) if i < k}
 
 
+def get_elements_less_than_value(dictionary: dict, value: float):
+    return {k: v for k, v in dictionary.items() if abs(v) < value}
+
+
 def prepare_data_for_ml(dataframe, target_column):
     df = dataframe.fillna(0)
     df = df.apply(lambda x: pd.factorize(x)[0] if x.dtype == object else x)

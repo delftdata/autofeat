@@ -149,6 +149,7 @@ class FSAlgorithms:
     # RELIEF = 'reliefF' # param: number of neighbors to consider -- REMOVED - un-informative
 
     ALGORITHMS = [CHI_SQ, T_SCORE, SU, FISHER]
+    DEPENDENCY_ALG = [CHI_SQ, T_SCORE, SU]
     ALL = [CHI_SQ, T_SCORE, FISHER, MIFS, CIFE]
     ALGORITHM_FOREIGN_TABLE = [MIFS, CIFE]
 

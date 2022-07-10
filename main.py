@@ -6,20 +6,21 @@ import pandas as pd
 from augmentation import pipeline
 from augmentation.data_preparation_pipeline import _path_enumeration, join_tables_recursive, data_preparation
 from augmentation.pipeline import ranking_join_no_pruning
+from augmentation.ranking import ranking_func
 from augmentation.weight_training_pipeline import create_features_dataframe, create_ground_truth, \
     train_logistic_regression
 from data_preparation import ingest_data
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
-join_result_path = 'joined-df/wstitanic'
+join_result_path = 'joined-df/titanic'
 join_path = f"{folder_name}/{join_result_path}"
 label_column = "Survived"
-# base_table = "table_0_0.csv"
-base_table = "titanic.csv"
-# path = "other-data/auto-fabricated/titanic/random_overlap"
-path = "other-data/decision-trees-split/titanic"
+base_table = "table_0_0.csv"
+# base_table = "titanic.csv"
+path = "other-data/auto-fabricated/titanic/random_overlap"
+# path = "other-data/decision-trees-split/titanic"
 base_table_path = f"{os.path.join(folder_name, path, base_table)}"
-mappings_path = "mappings/wstitanic"
+mappings_path = "mappings/titanic"
 
 
 def main():
@@ -111,7 +112,24 @@ def evaluate_ranking_join_no_pruning():
     sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1], reverse=True))
     with open(f"{os.path.join(folder_name, mappings_path)}/ranking.json", 'w') as fp:
         json.dump(sorted_ranking, fp)
-    print(ranking)
+    print(sorted_ranking)
+
+
+def evaluate_ranking_func():
+    with open(f"{os.path.join(folder_name, mappings_path)}/mapping.json", 'r') as fp:
+        mapping = json.load(fp)
+
+    with open(f"{os.path.join(folder_name, mappings_path)}/enumerated-paths.json", 'r') as fp:
+        all_paths = json.load(fp)
+
+    allp = []
+    ranking = {}
+    jm = {}
+    ranking_func(all_paths, mapping, base_table, label_column, "", allp, join_result_path, ranking, jm)
+    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: abs(item[1][0])))
+    print(sorted_ranking)
+    with open(f"{os.path.join(folder_name, mappings_path)}/ranking-func.json", 'w') as fp:
+        json.dump(sorted_ranking, fp)
 
 
 if __name__ == '__main__':
@@ -125,5 +143,6 @@ if __name__ == '__main__':
     # test_prepare_data()
     # test_ground_truth()
     # train_logistic_regression(mappings_path)
-    evaluate_ranking_join_no_pruning()
+    # evaluate_ranking_join_no_pruning()
     # test_data_preparation_pipeline()
+    evaluate_ranking_func()
