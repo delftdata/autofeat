@@ -70,7 +70,7 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     # If both tables have the same column, drop one of them
     duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
     # Drop the FK key from the left table
-    duplicate_col.append(to_col)
+    # duplicate_col.append(to_col)
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
     joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"

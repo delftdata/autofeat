@@ -77,9 +77,9 @@ def data_pipeline():
         'mappings_folder_name': "mappings/kidney-disease"
     }
 
-    prepare_data = False
+    prepare_data = True
     test_ranking = True
-    pipeline(football_data, prepare_data, test_ranking)
+    pipeline(steel_data, prepare_data, test_ranking)
 
 
 if __name__ == '__main__':

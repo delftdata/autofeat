@@ -1,15 +1,15 @@
 import math
 import statistics
 
-from augmentation.pipeline import apply_feat_sel, classify_and_rank
+from typing import Dict
+
 from data_preparation.join_data import join_and_save
 from feature_selection.util_functions import select_dependent_right_features, select_uncorrelated_with_selected
-from utils.util_functions import get_elements_less_than_value
+from utils.util_functions import get_elements_less_than_value, normalize_dict_values, get_elements_higher_than_value
 
 
 def ranking_func(all_paths: dict, mapping, current_table, target_column, path, allp, join_result_folder_path,
-                            ranking, joined_mapping: dict):
-
+                 ranking, joined_mapping: dict):
     # Join and save the join result
     if not path == "":
         # get the name of the table from the path we created
@@ -57,23 +57,30 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
         # Break the cycles in the data, only visit new nodes
         if table not in path:
             join_path = ranking_func(all_paths, mapping, table, target_column, path, allp, join_result_folder_path,
-                                                ranking, joined_mapping)
+                                     ranking, joined_mapping)
     return path
 
 
-def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.2) -> tuple:
+def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.85) -> tuple:
     feat_scores = {}
+    # Create dataframe and normalise the data
+    normalised_dfs = normalize_dict_values(dependent_features_scores)
+    normalised_ffs = normalize_dict_values(foreign_features_scores)
+
     # Compute a score for each feature based on the dependent score and the foreign feature score
     for feat in foreign_features_scores.keys():
         if feat in dependent_features_scores:
-            feat_scores[feat] = foreign_features_scores[feat] * dependent_features_scores[feat]
+            feat_scores[feat] = normalised_dfs[feat] + normalised_ffs[feat]
 
+    normalised_fs = normalize_dict_values(feat_scores)
     # Sort the features ascending based on the score
-    feat_scores = dict(sorted(feat_scores.items(), key=lambda item: item[1]))
-    # TODO: Improve the selection
-    selected_features = get_elements_less_than_value(feat_scores, threshold)
-
+    normalised_fs = dict(sorted(normalised_fs.items(), key=lambda item: item[1], reverse=True))
+    selected_features = get_elements_higher_than_value(normalised_fs, threshold)
     # Assign a score to each join path for ranking
     score = statistics.mean(selected_features.values()) if selected_features else math.inf
 
     return score, list(selected_features.keys())
+
+
+
+
