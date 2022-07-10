@@ -1,7 +1,8 @@
 import json
 import os
 
-from experiments.verify_ranking import verify_join_no_pruning, verify_ranking_func
+from experiments.ranking_func import verify_ranking_func
+from experiments.verify_ranking import verify_join_no_pruning
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 join_result_path = 'joined-df/titanic'
