@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
+from augmentation.pipeline import prepare_data_for_ml
 from augmentation.train_algorithms import train_CART
 from feature_selection.feature_selection_algorithms import FSAlgorithms
 from utils.file_naming_convention import TRAINING_DATASET
@@ -121,17 +122,17 @@ def train_logistic_regression(mappings_path):
     dataframe = pd.read_csv(result_path, header=0, engine="python", encoding="utf8",
                             quotechar='"',
                             escapechar='\\')
-    X = dataframe.drop(columns=['score', 'depth', 'columns', 'accuracy'])
-    y = dataframe['score']
+    # X = dataframe.drop(columns=['depth', 'columns', 'accuracy'])
+    # y = dataframe['score']
+    X, y = prepare_data_for_ml(dataframe.drop(columns=['depth', 'columns', 'accuracy']), 'score')
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
+    clf = LassoLarsCV(cv=10, normalize=False).fit(X_train, y_train)
 
-    # clf = LogisticRegressionCV(cv=5, random_state=24, class_weight='balanced').fit(X, y)
-    clf = LassoLarsCV(cv=10, normalize=False).fit(X, y)
-
+    # Save classifier for future usage
     clf_path = f"{os.path.join(folder_name, '../', mappings_path)}/regressor.joblib"
-
     dump(clf, clf_path)
+
     y_pred = clf.predict(X_test)
     acc = mean_squared_error(y_test, y_pred, squared=False)
     print(acc)

@@ -121,6 +121,13 @@ def _conditional_infonax_feat_extraction(selected_features, free_features, X, y)
     return CIFE(np.array(selected_features), np.array(free_features), np.array(X), np.array(y))
 
 
+def _t_score(X, y):
+    if len(X.columns) == 1:
+        return np.array(0)
+    else:
+        return modified_t_score(X, y)
+
+
 class FSAlgorithms:
 
     # Statistical based - Chi and T score have very high values for the features selected by the decision tree
@@ -142,6 +149,7 @@ class FSAlgorithms:
     # RELIEF = 'reliefF' # param: number of neighbors to consider -- REMOVED - un-informative
 
     ALGORITHMS = [CHI_SQ, T_SCORE, SU, FISHER]
+    DEPENDENCY_ALG = [CHI_SQ, T_SCORE, SU]
     ALL = [CHI_SQ, T_SCORE, FISHER, MIFS, CIFE]
     ALGORITHM_FOREIGN_TABLE = [MIFS, CIFE]
 
@@ -153,7 +161,7 @@ class FSAlgorithms:
         if selection_method == self.CHI_SQ:
             return _chi_squared_score
         elif selection_method == self.T_SCORE:
-            return modified_t_score
+            return _t_score
         elif selection_method == self.SU:
             return _symmetrical_uncertainty
         elif selection_method == self.FISHER:
