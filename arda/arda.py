@@ -9,9 +9,10 @@ from sklearn.ensemble import RandomForestRegressor
 # Return: A matrix of generated random features, where each column represents one feature
 def gen_features(A, n):
     L = []
+    d = A.shape[1]
     m = np.mean(A, axis=1)
     s = np.cov(A)
-    for i in range(n):
+    for i in range(n * d):
         L.append(np.random.multivariate_normal(m, s))
     return np.array(L).T
 
