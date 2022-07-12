@@ -37,7 +37,7 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegresso
         mask = np.zeros(d + augment_count, dtype=bool)
         mask[d:] = True  # We mark the columns that were generated
         reg.fit(X, y)
-        indices = reg.feature_importances_.argsort()  # Then we obtain sorting indices for the rankings
+        indices = reg.feature_importances_.argsort()[::-1]  # Then we obtain sorting indices for the rankings
         sorted_mask = mask[indices[::]]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
         
         # Then we iterate through this mask until we hit a generated feature, adding 1 for all the original features that were in front
