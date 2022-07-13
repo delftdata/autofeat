@@ -17,6 +17,25 @@ def gen_features(A, n):
     return np.array(L).T
 
 
+# Counts how often features
+# rankings             the rankings as determined by the ranking algorithm
+# mask                 the bit mask indicating which columns were randomly generated (True) and which ones are real features (False)
+# bin_size             size of the bin array, corresponds to the amount of columns in the data matrix (the amount of "real" features) 
+def _bin_count_ranking(rankings, mask, bin_size):
+    indices = rankings.argsort()[::-1]  # Then we obtain sorting indices for the rankings
+    sorted_mask = mask[indices[::]]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
+    bins = np.zeros(bin_size)
+    print(sorted_mask)
+    # Then we iterate through this mask until we hit a generated/random feature, adding 1 for all the original features that were in front
+    for i, val in zip(indices, sorted_mask):
+        if val:
+            break
+        else:
+            bins[i] += 1
+
+    return bins
+
+
 # algo 1
 # A                     the (normalized) data matrix
 # y                     the feature to use as criterion/dependent variable for the regressors
@@ -30,26 +49,18 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegresso
     d = A.shape[1]
     augment_count = round(eta * d)
     X = np.concatenate((A, gen_features(A, augment_count)), axis=1)  # This gives us A' from the paper
-    agg = np.zeros(d)
+
+    mask = np.zeros(X.shape[1], dtype=bool)
+    mask[d:] = True  # We mark the columns that were generated
+    counts = np.zeros(d)
 
     # Repeat process 'k' times, as in the algorithm
     for i in range(k):
         reg = regressor()
-        mask = np.zeros(X.shape[1], dtype=bool)
-        mask[d:] = True  # We mark the columns that were generated
         reg.fit(X, y)
-        indices = reg.feature_importances_.argsort()[::-1]  # Then we obtain sorting indices for the rankings
-        sorted_mask = mask[indices[::]]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
-        
-        # Then we iterate through this mask until we hit a generated feature, adding 1 for all the original features that were in front
-        for i, val in zip(indices, sorted_mask):
-            if val:
-                break
-            else:
-                agg[i] += 1
-
+        counts += _bin_count_ranking(reg.feature_importances_, mask, d)
     # Return a set of indices selected by thresholding the normalized frequencies with 'tau'
-    return np.arange(d)[agg/k > tau]
+    return np.arange(d)[counts/k > tau]
 
 
 # algo 3
