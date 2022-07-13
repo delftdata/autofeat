@@ -35,7 +35,7 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegresso
     # Repeat process 'k' times, as in the algorithm
     for i in range(k):
         reg = regressor()
-        mask = np.zeros(d + augment_count, dtype=bool)
+        mask = np.zeros(X.shape[1], dtype=bool)
         mask[d:] = True  # We mark the columns that were generated
         reg.fit(X, y)
         indices = reg.feature_importances_.argsort()[::-1]  # Then we obtain sorting indices for the rankings
