@@ -4,7 +4,7 @@ from sklearn.preprocessing import OrdinalEncoder
 
 
 def plot_titanic():
-    train_csv = "titanic_train.csv"
+    train_csv = "../other-data/original/titanic-og.csv"
     y_column = 'Survived'
 
     X, y = read_data(train_csv, y_column)
