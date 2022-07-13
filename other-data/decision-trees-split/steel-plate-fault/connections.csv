@@ -1,4 +1,3 @@
-from_table,from_key,to_table,to_key
 steel_plate_fault.csv,index,type_of_fault.csv,spf_id
 steel_plate_fault.csv,index,luminosity.csv,spf_id
 steel_plate_fault.csv,index,indices.csv,spf_id

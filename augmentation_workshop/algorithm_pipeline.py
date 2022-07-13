@@ -2,10 +2,11 @@ from timeit import default_timer as timer
 
 import pandas as pd
 
-from algorithm_steps import select_join_paths, process_join_paths, rank_join_paths, \
-    get_top_k_from_dict, train_augmented
+from algorithm_steps import select_join_paths, process_join_paths, rank_join_paths, train_augmented
 from FeatSel import FeatSel
-from augmentation.algorithms import CART, ID3, XGB
+from utils.algorithms import CART, ID3, XGB
+
+from utils.util_functions import get_top_k_from_dict
 
 ALL_FEAT_SEL = [FeatSel.SU, FeatSel.GAIN, FeatSel.GINI, FeatSel.CORR, FeatSel.RELIEF]
 ALGORITHMS = [CART, ID3, XGB]
