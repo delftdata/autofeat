@@ -9,12 +9,12 @@ from sklearn.model_selection import train_test_split
 # n                     the amount of features to generate
 #
 # Return: A matrix of generated random features, where each column represents one feature
-def gen_features(A, n):
+def gen_features(A, eta):
     L = []
     d = A.shape[1]
     m = np.mean(A, axis=1)
     s = np.cov(A)
-    for i in range(n * d):
+    for i in range(round(eta * d)):
         L.append(np.random.multivariate_normal(m, s))
     return np.array(L).T
 
@@ -49,8 +49,7 @@ def _bin_count_ranking(importances, mask, bin_size):
 # Returns: An array of indices, corresponding to selected features from A
 def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegressor):
     d = A.shape[1]
-    augment_count = round(eta * d)
-    X = np.concatenate((A, gen_features(A, augment_count)), axis=1)  # This gives us A' from the paper
+    X = np.concatenate((A, gen_features(A, eta)), axis=1)  # This gives us A' from the paper
 
     mask = np.zeros(X.shape[1], dtype=bool)
     mask[d:] = True  # We mark the columns that were generated
