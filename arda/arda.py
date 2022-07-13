@@ -21,11 +21,11 @@ def gen_features(A, n):
 # rankings             the rankings as determined by the ranking algorithm
 # mask                 the bit mask indicating which columns were randomly generated (True) and which ones are real features (False)
 # bin_size             size of the bin array, corresponds to the amount of columns in the data matrix (the amount of "real" features) 
-def _bin_count_ranking(rankings, mask, bin_size):
-    indices = rankings.argsort()[::-1]  # Then we obtain sorting indices for the rankings
+def _bin_count_ranking(importances, mask, bin_size):
+    indices = importances.argsort()[::-1]  # Then we obtain sorting indices for the rankings, flip order since we have importances
     sorted_mask = mask[indices[::]]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
     bins = np.zeros(bin_size)
-    print(sorted_mask)
+
     # Then we iterate through this mask until we hit a generated/random feature, adding 1 for all the original features that were in front
     for i, val in zip(indices, sorted_mask):
         if val:
