@@ -2,7 +2,7 @@ from subprocess import check_call
 
 from sklearn import tree
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from xgboost import XGBClassifier
 
 from utils.id3_alg import GadId3Classifier
@@ -126,3 +126,9 @@ def train_XGBoost(X, y):
     print(f'\t\tAccuracy XGBoost: {acc_decision_tree}')
 
     return acc_decision_tree, params
+
+
+def apply_cross_validation(X, y, tree, n_splits=10):
+    scores = cross_val_score(estimator=tree, X=X, y=y, cv=n_splits)
+    return scores.mean()
+
