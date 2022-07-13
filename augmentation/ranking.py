@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import statistics
@@ -6,6 +7,7 @@ import pandas as pd
 
 from data_preparation.join_data import join_and_save
 from feature_selection.util_functions import select_dependent_right_features, select_uncorrelated_with_selected
+from utils.file_naming_convention import MAPPING_FOLDER, MAPPING
 from utils.util_functions import normalize_dict_values, get_elements_higher_than_value
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -43,7 +45,7 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
 
         # 3. Compute the scores of the new features
         # Case 1: Foreign features vs selected features
-        foreign_features_scores_1 = select_uncorrelated_with_selected(selected_features+base_table_features,
+        foreign_features_scores_1 = select_uncorrelated_with_selected(selected_features + base_table_features,
                                                                       features_right,
                                                                       joined_df, target_column)
 
@@ -82,15 +84,13 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
 
 
 def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.2) -> tuple:
-    feat_scores = {}
     # Create dataframe and normalise the data
     normalised_dfs = normalize_dict_values(dependent_features_scores)
     normalised_ffs = normalize_dict_values(foreign_features_scores)
 
     # Compute a score for each feature based on the dependent score and the foreign feature score
-    for feat in foreign_features_scores.keys():
-        if feat in dependent_features_scores:
-            feat_scores[feat] = normalised_dfs[feat] + normalised_ffs[feat]
+    feat_scores = {feat: normalised_dfs[feat] + normalised_ffs[feat] for feat in foreign_features_scores.keys() if
+                   feat in dependent_features_scores}
 
     normalised_fs = normalize_dict_values(feat_scores)
     # Sort the features ascending based on the score
@@ -102,3 +102,20 @@ def _compute_ranking_score(dependent_features_scores: dict, foreign_features_sco
     score = statistics.mean(ns.values()) if ns else math.inf
 
     return score, list(selected_features.keys())
+
+
+def abstraction_ranking(base_table_name, target_column, all_paths):
+    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'r') as fp:
+        mapping = json.load(fp)
+
+    path = base_table_name
+    base_table_features = list(
+        pd.read_csv(f"{folder_name}/../{mapping[base_table_name]}", header=0, engine="python", encoding="utf8",
+                    quotechar='"', escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
+    file_name = base_table_name.partition('.csv')[0]
+    joined_mapping = {}
+
+    # ranking_func(all_paths, mapping, current_table, target_column, path, allp, join_result_folder_path,
+    #              joined_mapping, base_table_features)
+
+    return joined_mapping
