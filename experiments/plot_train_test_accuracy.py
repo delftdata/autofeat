@@ -25,14 +25,7 @@ def plot_titanic():
     X[['Sex', 'Embarked', 'Cabin']] = enc.fit_transform(
         X[['Sex', 'Embarked', 'Cabin']])
 
-    X = X.reset_index().drop(['index', 'PassengerId'], axis=1)
-    X[['id']] = X.index
-
-    cols = X.columns.to_list()
-    cols = cols[-1:] + cols[:-1]
-    X = X[cols]
-
-    plot(X.to_numpy(), y.to_numpy())
+    plot(X, y, 'PassengerId')
 
 
 if __name__ == '__main__':
