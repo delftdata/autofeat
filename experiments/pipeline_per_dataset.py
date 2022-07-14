@@ -5,7 +5,7 @@ import pandas as pd
 
 from augmentation.data_preparation_pipeline import data_preparation, _data_ingestion
 from augmentation.ranking import ranking_func
-from data_preparation.ingest_data import profile_valentine_all
+from data_preparation.ingest_data import profile_valentine_all, ingest_connections
 from experiments.test_ranking_func import verify_ranking_func
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY
 
@@ -87,8 +87,9 @@ def repository_pipeline():
         'path': "data",
         'mappings_folder_name': "mappings/pub"
     }
-    _data_ingestion(pub_repo['path'], pub_repo['mappings_folder_name'], profile_valentine=True)
-    # profile_valentine_all(pub_repo['path'])
+    # _data_ingestion(pub_repo['path'], pub_repo['mappings_folder_name'], profile_valentine=True)
+    ingest_connections(pub_repo['path'], pub_repo['mappings_folder_name'])
+    profile_valentine_all(pub_repo['path'])
 
 
 if __name__ == '__main__':
