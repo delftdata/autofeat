@@ -17,12 +17,12 @@ def data_preparation(base_table_name: str, label_column: str, path_to_data: str,
     mapping = _data_ingestion(path_to_data, mappings_folder_name)
     all_paths = _path_enumeration(mappings_folder_name)
 
-    all_joined_paths = []
-    path = join_tables_recursive(all_paths, mapping, base_table_name, label_column, "", all_joined_paths,
-                                 join_result_folder_path)
-
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{JOINED_PATHS}", 'w') as fp:
-        json.dump(all_joined_paths, fp)
+    # all_joined_paths = []
+    # path = join_tables_recursive(all_paths, mapping, base_table_name, label_column, "", all_joined_paths,
+    #                              join_result_folder_path)
+    #
+    # with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{JOINED_PATHS}", 'w') as fp:
+    #     json.dump(all_joined_paths, fp)
 
 
 def _data_ingestion(path_to_data: str, mappings_folder_name: str, profile_valentine=False) -> dict:

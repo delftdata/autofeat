@@ -82,5 +82,5 @@ def profile_valentine_all(directory_path: str):
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
                 label_1 = '/'.join(tab1.split('/')[-2:])
                 label_2 = '/'.join(tab2.split('/')[-2:])
-                relation = merge_nodes_relation(f"{tab1}/{col_from}", f"{label_1}/{col_to}", label_1,
+                relation = merge_nodes_relation(f"{tab1}/{col_from}", f"{label_1}/{col_from}", label_1,
                                                 f"{tab2}/{col_to}", f"{label_2}/{col_to}", label_2)
