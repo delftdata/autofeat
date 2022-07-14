@@ -3,8 +3,9 @@ import os
 
 import pandas as pd
 
-from augmentation.data_preparation_pipeline import data_preparation
+from augmentation.data_preparation_pipeline import data_preparation, _data_ingestion
 from augmentation.ranking import ranking_func
+from data_preparation.ingest_data import profile_valentine_all
 from experiments.test_ranking_func import verify_ranking_func
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY
 
@@ -81,5 +82,15 @@ def data_pipeline():
     pipeline(football_data, prepare_data, test_ranking)
 
 
+def repository_pipeline():
+    pub_repo = {
+        'path': "data",
+        'mappings_folder_name': "mappings/pub"
+    }
+    _data_ingestion(pub_repo['path'], pub_repo['mappings_folder_name'], profile_valentine=True)
+    # profile_valentine_all(pub_repo['path'])
+
+
 if __name__ == '__main__':
-    data_pipeline()
+    # data_pipeline()
+    repository_pipeline()

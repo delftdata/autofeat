@@ -30,7 +30,7 @@ def _data_ingestion(path_to_data: str, mappings_folder_name: str, profile_valent
     ingest_connections(path_to_data, mapping)
 
     if profile_valentine:
-        profile_valentine_all(path_to_data, mapping)
+        profile_valentine_all(path_to_data)
     return mapping
 
 

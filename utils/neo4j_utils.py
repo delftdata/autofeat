@@ -93,6 +93,13 @@ def create_relation_between_table_nodes(from_id, to_id, from_key, to_key, weight
     return result
 
 
+def get_relation_between_table_nodes(from_id, to_id, from_key, to_key):
+    with driver.session() as session:
+        result = session.write_transaction(_get_relation_between_table_nodes, from_id, to_id,
+                                           from_key, to_key)
+    return result
+
+
 def _create_subsumption_relation(tx, source):
     tx_result = tx.run("MATCH (a:Node), (b:Node) "
                        "WHERE a.source_name = $source AND b.source_name = $source AND NOT(a.id = b.id) "
@@ -124,6 +131,17 @@ def _create_relation_between_table_nodes(tx, a_id, b_id, from_key, to_key, weigh
                        from_key=from_key, to_key=to_key, weight=weight)
 
     record = tx_result.single()
+    return record['relation']
+
+
+def _get_relation_between_table_nodes(tx, a_id, b_id, from_key, to_key):
+    tx_result = tx.run(
+        "MATCH (a:Node {id: $a_id})-[r:RELATED {from_key: $from_key, to_key: $to_key}]->(b:Node {id: $b_id}) "
+        "return r as relation", a_id=a_id, b_id=b_id,
+        from_key=from_key, to_key=to_key)
+    record = tx_result.single()
+    if not record:
+        return None
     return record['relation']
 
 
