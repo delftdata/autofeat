@@ -12,7 +12,7 @@ from utils.file_naming_convention import MAPPING, CONNECTIONS
 from utils.neo4j_utils import create_table_node, merge_nodes_relation
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
-threshold = 0.7
+threshold = 0.8
 
 
 def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
@@ -59,9 +59,6 @@ def ingest_connections(directory_path: str, mappings_path=None):
 
             # create_relation_between_table_nodes(mapping[f"{source}/{source_name}"], mapping[f"{source}/{target_name}"],
             #                                     source_id, target_id)
-    if mappings_path:
-        with open(f"{os.path.join(folder_name, '../', mappings_path)}/{MAPPING}", 'w') as fp:
-            json.dump(mapping, fp)
     return mapping
 
 
@@ -69,6 +66,7 @@ def profile_valentine_all(directory_path: str):
     files = glob.glob(f"../{directory_path}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
+    mapping = {}
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
         print(f"Processing the match between:\n\t{tab1}\n\t{tab2}")
@@ -82,5 +80,10 @@ def profile_valentine_all(directory_path: str):
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
                 label_1 = '/'.join(tab1.split('/')[-2:])
                 label_2 = '/'.join(tab2.split('/')[-2:])
+
+                mapping[f"{label_1}/{col_from}"] = tab1
+                mapping[f"{label_2}/{col_to}"] = tab2
+
                 relation = merge_nodes_relation(f"{tab1}/{col_from}", f"{label_1}/{col_from}", label_1,
                                                 f"{tab2}/{col_to}", f"{label_2}/{col_to}", label_2)
+    return mapping
