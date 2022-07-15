@@ -1,5 +1,6 @@
 from subprocess import check_call
 import numpy as np
+import time
 
 from sklearn import tree
 from sklearn.metrics import accuracy_score
@@ -9,6 +10,8 @@ from xgboost import XGBClassifier
 
 from utils.id3_alg import GadId3Classifier
 
+num_cv = 10
+
 
 def train_CART(X, y):
     print("Split data")
@@ -17,6 +20,7 @@ def train_CART(X, y):
     print(f"Y uniqueness: {len(y_train.dropna()) / len(y_train)}")
 
     print("\tFinding best tree params")
+
     parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, len(list(X_train)) + 1)}
     decision_tree = tree.DecisionTreeClassifier()
     grids = GridSearchCV(decision_tree, parameters, n_jobs=4, scoring="accuracy", cv=15)
@@ -29,9 +33,18 @@ def train_CART(X, y):
     print(f"\t Training ... ")
 
     decision_tree = grids.best_estimator_
+    start = time.time()
     cv_output = cross_validate(
-        estimator=decision_tree, X=X, y=y, scoring="accuracy", return_estimator=True, cv=10
+        estimator=decision_tree,
+        X=X,
+        y=y,
+        scoring="accuracy",
+        return_estimator=True,
+        cv=num_cv,
+        verbose=10,
     )
+    end = time.time()
+    train_time = end - start
     feature_importances = [estimator.feature_importances_ for estimator in cv_output["estimator"]]
 
     acc_decision_tree = np.mean(cv_output["test_score"])
@@ -41,7 +54,7 @@ def train_CART(X, y):
     # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
     print(f"\t\tAccuracy CART: {acc_decision_tree}")
 
-    return acc_decision_tree, params, feature_importance
+    return acc_decision_tree, params, feature_importance, train_time
 
 
 def train_CART_and_print(X, y, dataset_name, plot_path):
@@ -115,6 +128,7 @@ def train_ID3(X, y):
     # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
 
     decision_tree = GadId3Classifier()
+    start = time.time()
     cv_output = cross_validate(
         estimator=decision_tree,
         X=X,
@@ -122,9 +136,10 @@ def train_ID3(X, y):
         scoring="accuracy",
         return_estimator=True,
         verbose=10,
-        cv=10,
+        cv=num_cv,
     )
-
+    end = time.time()
+    train_time = end - start
     max_depths = [estimator.depth() for estimator in cv_output["estimator"]]
     params = {"max_depth": np.median(max_depths)}
 
@@ -134,7 +149,7 @@ def train_ID3(X, y):
     print(max_depths)
 
     # Empty list to be consistent with other models
-    return acc_decision_tree, params, []
+    return acc_decision_tree, params, [], train_time
 
 
 def train_XGBoost(X, y):
@@ -164,16 +179,25 @@ def train_XGBoost(X, y):
     # y_pred = decision_tree.predict(X_test)
     # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
 
+    start = time.time()
     cv_output = cross_validate(
-        estimator=decision_tree, X=X, y=y, scoring="accuracy", return_estimator=True, cv=10
+        estimator=decision_tree,
+        X=X,
+        y=y,
+        scoring="accuracy",
+        return_estimator=True,
+        cv=num_cv,
+        verbose=10,
     )
+    end = time.time()
     feature_importances = [estimator.feature_importances_ for estimator in cv_output["estimator"]]
     acc_decision_tree = np.mean(cv_output["test_score"])
     feature_importance = np.around(np.median(feature_importances, axis=0), 3)
+    train_time = end - start
 
     print(f"\t\tAccuracy XGBoost: {acc_decision_tree}")
 
-    return acc_decision_tree, params, feature_importance
+    return acc_decision_tree, params, feature_importance, train_time
 
 
 def apply_cross_validation(X, y, tree, n_splits=10):

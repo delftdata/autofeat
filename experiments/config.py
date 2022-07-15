@@ -27,18 +27,34 @@ class Datasets:
         "mappings_folder_name": "mappings/football",
     }
 
-    # kidney_data: Dict[str, str] = {
-    #     "join_result_folder_path": "joined-df/kidney-disease",
-    #     "label_column": "classification",
-    #     "base_table_name": "kidney_disease.csv",
-    #     "path": "other-data/decision-trees-split/kidney-disease",
-    #     "mappings_folder_name": "mappings/kidney-disease",
+    citeSeer_data: Dict[str, str] = {
+        "path": "other-data/data/CiteSeer",
+        "mappings_folder_name": "mappings/pub/CiteSeer",
+        "join_result_folder_path": "joined-df/pub/CiteSeer",
+        "label_column": "class_label",
+        "base_table_name": "paper.csv",
+    }
+
+    cora_data: Dict[str, str] = {
+        "path": "other-data/data/CORA",
+        "mappings_folder_name": "mappings/pub/CORA",
+        "join_result_folder_path": "joined-df/pub/CORA",
+        "label_column": "class_label",
+        "base_table_name": "paper.csv",
+    }
+
+    # pubmed_data: Dict[str, str] = {
+    #     "path": "other-data/data/PubMed_Diabetes",
+    #     "mappings_folder_name": "mappings/pub/PubMed_Diabetes",
+    #     "join_result_folder_path": "joined-df/pub/PubMed_Diabetes",
+    #     "label_column": "class_label",
+    #     "base_table_name": "paper.csv",
     # }
 
-    pub_data: Dict[str, str] = {
-        "path": "data",
-        "mappings_folder_name": "mappings/pub",
-        "join_result_folder_path": "joined-df/pub",
+    web_data: Dict[str, str] = {
+        "path": "other-data/data/WebKP 2",
+        "mappings_folder_name": "mappings/pub/WebKP 2",
+        "join_result_folder_path": "joined-df/pub/WebKP 2",
         "label_column": "class_label",
-        "base_table_name": "PubMed_Diabetes/paper.csv",
+        "base_table_name": "webpage.csv",
     }

@@ -1,7 +1,9 @@
 import math
+import multiprocessing
 import os
+import time
 from pathlib import Path
-from typing import Dict
+from typing import Callable, Dict
 
 import pandas as pd
 
@@ -146,16 +148,67 @@ def join_all(data_path: str) -> pd.DataFrame:
     return joined_df
 
 
-def hp_tune_join_all(dataset_config: Dict[str, str], dataset_df: pd.DataFrame):
+def hp_tune_join_all(X, y, training_fun: Callable):
+    accuracy, params, feature_importances, train_time = training_fun(X, y)
+
+    final_feature_importances = (
+        dict(zip(X.columns, feature_importances)) if len(feature_importances) > 0 else {}
+    )
+    final_feature_importances = {
+        feature: importance
+        for feature, importance in final_feature_importances.items()
+        if importance > 0
+    }
+
+    return accuracy, params["max_depth"], final_feature_importances, train_time
+
+
+def run_benchmark(dataset_config):
+    print(f'======== Dataset: {dataset_config["path"]} ========')
+    start = time.time()
+    dataset_df = join_all(dataset_config["path"])
+    end = time.time()
+    join_time = end - start
+
     label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
-    # _, _, feature_importances = train_CART(X, y)
-    # train_ID3(X, y)
-    train_XGBoost(X, y)
-    # print(dict(zip(X.columns, feature_importances)))
+
+    training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
+    # training_funs = {"XGBoost": train_XGBoost}
+    results = []
+    for model_name, training_fun in training_funs.items():
+        print(f"==== Model Name: {model_name} ====")
+        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        entry = {
+            "approach": "join_all",
+            "dataset": dataset_config["path"],
+            "algorithm": model_name,
+            "depth": max_depth,
+            "accuracy": accuracy,
+            "join_time": join_time,
+            "train_time": train_time,
+            "total_time": join_time + train_time,
+            "feature_importances": feature_importances,
+        }
+        results.append(entry)
+
+    print(f"======== Finished dataset: {dataset_config['path']} ========")
+
+    return results
 
 
 if __name__ == "__main__":
-    dataset_config = Datasets.football_data
-    dataset_df = join_all(dataset_config["path"])
-    hp_tune_join_all(dataset_config=dataset_config, dataset_df=dataset_df)
+    dataset_configs = [
+        getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
+    ]
+
+    # There are 7 datasets
+    pool_size = min(multiprocessing.cpu_count(), 6)
+
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+        results = p.map(run_benchmark, dataset_configs)
+
+    flattened_results = [entry for sub_list in results for entry in sub_list]
+    print(flattened_results)
+    results_df = pd.DataFrame(flattened_results)
+    results_df.to_csv("ranking_func_results.csv", index=False)

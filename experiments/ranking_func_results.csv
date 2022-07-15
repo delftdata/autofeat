@@ -1,0 +1,2 @@
+dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
+other-data/decision-trees-split/steel-plate-fault,XGBoost,1,0.5658481239521305,0.01797318458557129,176.33445286750793,176.3524260520935,"{'V14_steel_plate_fault.csv': 0.247, 'V28_type_of_fault.csv': 0.047, 'V29_type_of_fault.csv': 0.046, 'V30_type_of_fault.csv': 0.128, 'V31_type_of_fault.csv': 0.043, 'V32_type_of_fault.csv': 0.045, 'V33_type_of_fault.csv': 0.108, 'V15_indices.csv': 0.336}"
