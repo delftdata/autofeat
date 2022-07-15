@@ -92,6 +92,6 @@ def select_uncorrelated_with_selected(left_table_features, features_to_compare, 
     result = dict(zip(list(right_features.values()), scores))
     # Sort the scores in ascending order
     sorted_result = dict(sorted(result.items(), key=lambda item: abs(item[1])))
-    print(f"Sorted result:\n\t{sorted_result}")
+    print(f"CIFE score result:\n\t{sorted_result}")
 
     return sorted_result

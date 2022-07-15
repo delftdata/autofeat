@@ -104,11 +104,12 @@ def prune_or_join(partial_join_path, left_table_name, right_table_name, mapping,
         print(f"ERROR! Key {right_key} not in table {right_table_name}")
         return None
 
-    print(f"\tJoining {partial_join_path} with {right_table_name}\n\tOn keys: {left_key} - {right_key}")
 
     # Verify join quality
+    print(f"Verifying join quality:\n\t{partial_join_path}\n\t\t{left_key}\n\t{right_table_name}\n\t\t{right_key}")
     result = prune_table(left_table_df[left_key], right_table_df[right_key], prune_threshold)
     if result:
+        print("Null value ratio exceeding threshold. Pruning the table ... ")
         return None
 
     # Test join scenario 1:N - aggregate, M:N - prune
@@ -116,6 +117,7 @@ def prune_or_join(partial_join_path, left_table_name, right_table_name, mapping,
     if right_table is None:
         return None
 
+    print(f"\tJoining {partial_join_path} with {right_table_name}\n\tOn keys: {left_key} - {right_key}")
     joined_df = pd.merge(left_table_df, right_table, how="left", left_on=left_key, right_on=right_key,
                          suffixes=("_b", ""))
 
@@ -135,11 +137,10 @@ def prune_table(left_column, right_column, null_threshold=0.3):
         return True
 
     set_difference = list(set(left_column) - set(right_column))
-    count_values = Counter(left_column)
+    null_ratio = sum([Counter(left_column)[el] for el in set_difference])/len(left_column)
 
-    null_rows = sum([count_values[el] for el in set_difference])/len(left_column)
-
-    if null_rows > null_threshold:
+    print(f"Null values ratio: {null_ratio}")
+    if null_ratio > null_threshold:
         return True
 
     return False
@@ -150,9 +151,12 @@ def join_scenario(left_df, right_df, left_join_col, right_join_col):
     right_count = Counter(right_df[right_join_col])
 
     if any([el > 1 for el in left_count.values()]) and any([el > 1 for el in right_count.values()]):
+        print("M:N scenario not supported, pruning table ... ")
         return None
     elif any([el > 1 for el in right_count.values()]):
+        print("1:N scenario -- aggregating right table ... ")
         right_join_dataframe = aggregate_rows(right_df, right_join_col)
+        print(f"{len(right_df)} aggregated to {len(right_join_dataframe)}")
         return right_join_dataframe
 
     return right_df

@@ -114,8 +114,16 @@ def data_pipeline():
         'mappings_folder_name': "mappings/kidney-disease"
     }
 
+    pub_data = {
+        'path': "data",
+        'mappings_folder_name': "mappings/pub",
+        'join_result_folder_path': "joined-df/pub",
+        'label_column': "class_label",
+        'base_table_name': "PubMed_Diabetes/paper.csv",
+    }
+
     prepare_data = False
-    test_ranking = True
+    test_ranking = False
     # pipeline(football_data, prepare_data, test_ranking)
     pipeline_multigraph(football_data, prepare_data, test_ranking)
 
