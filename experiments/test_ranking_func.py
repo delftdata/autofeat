@@ -3,16 +3,47 @@ import multiprocessing
 import os
 import time
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable
 
 import pandas as pd
 
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
+from experiments.config import Datasets
 from utils.file_naming_convention import CONNECTIONS
 from utils.util_functions import prepare_data_for_ml
-from experiments.config import Datasets
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
+
+
+def non_aug_results(dataset_config):
+    print(f'======== Dataset: {dataset_config["path"]} ========')
+    dataset_df = pd.read_csv(f"../{dataset_config['path']}/{dataset_config['base_table_name']}", engine="python",
+                             encoding="utf8", quotechar='"', escapechar='\\')
+
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=dataset_config["label_column"])
+
+    training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
+    # training_funs = {"XGBoost": train_XGBoost}
+    results = []
+    for model_name, training_fun in training_funs.items():
+        print(f"==== Model Name: {model_name} ====")
+        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        entry = {
+            "approach": "non-aug",
+            "dataset": dataset_config["path"],
+            "algorithm": model_name,
+            "depth": max_depth,
+            "accuracy": accuracy,
+            "join_time": None,
+            "train_time": train_time,
+            "total_time": train_time,
+            "feature_importances": feature_importances,
+        }
+        results.append(entry)
+
+    print(f"======== Finished dataset: {dataset_config['path']} ========")
+
+    return results
 
 
 def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str):
