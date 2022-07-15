@@ -1,0 +1,5 @@
+left_table,left_col,right_table,right_col
+content.csv,webpage_id,webpage.csv,webpage_id
+content.csv,webpage_id,webpage.csv,webpage_id
+webpage.csv,webpage_id,cites.csv,cited_paper_id
+webpage.csv,webpage_id,cites.csv,citing_paper_id
