@@ -1,3 +1,4 @@
+left_table,left_col,right_table,right_col
 football.csv,id,differences_stats.csv,ft_id
 football.csv,id,strong_team.csv,ft_id
 strong_team.csv,id,strong_building.csv,st_id
