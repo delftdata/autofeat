@@ -52,6 +52,34 @@ def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b
     return relation
 
 
+def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight=1):
+    with driver.session() as session:
+        result = session.write_transaction(_merge_nodes_relation, a_id, a_label, a_source_name, b_id, b_label,
+                                           b_source_name, weight)
+    return result
+
+
+def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight):
+    # tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label}) "
+    #                    "merge (b:Node {id: $b_id, label: $b_label}) "
+    #                    "merge (a)-[r:RELATED {weight: $weight}]-(b) "
+    #                    "return r as relation",
+    #                    a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label, weight=weight)
+
+    tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, source_name: $a_source_name}) "
+                       "merge (b:Node {id: $b_id, label: $b_label, source_name: $b_source_name}) "
+                       "merge (a)-[r:RELATED]-(b) "
+                       "on match set (case when r.weight < $weight then r end).weight = $weight "
+                       "on create set r.weight = $weight "
+                       "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label,
+                       a_source_name=a_source_name, b_source_name=b_source_name, weight=weight)
+
+    record = tx_result.single()
+    if not record:
+        return None
+    return record['relation']
+
+
 def _create_table_node(tx, table_name, table_path):
     tx_result = tx.run("MERGE (n:Node {id: $table_path}) "
                        "ON CREATE "
@@ -93,6 +121,12 @@ def create_relation_between_table_nodes(from_id, to_id, from_key, to_key, weight
     return result
 
 
+def get_relation_between_table_nodes(from_id, to_id):
+    with driver.session() as session:
+        result = session.write_transaction(_get_relation_between_table_nodes, from_id, to_id)
+    return result
+
+
 def _create_subsumption_relation(tx, source):
     tx_result = tx.run("MATCH (a:Node), (b:Node) "
                        "WHERE a.source_name = $source AND b.source_name = $source AND NOT(a.id = b.id) "
@@ -124,6 +158,16 @@ def _create_relation_between_table_nodes(tx, a_id, b_id, from_key, to_key, weigh
                        from_key=from_key, to_key=to_key, weight=weight)
 
     record = tx_result.single()
+    return record['relation']
+
+
+def _get_relation_between_table_nodes(tx, a_id, b_id):
+    tx_result = tx.run(
+        "MATCH (a:Node {id: $a_id})-[r:RELATED]->(b:Node {id: $b_id}) "
+        "return r as relation", a_id=a_id, b_id=b_id)
+    record = tx_result.single()
+    if not record:
+        return None
     return record['relation']
 
 

@@ -27,7 +27,7 @@ def normalize_dict_values(dictionary: dict):
     avg = statistics.mean(aux_dict.values())
     max_value = max(aux_dict.values())
     min_value = min(aux_dict.values())
-    return {key: (value - avg)/(max_value - min_value) for key, value in aux_dict.items()}
+    return {key: (value - avg)/(max_value - min_value) if (value - avg) != 0 else 0 for key, value in aux_dict.items()}
 
 
 def prepare_data_for_ml(dataframe, target_column):

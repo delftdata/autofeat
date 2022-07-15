@@ -1,19 +1,38 @@
+import json
 import math
 import os
 import statistics
 
 import pandas as pd
 
-from data_preparation.join_data import join_and_save
+from data_preparation.join_data import prune_or_join
 from feature_selection.util_functions import select_dependent_right_features, select_uncorrelated_with_selected
+from utils.file_naming_convention import MAPPING_FOLDER, MAPPING
 from utils.util_functions import normalize_dict_values, get_elements_higher_than_value
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
-def ranking_func(all_paths: dict, mapping, current_table, target_column, path, allp, join_result_folder_path,
+def ranking_multigraph(all_paths, mapping, base_table_root_path, target_column, join_result_folder_path):
+    base_table_features = list(
+        pd.read_csv(f"{folder_name}/../{base_table_root_path}", header=0, engine="python", encoding="utf8",
+                    quotechar='"',
+                    escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
+    base_table_name = '/'.join(base_table_root_path.split('/')[-2:])
+    joined_mapping = {}
+    for feature in base_table_features:
+        feature_name = f"{base_table_name}/{feature}"
+        if feature_name in all_paths:
+            ranking_func(all_paths, mapping, feature_name, target_column, "", [], join_result_folder_path,
+                         joined_mapping, base_table_features)
+    return joined_mapping
+
+
+def ranking_func(all_paths: dict, mapping, current_table, target_column, path, visited, join_result_folder_path,
                  joined_mapping: dict, base_table_features):
     # Join and save the join result
+    print(f"New iteration: {current_table}\n\t{visited}")
+    table_name = '/'.join(current_table.split('/')[0:-1])
     if not path == "":
         # get the name of the table from the path we created
         left_table = path.split("--")[-1]
@@ -30,9 +49,13 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
 
         # Recursion logic
         # 1. Join existing left table with the current table visiting
-        joined_path, joined_df, left_table_df = join_and_save(partial_join_path, mapping[left_table],
-                                                                              mapping[current_table],
-                                                                              join_result_folder_path, path)
+        result = prune_or_join(partial_join_path, left_table, current_table, mapping, join_result_folder_path)
+        if result is None:
+            return path
+
+        visited.append(table_name)
+        joined_path, joined_df, left_table_df = result
+
         # Get the features from base table excluding target
         left_table_features = list(left_table_df.drop(columns=[target_column]).columns)
         join_table_features = list(joined_df.drop(columns=[target_column]).columns)
@@ -43,13 +66,13 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
 
         # 3. Compute the scores of the new features
         # Case 1: Foreign features vs selected features
-        foreign_features_scores_1 = select_uncorrelated_with_selected(selected_features+base_table_features,
+        foreign_features_scores_1 = select_uncorrelated_with_selected(selected_features + base_table_features,
                                                                       features_right,
                                                                       joined_df, target_column)
 
         # 4. Select only the top uncorrelated features which are in the dependent features list
         score, features = _compute_ranking_score(dependent_features_scores, foreign_features_scores_1)
-
+        print(f"Path score: {score} and selected features\n\t{features}")
         # TODO: Future work
         # # Case 2: Foreign features vs base table features only
         # foreign_features_scores_2 = select_uncorrelated_with_selected(base_table_features, features_right,
@@ -64,41 +87,58 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, a
     else:
         # Just started traversing, the path is the current table
         path = current_table
-        base_table_features = list(
-            pd.read_csv(f"{folder_name}/../{mapping[current_table]}", header=0, engine="python", encoding="utf8",
-                        quotechar='"',
-                        escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
+        visited.append(table_name)
+        # base_table_features = list(
+        #     pd.read_csv(f"{folder_name}/../{mapping[current_table]}", header=0, engine="python", encoding="utf8",
+        #                 quotechar='"',
+        #                 escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
 
     print(path)
-    allp.append(path)
 
     # Depth First Search recursively
     for table in all_paths[current_table]:
         # Break the cycles in the data, only visit new nodes
-        if table not in path:
-            join_path = ranking_func(all_paths, mapping, table, target_column, path, allp, join_result_folder_path,
+        table_name = '/'.join(table.split('/')[0:-1])
+        if table not in path and table_name not in visited:
+            join_path = ranking_func(all_paths, mapping, table, target_column, path, visited, join_result_folder_path,
                                      joined_mapping, base_table_features)
+            print(f"JOIN PATH IN FOR: {join_path}")
     return path
 
 
 def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.2) -> tuple:
-    feat_scores = {}
     # Create dataframe and normalise the data
     normalised_dfs = normalize_dict_values(dependent_features_scores)
     normalised_ffs = normalize_dict_values(foreign_features_scores)
 
     # Compute a score for each feature based on the dependent score and the foreign feature score
-    for feat in foreign_features_scores.keys():
-        if feat in dependent_features_scores:
-            feat_scores[feat] = normalised_dfs[feat] + normalised_ffs[feat]
+    feat_scores = {feat: normalised_dfs[feat] + normalised_ffs[feat] for feat in foreign_features_scores.keys() if
+                   feat in dependent_features_scores}
 
     normalised_fs = normalize_dict_values(feat_scores)
     # Sort the features ascending based on the score
     normalised_fs = dict(sorted(normalised_fs.items(), key=lambda item: item[1], reverse=True))
-    print(f"Normalised features:\n\t{normalised_fs}")
+    print(f"Normalised score on features:\n\t{normalised_fs}")
     selected_features = get_elements_higher_than_value(normalised_fs, threshold)
     ns = normalize_dict_values(selected_features)
     # Assign a score to each join path for ranking
-    score = statistics.mean(ns.values()) if ns else math.inf
+    score = statistics.mean(ns.values()) if ns else -math.inf
 
     return score, list(selected_features.keys())
+
+
+def abstraction_ranking(base_table_name, target_column, all_paths):
+    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'r') as fp:
+        mapping = json.load(fp)
+
+    path = base_table_name
+    base_table_features = list(
+        pd.read_csv(f"{folder_name}/../{mapping[base_table_name]}", header=0, engine="python", encoding="utf8",
+                    quotechar='"', escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
+    file_name = base_table_name.partition('.csv')[0]
+    joined_mapping = {}
+
+    # ranking_func(all_paths, mapping, current_table, target_column, path, allp, join_result_folder_path,
+    #              joined_mapping, base_table_features)
+
+    return joined_mapping
