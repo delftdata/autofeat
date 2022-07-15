@@ -1,13 +1,14 @@
-import glob
 import math
 import os
 from pathlib import Path
+from typing import Dict
 
 import pandas as pd
 
-from augmentation.train_algorithms import train_CART
+from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from utils.file_naming_convention import CONNECTIONS
 from utils.util_functions import prepare_data_for_ml
+from experiments.config import Datasets
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -16,8 +17,14 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
     data = {}
     # 0. Get the baseline params
     print(f"Processing case 0: Baseline")
-    base_table_df = pd.read_csv(os.path.join(folder_name, '../', base_table_name), header=0, engine="python",
-                                encoding="utf8", quotechar='"', escapechar='\\')
+    base_table_df = pd.read_csv(
+        os.path.join(folder_name, "../", base_table_name),
+        header=0,
+        engine="python",
+        encoding="utf8",
+        quotechar='"',
+        escapechar="\\",
+    )
     X, y = prepare_data_for_ml(base_table_df, target_column)
     acc_b, params_b, _ = train_CART(X, y)
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
@@ -28,14 +35,16 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         if score == math.inf:
             continue
 
-        result = {'base-table': (acc_b, params_b['max_depth'])}
-        joined_df = pd.read_csv(join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+        result = {"base-table": (acc_b, params_b["max_depth"])}
+        joined_df = pd.read_csv(
+            join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+        )
         # Three type of experiments
         # 1. Keep the entire path
         print(f"Processing case 1: Keep the entire path")
         X, y = prepare_data_for_ml(joined_df, target_column)
         acc, params, _ = train_CART(X, y)
-        result['keep-all'] = (acc, params['max_depth'])
+        result["keep-all"] = (acc, params["max_depth"])
         print(X.columns)
         print(result)
 
@@ -44,29 +53,31 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         aux_df = joined_df.copy(deep=True)
         aux_features = list(joined_df.columns)
         aux_features.remove(target_column)
-        columns_to_drop = [c for c in aux_features if (c not in base_table_features) and (c not in features)]
+        columns_to_drop = [
+            c for c in aux_features if (c not in base_table_features) and (c not in features)
+        ]
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, target_column)
         acc, params, _ = train_CART(X, y)
-        result['keep-all-but-ranked'] = (acc, params['max_depth'])
+        result["keep-all-but-ranked"] = (acc, params["max_depth"])
         print(X.columns)
         print(result)
-        data[path] = {'features': features}
+        data[path] = {"features": features}
         data[path].update(result)
 
     return data
 
 
-def join_all(data_path):
+def suffix_column(column_name: str, table_name: str) -> str:
+    return f"{column_name}_{table_name}"
+
+
+def join_all(data_path: str) -> pd.DataFrame:
     file_paths = list(Path().glob(f"../{data_path}/**/*.csv"))
     connections_df = None
-    mapping = {}
     datasets = {}
-    joined_df = None
-    left_joined = []
-    right_joined = []
-
+    joined_df = pd.DataFrame()
 
     for file_path in file_paths:
         if CONNECTIONS == file_path.name:
@@ -78,60 +89,73 @@ def join_all(data_path):
 
     for f in file_paths:
         if f.name != CONNECTIONS:
-            datasets[f.name] = pd.read_csv(f)
+            dataset = pd.read_csv(f)
+            dataset_columns = dataset.columns
+            # Add suffix to each column to uniquely identify them
+            dataset = dataset.rename(
+                columns={
+                    column: suffix_column(column_name=column, table_name=f.name)
+                    for column in dataset_columns
+                }
+            )
+            datasets[f.name] = dataset
 
-    for index, row in connections_df.iterrows():
-        temp_joined_df = pd.merge(
-            datasets[row['left_table']],
-            datasets[row['right_table']],
-            how='left',
-            left_on=row['left_col'],
-            right_on=row['right_col'],
-            suffixes=(f'_{row["left_table"]}', f'_{row["right_table"]}')
+    columns_to_drop = []
+    first_col = None
+
+    for _, row in connections_df.iterrows():
+        # Reconstruct suffix that was built previously
+        left_col = suffix_column(
+            column_name=str(row["left_col"]), table_name=str(row["left_table"])
+        )
+        right_col = suffix_column(
+            column_name=str(row["right_col"]), table_name=str(row["right_table"])
         )
 
-        if joined_df is None:
-            joined_df = temp_joined_df
-            left_joined.append(row['left_table'])
-            right_joined.append(row['right_table'])
+        # First iteration: no existing df
+        if joined_df.empty:
+            joined_df = pd.merge(
+                datasets[row["left_table"]],
+                datasets[row["right_table"]],
+                how="left",
+                left_on=left_col,
+                right_on=right_col,
+                suffixes=("", ""),
+            )
+            first_col = left_col
             continue
 
-        if row['left_table'] in left_joined:
-            joined_df = pd.merge(
-                joined_df,
-                datasets[row['right_table']],
-                how='left',
-                left_on=f'{row["left_col"]}_{row["left_table"]}',
-                right_on=row['right_col'],
-                suffixes=('', f'_{row["right_table"]}')
-            )
-            right_joined.append(row['right_table'])
-            continue
+        joined_df = pd.merge(
+            joined_df,
+            datasets[row["right_table"]],
+            how="left",
+            left_on=left_col,
+            right_on=right_col,
+            suffixes=("", ""),
+        )
+        # Drop foreign keys (redundant)
+        columns_to_drop.append(right_col)
 
-        if row['left_table'] in right_joined:
-            joined_df = pd.merge(
-                joined_df,
-                datasets[row['right_table']],
-                how='left',
-                left_on=f'{row["left_col"]}_{row["left_table"]}',
-                right_on=row["right_col"],
-                suffixes=('', f'_{row["right_table"]}')
-            )
-            left_joined.append(row["right_table"])
+        # Drop primary keys (redundat).
+        # With the exception of the PK of the primary table
+        if left_col != first_col:
+            columns_to_drop.append(left_col)
 
-    print(joined_df)
+    joined_df.drop(columns=columns_to_drop, inplace=True)
+
+    return joined_df
 
 
-
-football_data = {
-    'join_result_folder_path': 'joined-df/football',
-    'label_column': "win",
-    'base_table_name': "football.csv",
-    'path': "other-data/decision-trees-split/football",
-    'mappings_folder_name': "mappings/football"
-}
-
-if __name__ == '__main__':
-    join_all(football_data['path'])
+def hp_tune_join_all(dataset_config: Dict[str, str], dataset_df: pd.DataFrame):
+    label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
+    # _, _, feature_importances = train_CART(X, y)
+    # train_ID3(X, y)
+    train_XGBoost(X, y)
+    # print(dict(zip(X.columns, feature_importances)))
 
 
+if __name__ == "__main__":
+    dataset_config = Datasets.football_data
+    dataset_df = join_all(dataset_config["path"])
+    hp_tune_join_all(dataset_config=dataset_config, dataset_df=dataset_df)

@@ -4,8 +4,9 @@ import numpy as np
 
 
 class GadId3Classifier:
-    def __init__(self):
+    def __init__(self, max_depth_param=None):
         self.tree = None
+        self.max_depth_param = max_depth_param
 
     def fit(self, input, output):
         data = input.copy()
@@ -14,7 +15,7 @@ class GadId3Classifier:
 
     def predict(self, input):
         # convert input data into a dictionary of samples
-        samples = input.to_dict(orient='records')
+        samples = input.to_dict(orient="records")
         predictions = []
 
         # make a prediction for every sample
@@ -22,6 +23,9 @@ class GadId3Classifier:
             predictions.append(self.make_prediction(sample, self.tree, 1.0))
 
         return predictions
+
+    def get_params(self, deep=True):
+        return {"max_depth_param": self.depth()}
 
     def entropy(self, attribute_column):
         # find unique values and their frequency counts for the given attribute
@@ -52,7 +56,10 @@ class GadId3Classifier:
         for i in range(len(values)):
             subset_probability = counts[i] / np.sum(counts)
             subset_entropy = self.entropy(
-                data.where(data[feature_attribute_name] == values[i]).dropna()[target_attribute_name])
+                data.where(data[feature_attribute_name] == values[i]).dropna()[
+                    target_attribute_name
+                ]
+            )
             weighted_entropy_list.append(subset_probability * subset_entropy)
 
         total_weighted_entropy = np.sum(weighted_entropy_list)
@@ -62,7 +69,14 @@ class GadId3Classifier:
 
         return information_gain
 
-    def decision_tree(self, data, original_data, feature_attribute_names, target_attribute_name, parent_node_class=None):
+    def decision_tree(
+        self,
+        data,
+        original_data,
+        feature_attribute_names,
+        target_attribute_name,
+        parent_node_class=None,
+    ):
         # base cases:
         # if data is pure, return the majority class of subset
         unique_classes = np.unique(data[target_attribute_name])
@@ -70,7 +84,9 @@ class GadId3Classifier:
             return unique_classes[0]
         # if subset is empty, ie. no samples, return majority class of original data
         elif len(data) == 0:
-            majority_class_index = np.argmax(np.unique(original_data[target_attribute_name], return_counts=True)[1])
+            majority_class_index = np.argmax(
+                np.unique(original_data[target_attribute_name], return_counts=True)[1]
+            )
             return np.unique(original_data[target_attribute_name])[majority_class_index]
         # if data set contains no features to train with, return parent node class
         elif len(feature_attribute_names) == 0:
@@ -78,13 +94,17 @@ class GadId3Classifier:
         # if none of the above are true, construct a branch:
         else:
             # determine parent node class of current branch
-            majority_class_index = np.argmax(np.unique(data[target_attribute_name], return_counts=True)[1])
+            majority_class_index = np.argmax(
+                np.unique(data[target_attribute_name], return_counts=True)[1]
+            )
             parent_node_class = unique_classes[majority_class_index]
 
             # determine information gain values for each feature
             # choose feature which best splits the data, ie. highest value
-            ig_values = [self.information_gain(data, feature, target_attribute_name) for feature in
-                         feature_attribute_names]
+            ig_values = [
+                self.information_gain(data, feature, target_attribute_name)
+                for feature in feature_attribute_names
+            ]
             best_feature_index = np.argmax(ig_values)
             best_feature = feature_attribute_names[best_feature_index]
 
@@ -100,8 +120,13 @@ class GadId3Classifier:
                 sub_data = data.where(data[best_feature] == value).dropna()
 
                 # call the algorithm recursively
-                subtree = self.decision_tree(sub_data, original_data, feature_attribute_names, target_attribute_name,
-                                             parent_node_class)
+                subtree = self.decision_tree(
+                    sub_data,
+                    original_data,
+                    feature_attribute_names,
+                    target_attribute_name,
+                    parent_node_class,
+                )
 
                 # add subtree to original tree
                 tree[best_feature][value] = subtree

@@ -1,3 +1,4 @@
+left_table,left_col,right_table,right_col
 titanic.csv,PassengerId,passenger_info.csv,PassengerId
 titanic.csv,TicketId,ticket_info.csv,TicketId
 ticket_info.csv,TicketId,cabin.csv,TicketId

@@ -6,8 +6,10 @@ import pandas as pd
 from augmentation.data_preparation_pipeline import data_preparation, _data_ingestion, _path_enumeration
 from augmentation.ranking import ranking_func, ranking_multigraph
 from data_preparation.ingest_data import profile_valentine_all, ingest_connections
-from experiments.test_ranking_func import verify_ranking_func
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY
+
+from experiments.config import Datasets
+from experiments.test_ranking_func import verify_ranking_func
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -82,50 +84,11 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
 
 
 def data_pipeline():
-    titanic_data = {
-        'join_result_folder_path': 'joined-df/titanic',
-        'label_column': "Survived",
-        'base_table_name': "titanic.csv",
-        'path': "other-data/decision-trees-split/titanic",
-        'mappings_folder_name': "mappings/titanic"
-    }
-
-    steel_data = {
-        'join_result_folder_path': 'joined-df/steel-plate-fault',
-        'label_column': "Class",
-        'base_table_name': "steel_plate_fault.csv",
-        'path': "other-data/decision-trees-split/steel-plate-fault",
-        'mappings_folder_name': "mappings/steel-plate-fault"
-    }
-
-    football_data = {
-        'join_result_folder_path': 'joined-df/football',
-        'label_column': "win",
-        'base_table_name': "football.csv",
-        'path': "other-data/decision-trees-split/football",
-        'mappings_folder_name': "mappings/football"
-    }
-
-    kidney_data = {
-        'join_result_folder_path': 'joined-df/kidney-disease',
-        'label_column': "classification",
-        'base_table_name': "kidney_disease.csv",
-        'path': "other-data/decision-trees-split/kidney-disease",
-        'mappings_folder_name': "mappings/kidney-disease"
-    }
-
-    pub_data = {
-        'path': "data",
-        'mappings_folder_name': "mappings/pub",
-        'join_result_folder_path': "joined-df/pub",
-        'label_column': "class_label",
-        'base_table_name': "PubMed_Diabetes/paper.csv",
-    }
 
     prepare_data = False
     test_ranking = False
     # pipeline(football_data, prepare_data, test_ranking)
-    pipeline_multigraph(football_data, prepare_data, test_ranking)
+    pipeline_multigraph(Datasets.football_data, prepare_data, test_ranking)
 
 
 def repository_pipeline():
