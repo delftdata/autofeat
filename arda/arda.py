@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 import logging
 from sklearn.model_selection import train_test_split
 
@@ -47,7 +47,7 @@ def _bin_count_ranking(importances, mask, bin_size):
 # regressor             the regressor to use
 #
 # Returns: An array of indices, corresponding to selected features from A
-def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegressor):
+def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestClassifier):
     d = A.shape[1]
     X = np.concatenate((A, gen_features(A, eta)), axis=1)  # This gives us A' from the paper
 
@@ -67,12 +67,14 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestRegresso
 # algo 3
 # A                     the (normalized) data matrix
 # y                     the feature to use as criterion/dependent variable for the regressors
-# estimator             An sklearn estimator to use (e.g. a Regressor)
 # T                     A list with tresholds (see tau in algo 2) to use
+# eta                   fraction of random features to inject (fraction of amount of features in A)
+# k                     number of times ranking and counting is performed
+# estimator             An sklearn estimator to use (e.g. a Regressor)
 # regressor             The regressor to use for ranking in algo 2
 #
 # Returns: An array of indices, corresponding to selected features from A
-def wrapper_algo(A, y, T, eta=0.5, k=20, estimator=RandomForestRegressor, regressor=RandomForestRegressor):
+def wrapper_algo(A, y, T, eta=0.2, k=10, estimator=RandomForestClassifier, regressor=RandomForestClassifier):
     if (A.shape[0] != y.shape[0]):
         raise ValueError("Criterion/feature 'y' should have the same amount of rows as 'A'")
     
@@ -83,12 +85,12 @@ def wrapper_algo(A, y, T, eta=0.5, k=20, estimator=RandomForestRegressor, regres
         indices = select_features(X_train, y_train, tau=t, eta=eta, k=k, regressor=regressor)
 
         # If this happens, the thresholds might have been too strict
-        if (len(X_train[:, indices])==0):
+        if (len(X_train.iloc[:, indices])==0):
             return last_indices
 
         model = estimator()
-        model.fit(X_train[:, indices], y_train)
-        accuracy = model.score(X_test, y_test)
+        model.fit(X_train.iloc[:, indices], y_train)
+        accuracy = model.score(X_test.iloc[:, indices], y_test)
         if accuracy < last_accuracy:
             break
         else:
