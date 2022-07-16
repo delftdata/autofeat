@@ -1,3 +1,3 @@
 approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
-join_all_ffs,other-data/decision-trees-split/football,CART,2,0.8413203534031414,0.02412891387939453,0.005717039108276367,19.200093030929565,"{'id_football.csv': 0.447, 'date_football.csv': 0.553}",19.170247077941895
-join_all_ffs,other-data/decision-trees-split/football,XGBoost,3,0.9994791666666666,0.02412891387939453,0.2435898780822754,76.6333236694336,"{'id_football.csv': 0.002, 'date_football.csv': 0.638, 'strong_team_football.csv': 0.359}",76.36560487747192
+join_all_ffs,other-data/decision-trees-split/football,CART,2,0.8413203534031414,0.02412891387939453,0.005717039108276367,19.200093030929565,"{'id_football.csv': 0.447, 'date_football.csv': 0.553}",191.70247077941895
+join_all_ffs,other-data/decision-trees-split/football,XGBoost,3,0.9994791666666666,0.02412891387939453,0.2435898780822754,76.6333236694336,"{'id_football.csv': 0.002, 'date_football.csv': 0.638, 'strong_team_football.csv': 0.359}",763.6560487747192
