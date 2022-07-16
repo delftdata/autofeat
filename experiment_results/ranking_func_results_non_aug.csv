@@ -1,0 +1,19 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
+non-aug,other-data/data/CiteSeer,CART,1.0,0.20379918465402397,,0.018911123275756836,0.018911123275756836,{'paper_id': 1.0}
+non-aug,other-data/data/CiteSeer,ID3,2.0,0.20170440068430823,,56.81110692024231,56.81110692024231,{}
+non-aug,other-data/data/CiteSeer,XGBoost,1.0,0.1207822225457722,,0.9206850528717041,0.9206850528717041,{'paper_id': 1.0}
+non-aug,other-data/data/CORA,CART,1.0,0.2799261992619926,,0.014287948608398438,0.014287948608398438,{'paper_id': 1.0}
+non-aug,other-data/data/CORA,ID3,2.0,0.080113434467678,,45.31317400932312,45.31317400932312,{}
+non-aug,other-data/data/CORA,XGBoost,1.0,0.19543255432554324,,0.9370200634002686,0.9370200634002686,{'paper_id': 1.0}
+non-aug,other-data/decision-trees-split/football,CART,1.0,0.5037601481270475,,0.013002157211303711,0.013002157211303711,{}
+non-aug,other-data/decision-trees-split/football,ID3,2.0,0.5190428713858425,,24.53152823448181,24.53152823448181,{}
+non-aug,other-data/decision-trees-split/football,XGBoost,4.0,0.4733300099700897,,0.436633825302124,0.436633825302124,"{'id': 0.274, 'strong_team': 0.247, 'weak_team': 0.223, 'tournament': 0.254}"
+non-aug,other-data/decision-trees-split/steel-plate-fault,CART,7.0,0.6326777689664288,,0.05183839797973633,0.05183839797973633,"{'index': 0.03, 'V5': 0.091, 'V11': 0.142, 'V12': 0.007, 'V13': 0.012, 'V14': 0.316, 'V22': 0.096, 'V25': 0.19, 'V27': 0.048}"
+non-aug,other-data/decision-trees-split/steel-plate-fault,ID3,2.0,0.3479381443298969,,69.77267503738403,69.77267503738403,{}
+non-aug,other-data/decision-trees-split/steel-plate-fault,XGBoost,9.0,0.6018001586042823,,1.9734599590301514,1.9734599590301514,"{'index': 0.067, 'V5': 0.144, 'V11': 0.141, 'V12': 0.165, 'V14': 0.272, 'V25': 0.116, 'V27': 0.094}"
+non-aug,other-data/decision-trees-split/titanic,CART,1.0,0.6240199750312111,,0.013994932174682617,0.013994932174682617,{'TicketId': 1.0}
+non-aug,other-data/decision-trees-split/titanic,ID3,2.0,0.38378277153558055,,28.24612808227539,28.24612808227539,{}
+non-aug,other-data/decision-trees-split/titanic,XGBoost,1.0,0.5624843945068665,,0.14077210426330566,0.14077210426330566,"{'PassengerId': 0.491, 'TicketId': 0.509}"
+non-aug,other-data/data/WebKP 2,CART,1.0,0.47092476489028207,,0.012028217315673828,0.012028217315673828,{'webpage_id': 1.0}
+non-aug,other-data/data/WebKP 2,ID3,2.0,0.09113113897596656,,13.375112056732178,13.375112056732178,{}
+non-aug,other-data/data/WebKP 2,XGBoost,1.0,0.4375261233019854,,0.37074995040893555,0.37074995040893555,{'webpage_id': 1.0}

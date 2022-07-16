@@ -16,18 +16,25 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 def non_aug_results(dataset_config):
+    do_sfs = False
     print(f'======== Dataset: {dataset_config["path"]} ========')
-    dataset_df = pd.read_csv(f"../{dataset_config['path']}/{dataset_config['base_table_name']}", engine="python",
-                             encoding="utf8", quotechar='"', escapechar='\\')
+    dataset_df = pd.read_csv(
+        f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+        engine="python",
+        encoding="utf8",
+        quotechar='"',
+        escapechar="\\",
+    )
 
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=dataset_config["label_column"])
 
     training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
-    # training_funs = {"XGBoost": train_XGBoost}
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+            X, y, training_fun, do_sfs
+        )
         entry = {
             "approach": "non-aug",
             "dataset": dataset_config["path"],
@@ -92,7 +99,7 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, target_column)
-        acc, params, _ = train_CART(X, y)
+        acc, params, _, _, _ = train_CART(X, y)
         result["keep-all-but-ranked"] = (acc, params["max_depth"])
         print(X.columns)
         print(result)
@@ -179,8 +186,8 @@ def join_all(data_path: str) -> pd.DataFrame:
     return joined_df
 
 
-def hp_tune_join_all(X, y, training_fun: Callable):
-    accuracy, params, feature_importances, train_time = training_fun(X, y)
+def hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
+    accuracy, params, feature_importances, train_time, sfs_time = training_fun(X, y, do_sfs)
 
     final_feature_importances = (
         dict(zip(X.columns, feature_importances)) if len(feature_importances) > 0 else {}
@@ -191,7 +198,7 @@ def hp_tune_join_all(X, y, training_fun: Callable):
         if importance > 0
     }
 
-    return accuracy, params["max_depth"], final_feature_importances, train_time
+    return accuracy, params["max_depth"], final_feature_importances, train_time, sfs_time
 
 
 def run_benchmark(dataset_config):
@@ -200,25 +207,39 @@ def run_benchmark(dataset_config):
     dataset_df = join_all(dataset_config["path"])
     end = time.time()
     join_time = end - start
+    do_sfs = True
 
     label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
 
-    training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
+    if do_sfs:
+        # ID3 not supported for SFS
+        training_funs = {"CART": train_CART, "XGBoost": train_XGBoost}
+    else:
+        training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
     # training_funs = {"XGBoost": train_XGBoost}
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time, sfs_time = hp_tune_join_all(
+            X, y, training_fun, do_sfs
+        )
+        total_time = join_time + train_time
+        approach = "join_all"
+        if sfs_time:
+            total_time += sfs_time
+            approach += "_ffs"
+
         entry = {
-            "approach": "join_all",
+            "approach": approach,
             "dataset": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
             "join_time": join_time,
+            "feature_selection_time": sfs_time,
             "train_time": train_time,
-            "total_time": join_time + train_time,
+            "total_time": total_time,
             "feature_importances": feature_importances,
         }
         results.append(entry)
@@ -233,13 +254,14 @@ if __name__ == "__main__":
         getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
     ]
 
+    # dataset_configs = [Datasets.titanic_data]
     # There are 7 datasets
     pool_size = min(multiprocessing.cpu_count(), 6)
 
     with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
         results = p.map(run_benchmark, dataset_configs)
+        # results = p.map(non_aug_results, dataset_configs)
 
     flattened_results = [entry for sub_list in results for entry in sub_list]
-    print(flattened_results)
     results_df = pd.DataFrame(flattened_results)
-    results_df.to_csv("ranking_func_results.csv", index=False)
+    results_df.to_csv("ranking_func_results_sfs.csv", index=False)
