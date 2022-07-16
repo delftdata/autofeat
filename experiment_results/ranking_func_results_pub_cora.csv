@@ -1,0 +1,7 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
+all-in-path,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,CART,2.0,0.27587535875358754,13.619014263153076,0.047867774963378906,13.666882038116455,"{'paper_id': 0.706, 'word_cited_id': 0.294}"
+all-in-path,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,ID3,2.0,0.080113434467678,13.619014263153076,127.99117279052734,141.61018705368042,{}
+all-in-path,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,XGBoost,2.0,0.08355610222768896,13.619014263153076,3.9997458457946777,17.618760108947754,"{'paper_id': 0.544, 'word_cited_id': 0.456}"
+best-ranked,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,CART,2.0,0.27587535875358754,13.619014263153076,0.05343508720397949,13.672449350357056,"{'paper_id': 0.706, 'word_cited_id': 0.294}"
+best-ranked,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,ID3,2.0,0.080113434467678,13.619014263153076,128.01030206680298,141.62931632995605,{}
+best-ranked,CORA/paper.csv/paper_id--CORA/content.csv/paper_id,XGBoost,2.0,0.08355610222768896,13.619014263153076,3.991698980331421,17.610713243484497,"{'paper_id': 0.544, 'word_cited_id': 0.456}"

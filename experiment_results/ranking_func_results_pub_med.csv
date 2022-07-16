@@ -1,0 +1,7 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
+all-in-path,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,CART,3.0,0.1924683519552785,229.7778980731964,0.17940282821655273,229.95730090141296,"{'paper_id': 0.92, 'citing_paper_id': 0.059}"
+all-in-path,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,ID3,2.0,0.3993885477352648,229.7778980731964,2154.272351026535,2384.0502490997314,{}
+all-in-path,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,XGBoost,3.0,0.060669052169232775,229.7778980731964,11.43298888206482,241.21088695526123,"{'paper_id': 0.579, 'citing_paper_id': 0.247, 'cites_paper_id': 0.169}"
+best-ranked,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,CART,1.0,0.37612462347034026,229.7778980731964,0.07362604141235352,229.85152411460876,{'paper_id': 1.0}
+best-ranked,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,ID3,2.0,0.3993885477352648,229.7778980731964,1211.0962529182434,1440.8741509914398,{}
+best-ranked,PubMed_Diabetes/paper.csv/paper_id--PubMed_Diabetes/cites.csv/cites_paper_id,XGBoost,1.0,0.06046621241264048,229.7778980731964,4.626132011413574,234.40403008460999,{'paper_id': 1.0}
