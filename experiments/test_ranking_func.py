@@ -5,14 +5,56 @@ import time
 from pathlib import Path
 from typing import Callable
 
+import numpy as np
 import pandas as pd
 
+from arda.arda import wrapper_algo
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from experiments.config import Datasets
 from utils.file_naming_convention import CONNECTIONS
 from utils.util_functions import prepare_data_for_ml
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
+
+
+def arda_results(dataset_config):
+    print(f'======== Dataset: {dataset_config["path"]} ========')
+    start = time.time()
+    dataset_df = join_all(dataset_config["path"])
+    end = time.time()
+    join_time = end - start
+
+    label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
+
+    start = time.time()
+    T = np.arange(0.0, 1.0, 0.1)
+    indices = wrapper_algo(X, y, T)
+    fs_X = X.iloc[:, indices]
+    end = time.time()
+    fs_time = end - start
+
+    training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
+    results = []
+    for model_name, training_fun in training_funs.items():
+        print(f"==== Model Name: {model_name} ====")
+        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(fs_X, y, training_fun)
+        entry = {
+            "approach": "join_all",
+            "dataset": dataset_config["path"],
+            "algorithm": model_name,
+            "depth": max_depth,
+            "accuracy": accuracy,
+            "join_time": join_time,
+            "train_time": train_time + fs_time,
+            "total_time": join_time + train_time,
+            "feature_importances": feature_importances,
+        }
+        results.append(entry)
+
+    print(f"======== Finished dataset: {dataset_config['path']} ========")
+
+    return results
 
 
 def non_aug_results(dataset_config):
