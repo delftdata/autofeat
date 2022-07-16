@@ -1,0 +1,4 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
+arda,other-data/data/CiteSeer,CART,2.0,0.2222,0.03923296928405762,0.06210613250732422,210.17714309692383,"{'paper_id_content.csv': 0.783, 'paper_id_paper.csv': 0.217}",210.07580399513245
+arda,other-data/data/CiteSeer,ID3,2.0,0.9476999999999999,0.03923296928405762,118.61125922203064,328.72629618644714,{},210.07580399513245
+arda,other-data/data/CiteSeer,XGBoost,2.0,0.4202,0.03923296928405762,4.546078205108643,214.66111516952515,{'paper_id_content.csv': 1.0},210.07580399513245

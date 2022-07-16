@@ -7,6 +7,7 @@ from typing import Callable
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from arda.arda import wrapper_algo
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
@@ -26,6 +27,10 @@ def arda_results(dataset_config):
 
     label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
+    print(X.shape)
+    if X.shape[0] > 10000:
+        _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
+    print(X.shape)
 
     start = time.time()
     T = np.arange(0.0, 1.0, 0.1)
@@ -38,17 +43,20 @@ def arda_results(dataset_config):
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(fs_X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+            fs_X, y, training_fun, False
+        )
         entry = {
-            "approach": "join_all",
+            "approach": "arda",
             "dataset": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
             "join_time": join_time,
-            "train_time": train_time + fs_time,
-            "total_time": join_time + train_time,
+            "train_time": train_time,
+            "total_time": join_time + train_time + fs_time,
             "feature_importances": feature_importances,
+            "fs_time": fs_time,
         }
         results.append(entry)
 
@@ -58,7 +66,6 @@ def arda_results(dataset_config):
 
 
 def non_aug_results(dataset_config):
-    do_sfs = False
     print(f'======== Dataset: {dataset_config["path"]} ========')
     dataset_df = pd.read_csv(
         f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
@@ -75,7 +82,7 @@ def non_aug_results(dataset_config):
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
         accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
-            X, y, training_fun, do_sfs
+            X, y, training_fun, False
         )
         entry = {
             "approach": "non-aug",
@@ -300,10 +307,16 @@ if __name__ == "__main__":
     # There are 7 datasets
     pool_size = min(multiprocessing.cpu_count(), 6)
 
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
-        results = p.map(run_benchmark, dataset_configs)
-        # results = p.map(non_aug_results, dataset_configs)
+    # with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+    # results = p.map(run_benchmark, dataset_configs)
+    # results = p.map(non_aug_results, dataset_configs)
+    # results = p.map(arda_results, dataset_configs)
+    results = []
+    dataset_configs = [Datasets.cora_data]
+    for dataset_config in dataset_configs:
+        results += arda_results(dataset_config)
 
-    flattened_results = [entry for sub_list in results for entry in sub_list]
+    flattened_results = results
+    # flattened_results = [entry for sub_list in results for entry in sub_list]
     results_df = pd.DataFrame(flattened_results)
-    results_df.to_csv("ranking_func_results_sfs.csv", index=False)
+    results_df.to_csv("ranking_func_results_arda.csv", index=False)

@@ -1,0 +1,4 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
+arda,other-data/decision-trees-split/football,CART,2.0,0.8413203534031414,0.021390676498413086,0.011240005493164062,111.02016472816467,"{'strong_score_strong_team.csv': 0.447, 'weak_score_weak_team.csv': 0.553}",110.9875340461731
+arda,other-data/decision-trees-split/football,ID3,4.0,0.9989583333333332,0.021390676498413086,0.5170469284057617,111.52597165107727,{},110.9875340461731
+arda,other-data/decision-trees-split/football,XGBoost,2.0,0.9989583333333332,0.021390676498413086,0.18102788925170898,111.18995261192322,"{'strong_score_strong_team.csv': 0.611, 'weak_score_weak_team.csv': 0.389}",110.9875340461731
