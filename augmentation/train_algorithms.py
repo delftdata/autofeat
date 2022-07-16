@@ -34,7 +34,9 @@ def train_CART(X, y, do_sfs: bool):
 
     print("\tFinding best tree params")
 
-    parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, len(list(X_train)) + 1)}
+    parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, X_train.shape[1] + 1)}
+
+    print(parameters)
 
     decision_tree = tree.DecisionTreeClassifier()
     grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=15)
@@ -181,10 +183,12 @@ def train_XGBoost(X, y, do_sfs: bool = False):
             eval_metric="auc",
             use_label_encoder=False,
             # Reduce execution time, otherwise it explodes
-            max_depth=10,
+            max_depth=5,
             n_jobs=1,
         )
-        sfs = SFS(estimator=decision_tree, forward=True, k_features="best", n_jobs=1, cv=5)
+        sfs = SFS(
+            estimator=decision_tree, forward=True, k_features="best", n_jobs=-1, cv=5, verbose=3
+        )
         sfs.fit(X, y)
         X = sfs.transform(X)
         end = time.time()

@@ -1,0 +1,3 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
+join_all_ffs,other-data/decision-trees-split/titanic,CART,2,0.8011956297670583,0.008673906326293945,0.005304098129272461,0.5089092254638672,"{'PassengerId_titanic.csv': 0.905, 'Name_titanic.csv': 0.095}",0.4949312210083008
+join_all_ffs,other-data/decision-trees-split/titanic,XGBoost,4,0.8267676767676768,0.008673906326293945,0.3105499744415283,3.9432318210601807,"{'PassengerId_titanic.csv': 0.663, 'Name_titanic.csv': 0.047, 'Name_passenger_info.csv': 0.055, 'Sex_passenger_info.csv': 0.051, 'Age_passenger_info.csv': 0.143, 'SibSp_passenger_info.csv': 0.036}",3.6240079402923584

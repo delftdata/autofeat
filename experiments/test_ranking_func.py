@@ -286,10 +286,10 @@ def run_benchmark(dataset_config):
             "depth": max_depth,
             "accuracy": accuracy,
             "join_time": join_time,
-            "feature_selection_time": sfs_time,
             "train_time": train_time,
             "total_time": total_time,
             "feature_importances": feature_importances,
+            "fs_time": sfs_time,
         }
         results.append(entry)
 
@@ -308,15 +308,20 @@ if __name__ == "__main__":
     pool_size = min(multiprocessing.cpu_count(), 6)
 
     # with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
-    # results = p.map(run_benchmark, dataset_configs)
+    #     results = p.map(run_benchmark, dataset_configs)
     # results = p.map(non_aug_results, dataset_configs)
     # results = p.map(arda_results, dataset_configs)
     results = []
-    dataset_configs = [Datasets.cora_data]
+    # dataset_configs = [Datasets.cora_data]
     for dataset_config in dataset_configs:
-        results += arda_results(dataset_config)
+        result = run_benchmark(dataset_config)
+        results_df = pd.DataFrame(result)
+        results_df.to_csv(
+            f"ranking_func_results_fs_{dataset_config['path'].split('/')[-1]}.csv", index=False
+        )
+    #     results += arda_results(dataset_config)
 
-    flattened_results = results
+    # flattened_results = results
     # flattened_results = [entry for sub_list in results for entry in sub_list]
-    results_df = pd.DataFrame(flattened_results)
-    results_df.to_csv("ranking_func_results_arda.csv", index=False)
+    # results_df = pd.DataFrame(flattened_results)
+    # results_df.to_csv("ranking_func_results_fs.csv", index=False)

@@ -1,0 +1,3 @@
+approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
+join_all_ffs,other-data/data/CiteSeer,CART,1,0.217287107620103,0.038932085037231445,0.11452007293701172,4.423844337463379,{'paper_id_content.csv': 1.0},4.270392179489136
+join_all_ffs,other-data/data/CiteSeer,XGBoost,1,0.23410821791435285,0.038932085037231445,16.4564528465271,121.18471622467041,{'paper_id_content.csv': 1.0},104.68933129310608
