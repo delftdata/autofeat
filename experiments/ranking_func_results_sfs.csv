@@ -1,0 +1,2 @@
+approach,dataset,algorithm,depth,accuracy,join_time,feature_selection_time,train_time,total_time,feature_importances
+join_all,other-data/decision-trees-split/titanic,XGBoost,3,0.8246547103689961,0.010288715362548828,25.813438892364502,0.19947004318237305,26.023197650909424,"{'PassengerId_titanic.csv': 0.801, 'Name_titanic.csv': 0.047, 'Name_passenger_info.csv': 0.082, 'Sex_passenger_info.csv': 0.071}"

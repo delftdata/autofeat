@@ -5,7 +5,8 @@ import time
 from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score, cross_validate
-from sklearn.utils import shuffle
+from sklearn.feature_selection import SequentialFeatureSelector
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from xgboost import XGBClassifier
 
 from utils.id3_alg import GadId3Classifier
@@ -13,7 +14,19 @@ from utils.id3_alg import GadId3Classifier
 num_cv = 10
 
 
-def train_CART(X, y):
+def train_CART(X, y, do_sfs: bool):
+    sfs_time = None
+
+    if do_sfs:
+        start = time.time()
+        decision_tree = tree.DecisionTreeClassifier()
+        sfs = SFS(estimator=decision_tree, forward=True, k_features="best", n_jobs=1, cv=5)
+        sfs.fit(X, y)
+        X = sfs.transform(X)
+        end = time.time()
+        sfs_time = end - start
+        print("==== Finished SFS =====")
+
     print("Split data")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
     print(f"X train {X_train.shape}, X_test {X_test.shape}")
@@ -21,9 +34,12 @@ def train_CART(X, y):
 
     print("\tFinding best tree params")
 
-    parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, len(list(X_train)) + 1)}
+    parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, X_train.shape[1] + 1)}
+
+    print(parameters)
+
     decision_tree = tree.DecisionTreeClassifier()
-    grids = GridSearchCV(decision_tree, parameters, n_jobs=4, scoring="accuracy", cv=15)
+    grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=15)
     grids.fit(X_train, y_train)
     params = grids.best_params_
 
@@ -42,6 +58,7 @@ def train_CART(X, y):
         return_estimator=True,
         cv=num_cv,
         verbose=10,
+        n_jobs=1,
     )
     end = time.time()
     train_time = end - start
@@ -54,7 +71,7 @@ def train_CART(X, y):
     # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
     print(f"\t\tAccuracy CART: {acc_decision_tree}")
 
-    return acc_decision_tree, params, feature_importance, train_time
+    return acc_decision_tree, params, feature_importance, train_time, sfs_time
 
 
 def train_CART_and_print(X, y, dataset_name, plot_path):
@@ -115,17 +132,20 @@ def train_CART_and_print(X, y, dataset_name, plot_path):
     return acc_decision_tree, params, decision_tree.feature_importances_
 
 
-def train_ID3(X, y):
-    # print("Split data")
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
-    # print(f"X train {X_train.shape}, X_test {X_test.shape}")
-    # print(f"Y uniqueness: {len(y_train.dropna()) / len(y_train)}")
+def train_ID3(X, y, do_sfs: bool = False):
+    sfs_time = None
 
-    # decision_tree = GadId3Classifier()
-    # decision_tree.fit(X_train, y_train)
-    # print(decision_tree.tree)
-    # y_pred = decision_tree.predict(X_test)
-    # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
+    # Not supported yet. TODO: Adapt ID3
+    if do_sfs:
+        start = time.time()
+        decision_tree = GadId3Classifier()
+        sfs = SequentialFeatureSelector(
+            estimator=decision_tree, n_features_to_select="auto", scoring="accuracy"
+        )
+        sfs.fit(X, y)
+        X = sfs.transform(X)
+        end = time.time()
+        sfs_time = end - start
 
     decision_tree = GadId3Classifier()
     start = time.time()
@@ -137,6 +157,7 @@ def train_ID3(X, y):
         return_estimator=True,
         verbose=10,
         cv=num_cv,
+        n_jobs=1,
     )
     end = time.time()
     train_time = end - start
@@ -149,35 +170,47 @@ def train_ID3(X, y):
     print(max_depths)
 
     # Empty list to be consistent with other models
-    return acc_decision_tree, params, [], train_time
+    return acc_decision_tree, params, [], train_time, sfs_time
 
 
-def train_XGBoost(X, y):
+def train_XGBoost(X, y, do_sfs: bool = False):
+    sfs_time = None
+
+    if do_sfs:
+        start = time.time()
+        decision_tree = XGBClassifier(
+            objective="binary:logistic",
+            eval_metric="auc",
+            use_label_encoder=False,
+            # Reduce execution time, otherwise it explodes
+            max_depth=5,
+            n_jobs=1,
+        )
+        sfs = SFS(
+            estimator=decision_tree, forward=True, k_features="best", n_jobs=-1, cv=5, verbose=3
+        )
+        sfs.fit(X, y)
+        X = sfs.transform(X)
+        end = time.time()
+        sfs_time = end - start
+        print("==== Finished SFS =====")
+
     print("Split data")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
     print(f"X train {X_train.shape}, X_test {X_test.shape}")
     print(f"Y uniqueness: {len(y_train.dropna()) / len(y_train)}")
 
-    parameters = {"max_depth": range(1, len(list(X_train)) + 1)}
+    parameters = {"max_depth": range(1, X_train.shape[1] + 1)}
+    print(parameters)
     decision_tree = XGBClassifier(
-        objective="binary:logistic", eval_metric="auc", use_label_encoder=False
+        objective="binary:logistic", eval_metric="auc", use_label_encoder=False, n_jobs=1
     )
-    grids = GridSearchCV(decision_tree, parameters, n_jobs=4, scoring="accuracy", cv=10)
+    grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=10)
     grids.fit(X_train, y_train)
     params = grids.best_params_
     print(f"Hyper-params: {params} for best score: {grids.best_score_}")
 
     decision_tree = grids.best_estimator_
-
-    # decision_tree = XGBClassifier(
-    #     objective="binary:logistic",
-    #     eval_metric="auc",
-    #     max_depth=params["max_depth"],
-    #     use_label_encoder=False,
-    # )
-    # decision_tree.fit(X_train, y_train)
-    # y_pred = decision_tree.predict(X_test)
-    # acc_decision_tree = round(accuracy_score(y_test, y_pred) * 100, 2)
 
     start = time.time()
     cv_output = cross_validate(
@@ -197,7 +230,7 @@ def train_XGBoost(X, y):
 
     print(f"\t\tAccuracy XGBoost: {acc_decision_tree}")
 
-    return acc_decision_tree, params, feature_importance, train_time
+    return acc_decision_tree, params, feature_importance, train_time, sfs_time
 
 
 def apply_cross_validation(X, y, tree, n_splits=10):
