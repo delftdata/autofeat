@@ -58,3 +58,11 @@ class Datasets:
         "label_column": "class_label",
         "base_table_name": "webpage.csv",
     }
+
+    # pub_repo = {
+    #     'path': "other-data/data",
+    #     'mappings_folder_name': "mappings/pub",
+    #     'join_result_folder_path': "joined-df/pub",
+    #     "label_column": "class_label",
+    #     "base_table_name": "CiteSeer/paper.csv"
+    # }

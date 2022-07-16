@@ -1,3 +1,4 @@
+import json
 import math
 import multiprocessing
 import os
@@ -9,12 +10,95 @@ import numpy as np
 import pandas as pd
 
 from arda.arda import wrapper_algo
+from augmentation.ranking import ranking_multigraph
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from experiments.config import Datasets
-from utils.file_naming_convention import CONNECTIONS
+from utils.file_naming_convention import CONNECTIONS, MAPPING, ENUMERATED_PATHS
 from utils.util_functions import prepare_data_for_ml
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
+
+
+def tfd_results(dataset_config):
+    print(f'======== Dataset: {dataset_config["path"]} ========')
+
+    with open(f"{os.path.join(folder_name, '../', dataset_config['mappings_folder_name'])}/{MAPPING}", 'r') as fp:
+        mapping = json.load(fp)
+
+    with open(f"{os.path.join(folder_name, '../', dataset_config['mappings_folder_name'])}/{ENUMERATED_PATHS}",
+              'r') as fp:
+        all_paths = json.load(fp)
+
+    target_column = dataset_config["label_column"]
+
+    start = time.time()
+    ranking = ranking_multigraph(all_paths, mapping, f"{dataset_config['path']}/{dataset_config['base_table_name']}",
+                                 dataset_config["label_column"],
+                                 dataset_config['join_result_folder_path'])
+    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][2]))
+    end = time.time()
+    join_time = end-start
+
+    base_table_features = pd.read_csv(f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+                                      engine="python",
+                                      encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
+        columns=[target_column]).columns
+    top_1 = list(sorted_ranking.keys())[0]
+    join_path, features, score = sorted_ranking[top_1]
+
+    ### CASE 1: KEEP THE ENTIRE PATH
+    print(f"Processing case 1: Keep the entire path")
+    joined_df = pd.read_csv(
+        join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+    )
+    X, y = prepare_data_for_ml(joined_df, target_column)
+    training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
+    results = []
+    for model_name, training_fun in training_funs.items():
+        print(f"==== Model Name: {model_name} ====")
+        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        entry = {
+            "approach": "all-in-path",
+            "dataset": top_1,
+            "algorithm": model_name,
+            "depth": max_depth,
+            "accuracy": accuracy,
+            "join_time": join_time,
+            "train_time": train_time,
+            "total_time": train_time + join_time,
+            "feature_importances": feature_importances,
+        }
+        results.append(entry)
+
+    print(f"Processing case 2: Remove all, but the ranked feature")
+    aux_df = joined_df.copy(deep=True)
+    aux_features = list(joined_df.columns)
+    aux_features.remove(target_column)
+    columns_to_drop = [
+        c for c in aux_features if (c not in base_table_features) and (c not in features)
+    ]
+    aux_df.drop(columns=columns_to_drop, inplace=True)
+
+    X, y = prepare_data_for_ml(aux_df, target_column)
+    for model_name, training_fun in training_funs.items():
+        print(f"==== Model Name: {model_name} ====")
+        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        entry = {
+            "approach": "best-ranked",
+            "dataset": top_1,
+            "algorithm": model_name,
+            "depth": max_depth,
+            "accuracy": accuracy,
+            "join_time": join_time,
+            "train_time": train_time,
+            "total_time": train_time + join_time,
+            "feature_importances": feature_importances,
+        }
+        results.append(entry)
+
+    print(f"======== Finished dataset: {dataset_config['path']} ========")
+
+    return results
 
 
 def arda_results(dataset_config):
