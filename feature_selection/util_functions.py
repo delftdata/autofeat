@@ -58,7 +58,7 @@ def select_dependent_features(X, y) -> dict:
     return sorted_result
 
 
-def select_dependent_right_features(left_table_features: list, joined_df: pd.DataFrame, target_column: str) -> dict:
+def compute_correlation(left_table_features: list, joined_df: pd.DataFrame, target_column: str) -> dict:
     print(f"Selecting dependent features on column: {target_column}...")
     # Remove the features from the base table
     joined_table_no_base = joined_df.drop(columns=left_table_features)
@@ -72,7 +72,7 @@ def select_dependent_right_features(left_table_features: list, joined_df: pd.Dat
     return dependent_features
 
 
-def select_uncorrelated_with_selected(left_table_features, features_to_compare, joined_df, target_column):
+def compute_relevance_redundancy(left_table_features, features_to_compare, joined_df, target_column):
     print(f"Selecting un-correlated features...")
     all_columns = list(joined_df.columns)
     all_columns.remove(target_column)

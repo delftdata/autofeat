@@ -60,12 +60,6 @@ def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_n
 
 
 def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight):
-    # tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label}) "
-    #                    "merge (b:Node {id: $b_id, label: $b_label}) "
-    #                    "merge (a)-[r:RELATED {weight: $weight}]-(b) "
-    #                    "return r as relation",
-    #                    a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label, weight=weight)
-
     tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, source_name: $a_source_name}) "
                        "merge (b:Node {id: $b_id, label: $b_label, source_name: $b_source_name}) "
                        "merge (a)-[r:RELATED]-(b) "

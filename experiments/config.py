@@ -43,6 +43,9 @@ class Datasets:
         "base_table_name": "paper.csv",
     }
 
+    # Used with the data discovery scenario, where multiple datasets are together
+    # PubMed contains: CORA, PubMed_Diabetes, WebKP, CiteSeer
+
     # pubmed_data: Dict[str, str] = {
     #     "path": "other-data/data/PubMed_Diabetes",
     #     "mappings_folder_name": "mappings/pub/PubMed_Diabetes",
@@ -59,10 +62,10 @@ class Datasets:
         "base_table_name": "webpage.csv",
     }
 
-    # pub_repo = {
-    #     'path': "other-data/data",
-    #     'mappings_folder_name': "mappings/pub",
-    #     'join_result_folder_path': "joined-df/pub",
-    #     "label_column": "class_label",
-    #     "base_table_name": "CiteSeer/paper.csv"
-    # }
+    pub_repo = {
+        'path': "other-data/data",
+        'mappings_folder_name': "mappings/pub",
+        'join_result_folder_path': "joined-df/pub",
+        "label_column": "class_label",
+        "base_table_name": "CiteSeer/paper.csv"
+    }

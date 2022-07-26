@@ -11,10 +11,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
-from augmentation.pipeline import prepare_data_for_ml
 from augmentation.train_algorithms import train_CART
 from feature_selection.feature_selection_algorithms import FSAlgorithms
 from utils.file_naming_convention import TRAINING_DATASET
+from utils.util_functions import prepare_data_for_ml
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 

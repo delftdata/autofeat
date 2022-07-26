@@ -38,7 +38,7 @@ def tfd_results(dataset_config):
                                  dataset_config['join_result_folder_path'])
     sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][2]))
     end = time.time()
-    join_time = end-start
+    join_time = end - start
 
     base_table_features = pd.read_csv(f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
                                       engine="python",
@@ -57,7 +57,7 @@ def tfd_results(dataset_config):
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time = _hp_tune_join_all(X, y, training_fun)
         entry = {
             "approach": "all-in-path",
             "dataset": top_1,
@@ -83,7 +83,7 @@ def tfd_results(dataset_config):
     X, y = prepare_data_for_ml(aux_df, target_column)
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time = _hp_tune_join_all(X, y, training_fun)
         entry = {
             "approach": "best-ranked",
             "dataset": top_1,
@@ -105,11 +105,11 @@ def tfd_results(dataset_config):
 def arda_results(dataset_config):
     print(f'======== Dataset: {dataset_config["path"]} ========')
     start = time.time()
-    dataset_df = join_all(dataset_config["path"])
+    dataset_df = _join_all(dataset_config["path"])
     end = time.time()
     join_time = end - start
 
-    label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
     print(X.shape)
     if X.shape[0] > 10000:
@@ -127,7 +127,7 @@ def arda_results(dataset_config):
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+        accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(
             fs_X, y, training_fun, False
         )
         entry = {
@@ -165,7 +165,7 @@ def non_aug_results(dataset_config):
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+        accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(
             X, y, training_fun, False
         )
         entry = {
@@ -242,11 +242,11 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
     return data
 
 
-def suffix_column(column_name: str, table_name: str) -> str:
+def _suffix_column(column_name: str, table_name: str) -> str:
     return f"{column_name}_{table_name}"
 
 
-def join_all(data_path: str) -> pd.DataFrame:
+def _join_all(data_path: str) -> pd.DataFrame:
     file_paths = list(Path().glob(f"../{data_path}/**/*.csv"))
     connections_df = None
     datasets = {}
@@ -267,7 +267,7 @@ def join_all(data_path: str) -> pd.DataFrame:
             # Add suffix to each column to uniquely identify them
             dataset = dataset.rename(
                 columns={
-                    column: suffix_column(column_name=column, table_name=f.name)
+                    column: _suffix_column(column_name=column, table_name=f.name)
                     for column in dataset_columns
                 }
             )
@@ -278,10 +278,10 @@ def join_all(data_path: str) -> pd.DataFrame:
 
     for _, row in connections_df.iterrows():
         # Reconstruct suffix that was built previously
-        left_col = suffix_column(
+        left_col = _suffix_column(
             column_name=str(row["left_col"]), table_name=str(row["left_table"])
         )
-        right_col = suffix_column(
+        right_col = _suffix_column(
             column_name=str(row["right_col"]), table_name=str(row["right_table"])
         )
 
@@ -319,7 +319,7 @@ def join_all(data_path: str) -> pd.DataFrame:
     return joined_df
 
 
-def hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
+def _hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
     accuracy, params, feature_importances, train_time, sfs_time = training_fun(X, y, do_sfs)
 
     final_feature_importances = (
@@ -334,18 +334,18 @@ def hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
     return accuracy, params["max_depth"], final_feature_importances, train_time, sfs_time
 
 
-def run_benchmark(dataset_config):
+def join_all_results(dataset_config, do_feature_selection=False):
     print(f'======== Dataset: {dataset_config["path"]} ========')
     start = time.time()
-    dataset_df = join_all(dataset_config["path"])
+    dataset_df = _join_all(dataset_config["path"])
     end = time.time()
     join_time = end - start
-    do_sfs = True
+    # do_sfs = True
 
-    label_column = suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
 
-    if do_sfs:
+    if do_feature_selection:
         # ID3 not supported for SFS
         training_funs = {"CART": train_CART, "XGBoost": train_XGBoost}
     else:
@@ -354,8 +354,8 @@ def run_benchmark(dataset_config):
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time, sfs_time = hp_tune_join_all(
-            X, y, training_fun, do_sfs
+        accuracy, max_depth, feature_importances, train_time, sfs_time = _hp_tune_join_all(
+            X, y, training_fun, do_feature_selection
         )
         total_time = join_time + train_time
         approach = "join_all"
@@ -382,30 +382,34 @@ def run_benchmark(dataset_config):
     return results
 
 
+def run_all_experiments(dataset_config):
+    all_results = []
+
+    non_aug = non_aug_results(dataset_config)
+    all_results += non_aug
+    best_ranked = tfd_results(dataset_config)
+    all_results += best_ranked
+    arda = arda_results(dataset_config)
+    all_results += arda
+    join_all = join_all_results(dataset_config)
+    all_results += join_all
+    join_all_fs = join_all_results(dataset_config, True)
+    all_results += join_all_fs
+
+    return all_results
+
+
 if __name__ == "__main__":
     dataset_configs = [
         getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
     ]
 
-    # dataset_configs = [Datasets.titanic_data]
     # There are 7 datasets
     pool_size = min(multiprocessing.cpu_count(), 6)
 
-    # with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
-    #     results = p.map(run_benchmark, dataset_configs)
-    # results = p.map(non_aug_results, dataset_configs)
-    # results = p.map(arda_results, dataset_configs)
-    results = []
-    # dataset_configs = [Datasets.cora_data]
-    for dataset_config in dataset_configs:
-        result = run_benchmark(dataset_config)
-        results_df = pd.DataFrame(result)
-        results_df.to_csv(
-            f"ranking_func_results_fs_{dataset_config['path'].split('/')[-1]}.csv", index=False
-        )
-    #     results += arda_results(dataset_config)
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+        results = p.map(run_all_experiments, dataset_configs)
 
-    # flattened_results = results
-    # flattened_results = [entry for sub_list in results for entry in sub_list]
-    # results_df = pd.DataFrame(flattened_results)
-    # results_df.to_csv("ranking_func_results_fs.csv", index=False)
+    flattened_results = [entry for sub_list in results for entry in sub_list]
+    results_df = pd.DataFrame(flattened_results)
+    results_df.to_csv("ranking_func_results.csv", index=False)

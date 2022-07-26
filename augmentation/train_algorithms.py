@@ -14,7 +14,7 @@ from utils.id3_alg import GadId3Classifier
 num_cv = 10
 
 
-def train_CART(X, y, do_sfs: bool):
+def train_CART(X, y, do_sfs: bool = False):
     sfs_time = None
 
     if do_sfs:

@@ -1,2 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
-join_all,other-data/decision-trees-split/football,CART,52,0.9989583333333332,0.025863170623779297,0.04192614555358887,0.06778931617736816,"{'dif_cc_shooting_differences_stats.csv': 0.597, 'strong_avg_age_strong_team.csv': 0.403}"
