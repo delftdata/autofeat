@@ -6,8 +6,10 @@ import pandas as pd
 from augmentation.data_preparation_pipeline import data_preparation, _data_ingestion, _path_enumeration
 from augmentation.ranking import ranking_func, ranking_multigraph
 from data_preparation.ingest_data import profile_valentine_all, ingest_connections
-from experiments.test_ranking_func import verify_ranking_func
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY
+
+from experiments.config import Datasets
+from experiments.test_ranking_func import verify_ranking_func
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -20,7 +22,7 @@ def pipeline(data: dict, prepare_data=False, test_ranking=False):
     mappings_folder_name = data['mappings_folder_name']
 
     if prepare_data:
-        data_preparation(base_table_name, label_column, path, mappings_folder_name, join_result_folder_path)
+        data_preparation(path, mappings_folder_name)
 
     with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{MAPPING}", 'r') as fp:
         mapping = json.load(fp)
@@ -52,7 +54,7 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
     mappings_folder_name = data['mappings_folder_name']
 
     if prepare_data:
-        mapping = ingest_connections(path, mappings_folder_name)
+        mapping = ingest_connections(path)
         mapping2 = profile_valentine_all(path)
         mapping.update(mapping2)
 
@@ -60,6 +62,9 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
             json.dump(mapping, fp)
 
         all_paths = _path_enumeration(mappings_folder_name)
+
+        with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{ENUMERATED_PATHS}", 'w') as fp:
+            json.dump(all_paths, fp)
 
     with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{MAPPING}", 'r') as fp:
         mapping = json.load(fp)
@@ -82,86 +87,12 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
 
 
 def data_pipeline():
-    titanic_data = {
-        'join_result_folder_path': 'joined-df/titanic',
-        'label_column': "Survived",
-        'base_table_name': "titanic.csv",
-        'path': "other-data/decision-trees-split/titanic",
-        'mappings_folder_name': "mappings/titanic"
-    }
-
-    steel_data = {
-        'join_result_folder_path': 'joined-df/steel-plate-fault',
-        'label_column': "Class",
-        'base_table_name': "steel_plate_fault.csv",
-        'path': "other-data/decision-trees-split/steel-plate-fault",
-        'mappings_folder_name': "mappings/steel-plate-fault"
-    }
-
-    football_data = {
-        'join_result_folder_path': 'joined-df/football',
-        'label_column': "win",
-        'base_table_name': "football.csv",
-        'path': "other-data/decision-trees-split/football",
-        'mappings_folder_name': "mappings/football"
-    }
-
-    kidney_data = {
-        'join_result_folder_path': 'joined-df/kidney-disease',
-        'label_column': "classification",
-        'base_table_name': "kidney_disease.csv",
-        'path': "other-data/decision-trees-split/kidney-disease",
-        'mappings_folder_name': "mappings/kidney-disease"
-    }
-
-    pub_data = {
-        'path': "data",
-        'mappings_folder_name': "mappings/pub",
-        'join_result_folder_path': "joined-df/pub",
-        'label_column': "class_label",
-        'base_table_name': "PubMed_Diabetes/paper.csv",
-    }
 
     prepare_data = False
     test_ranking = False
     # pipeline(football_data, prepare_data, test_ranking)
-    pipeline_multigraph(football_data, prepare_data, test_ranking)
-
-
-def repository_pipeline():
-    pub_repo = {
-        'path': "data",
-        'mappings_folder_name': "mappings/pub",
-        'join_result_folder_path': "joined-df/pub"
-    }
-    # mapping = ingest_connections(pub_repo['path'], pub_repo['mappings_folder_name'])
-    # mapping2 = profile_valentine_all(pub_repo['path'])
-    # mapping.update(mapping2)
-
-    # with open(f"{os.path.join(folder_name, '../', pub_repo['mappings_folder_name'])}/{MAPPING}", 'w') as fp:
-    #     json.dump(mapping, fp)
-
-    # all_paths = _path_enumeration(pub_repo['mappings_folder_name'])
-
-    base_table_name = "data/PubMed_Diabetes/paper.csv"
-    target_column = "class_label"
-
-
-    with open(f"{os.path.join(folder_name, '../', pub_repo['mappings_folder_name'])}/{MAPPING}", 'r') as fp:
-        mapping = json.load(fp)
-
-    with open(f"{os.path.join(folder_name, '../', pub_repo['mappings_folder_name'])}/{ENUMERATED_PATHS}", 'r') as fp:
-        all_paths = json.load(fp)
-
-    ranking = ranking_multigraph(all_paths, mapping, base_table_name, target_column, pub_repo['join_result_folder_path'])
-    print(ranking)
-    # sorted_ranking = dict(sorted(jm.items(), key=lambda item: item[1][2]))
-    # print(sorted_ranking)
-    #
-    # with open(f"{os.path.join(folder_name, '../', pub_repo['mappings_folder_name'])}/{RANKING_FUNCTION}", 'w') as fp:
-    #     json.dump(sorted_ranking, fp)
+    pipeline_multigraph(Datasets.football_data, prepare_data, test_ranking)
 
 
 if __name__ == '__main__':
     data_pipeline()
-    # repository_pipeline()

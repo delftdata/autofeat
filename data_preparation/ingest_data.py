@@ -15,6 +15,7 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.8
 
 
+# Not used in this version
 def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
     files = glob.glob(f"../{directory_path}/**/*.csv", recursive=True)
     mapping = {}
@@ -32,7 +33,7 @@ def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
     return mapping
 
 
-def ingest_connections(directory_path: str, mappings_path=None):
+def ingest_connections(directory_path: str):
     files = glob.glob(f"../{directory_path}/**/{CONNECTIONS}", recursive=True)
     mapping = {}
 
