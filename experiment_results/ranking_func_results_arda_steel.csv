@@ -1,4 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
-arda,other-data/decision-trees-split/steel-plate-fault,CART,1.0,0.683480073396858,0.014523983001708984,0.012509346008300781,163.33873629570007,{'V33_type_of_fault.csv': 1.0},163.31170296669006
-arda,other-data/decision-trees-split/steel-plate-fault,ID3,2.0,0.68328611898017,0.014523983001708984,0.05686497688293457,163.3830919265747,{},163.31170296669006
-arda,other-data/decision-trees-split/steel-plate-fault,XGBoost,1.0,0.683480073396858,0.014523983001708984,0.1375598907470703,163.46378684043884,{'V33_type_of_fault.csv': 1.0},163.31170296669006

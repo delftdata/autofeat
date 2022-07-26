@@ -1,4 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
-arda,other-data/data/WebKP 2,CART,2.0,0.49330000000000007,0.06294822692871094,0.029411792755126953,193.1727089881897,"{'webpage_id_content.csv': 0.573, 'citing_paper_id_cites.csv': 0.427}",193.08034896850586
-arda,other-data/data/WebKP 2,ID3,2.0,0.9928999999999999,0.06294822692871094,28.371301889419556,221.51459908485413,{},193.08034896850586
-arda,other-data/data/WebKP 2,XGBoost,2.0,0.8932,0.06294822692871094,2.8660831451416016,196.00938034057617,"{'webpage_id_content.csv': 0.596, 'citing_paper_id_cites.csv': 0.404}",193.08034896850586

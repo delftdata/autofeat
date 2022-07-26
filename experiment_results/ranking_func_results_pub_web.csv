@@ -1,7 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
-all-in-path,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,CART,1.0,0.47092476489028207,0.8088569641113281,0.0346531867980957,0.8435101509094238,{'webpage_id': 1.0}
-all-in-path,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,ID3,2.0,0.09113113897596656,0.8088569641113281,41.08513903617859,41.89399600028992,{}
-all-in-path,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,XGBoost,2.0,0.34106583072100316,0.8088569641113281,1.7440049648284912,2.5528619289398193,"{'webpage_id': 0.689, 'word_cited_id': 0.311}"
-best-ranked,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,CART,1.0,0.47092476489028207,0.8088569641113281,0.03820490837097168,0.8470618724822998,{'webpage_id': 1.0}
-best-ranked,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,ID3,2.0,0.09113113897596656,0.8088569641113281,40.15606498718262,40.964921951293945,{}
-best-ranked,WebKP 2/webpage.csv/webpage_id--WebKP 2/content.csv/webpage_id,XGBoost,2.0,0.34106583072100316,0.8088569641113281,1.5709550380706787,2.379812002182007,"{'webpage_id': 0.689, 'word_cited_id': 0.311}"

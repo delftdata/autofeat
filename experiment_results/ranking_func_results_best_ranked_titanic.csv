@@ -1,7 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
-all-in-path,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,CART,5.0,0.8081398252184769,0.4991800785064697,0.07388687133789062,0.5730669498443604,"{'Name': 0.027, 'TicketId': 0.066, 'Sex': 0.563, 'Age': 0.161, 'SibSp': 0.102, 'Parch': 0.051, 'PassengerId': 0.018}"
-all-in-path,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,ID3,2.0,0.38378277153558055,0.4991800785064697,162.3999981880188,162.89917826652527,{}
-all-in-path,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,XGBoost,1.0,0.7934706616729089,0.4991800785064697,0.6210117340087891,1.1201918125152588,"{'Name': 0.022, 'TicketId': 0.025, 'Sex': 0.818, 'Age': 0.022, 'SibSp': 0.064, 'Parch': 0.049}"
-best-ranked,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,CART,3.0,0.6578401997503122,0.4991800785064697,0.06710505485534668,0.5662851333618164,"{'Name': 0.019, 'TicketId': 0.112, 'SibSp': 0.522, 'Parch': 0.3}"
-best-ranked,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,ID3,2.0,0.38378277153558055,0.4991800785064697,155.60159826278687,156.10077834129333,{}
-best-ranked,titanic/titanic.csv/PassengerId--titanic/passenger_info.csv/PassengerId,XGBoost,1.0,0.6073907615480649,0.4991800785064697,0.7943999767303467,1.2935800552368164,"{'Name': 0.141, 'TicketId': 0.152, 'SibSp': 0.348, 'Parch': 0.358}"

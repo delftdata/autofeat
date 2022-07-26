@@ -1,3 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
-join_all_ffs,other-data/data/CORA,CART,1,0.2729525421154328,0.026103973388671875,0.11746716499328613,5.342686176300049,{'paper_id_paper.csv': 1.0},51.99115037918091
-join_all_ffs,other-data/data/CORA,XGBoost,1,0.3232294978267302,0.026103973388671875,20.65790891647339,194.76462292671204,{'paper_id_paper.csv': 1.0},1740.8061003684998

@@ -1,3 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances,fs_time
-join_all_ffs,other-data/data/WebKP 2,CART,1,0.37037608254724574,0.06844902038574219,0.13637900352478027,3.425128936767578,{'webpage_id_content.csv': 1.0},32.203009128570557
-join_all_ffs,other-data/data/WebKP 2,XGBoost,2,0.4965590577301716,0.06844902038574219,40.20123076438904,161.04950261116028,"{'webpage_id_content.csv': 0.291, 'word_cited_id_content.csv': 0.709}",1207.798228263855

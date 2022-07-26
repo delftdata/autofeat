@@ -1,7 +1,0 @@
-approach,dataset,algorithm,depth,accuracy,join_time,train_time,total_time,feature_importances
-all-in-path,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,CART,2.0,0.23006679285116297,22.11178994178772,0.07223916053771973,22.18402910232544,"{'paper_id': 0.302, 'word_cited_id': 0.698}"
-all-in-path,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,ID3,2.0,0.20170440068430823,22.11178994178772,305.9659471511841,328.0777370929718,{}
-all-in-path,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,XGBoost,2.0,0.10688494157900486,22.11178994178772,3.253277063369751,25.36506700515747,"{'paper_id': 0.474, 'word_cited_id': 0.526}"
-best-ranked,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,CART,2.0,0.23006679285116297,22.11178994178772,0.07912397384643555,22.190913915634155,"{'paper_id': 0.302, 'word_cited_id': 0.698}"
-best-ranked,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,ID3,2.0,0.20170440068430823,22.11178994178772,306.7316460609436,328.8434360027313,{}
-best-ranked,CiteSeer/paper.csv/paper_id--CiteSeer/content.csv/paper_id,XGBoost,2.0,0.10688494157900486,22.11178994178772,3.5901308059692383,25.701920747756958,"{'paper_id': 0.474, 'word_cited_id': 0.526}"
