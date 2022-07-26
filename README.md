@@ -1,4 +1,4 @@
-# Join Path-Based Data Augmentation for Decision Trees
+# Transitive Feature Discovery over Join Paths
 
 [![Python 3.7+](https://img.shields.io/badge/python-3.8.2-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![pip](https://img.shields.io/badge/pip-20.0.2-blue.svg)](https://pypi.org/project/pip/)
@@ -7,8 +7,9 @@
 
 ## Setup
 
-### neo4j databse
-1. Import the database [neo4j-data.dump](neo4j-db/neo4j-data.dump) in neo4j following these [instructions](https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/).
+[comment]: <> (### neo4j databse)
+
+[comment]: <> (1. Import the database [neo4j-data.dump]&#40;neo4j-db/neo4j-data.dump&#41; in neo4j following these [instructions]&#40;https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/&#41;.)
 
 
 ### python setup
@@ -25,43 +26,92 @@
 `pip install -r requirements.txt`
 
 ## Run experiments
-### Non-Aug baseline 
-1. Locate the file [baseline.py](augmentation/baseline.py).
-2. Run the script. 
+All the experiments are in [experiments/all_experiments.py](experiments/all_experiments.py).
+Just run the `main` function and everything will start running. 
+> Note: The experiments take a long time to run.
 
-### JoinAll baseline.
-1. Locate the file [join-all.py](augmentation/join-all.py).
-2. Run the script. 
+[comment]: <> (### Non-Aug baseline )
 
-### BestRank approach. 
-1. Locate the file [algorithm_pipeline.py](augmentation/algorithm_pipeline.py).
-2. Uncomment line 57: 
-`pipeline(datasets, k=1)  # BestRank` 
-3. Run the script. 
+[comment]: <> (1. Locate the file [baseline.py]&#40;augmentation/baseline.py&#41;.)
 
-### Get top-k best ranked join paths
-1. Locate the file [algorithm_pipeline.py](augmentation/algorithm_pipeline.py).
-2. Uncomment line 58: 
-`pipeline(datasets)  # Top-k` 
-3. Run the script. 
+[comment]: <> (2. Run the script. )
 
-## Repo structure
-1. [augmentation](augmentation) folder
+[comment]: <> (### JoinAll baseline.)
 
-The folder contains the source source and the experiment source code.
-The ID3 implementation was sourced from this [repository](https://github.com/arriadevoe/lambda-computer-science/blob/master/Unit-4-Build-Week-1/Gad_Decision_Tree_Classifier_Final.ipynb).
+[comment]: <> (1. Locate the file [join-all.py]&#40;augmentation/join-all.py&#41;.)
 
+[comment]: <> (2. Run the script. )
 
-2. [neo4j-db](neo4j-db) folder 
+[comment]: <> (### BestRank approach. )
 
-Contains the dump of the neo4j database we used for the experiments. 
+[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
 
+[comment]: <> (2. Uncomment line 57: )
 
-3. [other-data](other-data) folder contains the experimental data. The original source of the datasets:
+[comment]: <> (`pipeline&#40;datasets, k=1&#41;  # BestRank` )
+
+[comment]: <> (3. Run the script. )
+
+[comment]: <> (### Get top-k best ranked join paths)
+
+[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
+
+[comment]: <> (2. Uncomment line 58: )
+
+[comment]: <> (`pipeline&#40;datasets&#41;  # Top-k` )
+
+[comment]: <> (3. Run the script. )
+
+## Datasets 
+
+[other-data](other-data) folder contains the experimental data. 
+1. [data](other-data/data) contains the real datasets collected from 
+
+_Motl, Jan, and Oliver Schulte. "The CTU prague relational learning repository." arXiv preprint arXiv:1511.03086 (2015)._
+
+   - [CiteSeer](https://relational.fit.cvut.cz/dataset/CiteSeer)
+   - [CORA](https://relational.fit.cvut.cz/dataset/CORA)
+   - [PubMed_Diabetes](https://relational.fit.cvut.cz/dataset/PubMed_Diabetes)
+   - [WebKP](https://relational.fit.cvut.cz/dataset/WebKP)
+
+2. [original](other-data/original) contains the original source of the fabricated datasets:
    * [titanic](https://www.kaggle.com/dmilla/introduction-to-decision-trees-titanic-dataset/data)
    * [kidney-disease](https://www.kaggle.com/akshayksingh/kidney-disease-dataset)
    * [steel-plate-fault](https://www.kaggle.com/bpkapkar/steel-plates-faults-detection?select=Variable+Descriptor.txt)
    * [football](https://www.kaggle.com/estefanytorres/international-football-matches-with-stats-201017?select=FutbolMatches.csv)
 
-4. [plots](plots) folder contains the plots generated in the [Visualisations](Visualisations.ipynb) notebook.
-5. [results](results) folder contains the results of the experiments. They are also the source files for the visualisations. 
+3. [decision-trees-split](other-data/decision-trees-split) contains fabricated data based on the above sources.
+
+## Code structure
+1. [arda](arda) module contains our implementation of the feature selection part of ARDA system as per
+Algorithms 1, 2, 3 from the following paper:
+
+_Chepurko, Nadiia, et al. "ARDA: Automatic Relational Data Augmentation for Machine Learning." Proceedings of the VLDB Endowment 13.9._
+
+2. [augmentation](augmentation) module contains:
+- The ranking function
+- The data preparation pipeline
+- All the decision trees algorithms used for experiments. The ID3 implementation was sourced from this [repository](https://github.com/arriadevoe/lambda-computer-science/blob/master/Unit-4-Build-Week-1/Gad_Decision_Tree_Classifier_Final.ipynb).
+
+3. [data_preparation](data_preparation) module contains:
+- Functions to ingest the data into neo4j 
+- Pruning strategy 
+
+4. [feature_selection](feature_selection) module contains:
+- The feature selection methods tested and used in our approach.
+- Util functions to compute different scores.
+
+5. [utils](utils) module contains diverse functions used throughout the approach.
+
+6. [Visualisations](Visualisations.ipynb) Jupyter Notebook is used to create the plots from the paper using the results from
+[experiment_results](experiment_results). 
+
+
+### Old unused code
+The following modules are not used for this version of the code:
+1. [augmentation_workshop](augmentation_workshop) - data structure and ranking function used for the workshop version
+
+_Ionescu, Andra, et al. "Join Path-Based Data Augmentation for Decision Trees." 2022 IEEE 38th International Conference on Data Engineering Workshops (ICDEW). IEEE, 2022._
+
+2. [classification_approach](classification_approach) - Old approach using a regressor to predict the ranking
+3. [neo4j-db](neo4j-db) - Contains the dump of the neo4j database we used for the experiments. 
