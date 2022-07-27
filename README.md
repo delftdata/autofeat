@@ -111,7 +111,5 @@ _Chepurko, Nadiia, et al. "ARDA: Automatic Relational Data Augmentation for Mach
 The following modules are not used for this version of the code:
 1. [augmentation_workshop](augmentation_workshop) - data structure and ranking function used for the workshop version
 
-_Ionescu, Andra, et al. "Join Path-Based Data Augmentation for Decision Trees." 2022 IEEE 38th International Conference on Data Engineering Workshops (ICDEW). IEEE, 2022._
-
 2. [classification_approach](classification_approach) - Old approach using a regressor to predict the ranking
 3. [neo4j-db](neo4j-db) - Contains the dump of the neo4j database we used for the experiments. 
