@@ -1,4 +1,4 @@
-left_table,left_col,right_table,right_col
+pk_table,pk_column,fk_table,fk_column
 steel_plate_fault.csv,index,type_of_fault.csv,spf_id
 steel_plate_fault.csv,index,luminosity.csv,spf_id
 steel_plate_fault.csv,index,indices.csv,spf_id

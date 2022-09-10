@@ -1,2 +1,2 @@
-left_table,left_col,right_table,right_col
+pk_table,pk_column,fk_table,fk_column
 content.csv,paper_id,paper.csv,paper_id

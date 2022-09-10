@@ -1,4 +1,4 @@
-left_table,left_col,right_table,right_col
+pk_table,pk_column,fk_table,fk_column
 kidney_disease.csv,id,patient_disease.csv,kd_id
 kidney_disease.csv,id,blood_analysis.csv,kd_id
 blood_analysis.csv,id,cell_info.csv,ba_id
