@@ -6,5 +6,6 @@ JOINED_PATHS = "joined-paths.json"
 RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'ranking_data.csv'
 
-MAPPING_FOLDER = 'mappings/'
-JOIN_RESULT_FOLDER = 'joined-df/'
+MAPPING_FOLDER = 'mappings/revision'
+JOIN_RESULT_FOLDER = 'joined-df'
+DATA_FOLDER = 'other-data/synthetic'

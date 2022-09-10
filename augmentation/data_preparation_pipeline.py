@@ -1,34 +1,32 @@
 import json
 import os
 
-from data_preparation.ingest_data import ingest_connections, profile_valentine_all
-from utils.file_naming_convention import ENUMERATED_PATHS, MAPPING
+from data_preparation.ingest_data import ingest_connections, profile_valentine_all, ingest_fabricated_data
+from utils.file_naming_convention import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
 from utils.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
 
 sys_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../")
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
-def data_preparation(path_to_data: str, mappings_folder_name: str):
-    mapping = _data_ingestion(path_to_data)
+def data_preparation():
+    mapping = _data_ingestion()
 
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{MAPPING}", 'w') as fp:
+    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'w') as fp:
         json.dump(mapping, fp)
 
     all_paths = _path_enumeration()
 
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{ENUMERATED_PATHS}", 'r') as fp:
-        all_paths = json.load(fp)
+    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'w') as fp:
+        json.dump(all_paths, fp)
 
 
-def _data_ingestion(path_to_data: str, profile_valentine=False) -> dict:
-    # Deprecated
-    # mapping = ingest_fabricated_data(path_to_data, mappings_folder_name)
-    mapping = ingest_connections(path_to_data)
+def _data_ingestion(profile_valentine=False) -> dict:
+    mapping = ingest_fabricated_data()
+    ingest_connections()
 
     if profile_valentine:
-        mappings_valentine = profile_valentine_all(path_to_data)
-        mapping.update(mappings_valentine)
+        profile_valentine_all()
 
     return mapping
 

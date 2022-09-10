@@ -38,9 +38,9 @@ def create_node(source, source_path, label):
     return node
 
 
-def create_relation(from_node_id, to_node_id, relation_name):
+def create_relation(from_node_id, to_node_id, relation_name, weight=1):
     with driver.session() as session:
-        relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name)
+        relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name, weight)
     return relation
 
 
@@ -52,17 +52,17 @@ def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b
     return relation
 
 
-def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight=1):
+def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_name, rel_name, weight=1):
     with driver.session() as session:
         result = session.write_transaction(_merge_nodes_relation, a_id, a_label, a_source_name, b_id, b_label,
-                                           b_source_name, weight)
+                                           b_source_name, rel_name, weight)
     return result
 
 
-def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight):
+def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, rel_name, weight):
     tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, source_name: $a_source_name}) "
                        "merge (b:Node {id: $b_id, label: $b_label, source_name: $b_source_name}) "
-                       "merge (a)-[r:RELATED]-(b) "
+                       f"merge (a)-[r:{rel_name}]-(b) "
                        "on match set (case when r.weight < $weight then r end).weight = $weight "
                        "on create set r.weight = $weight "
                        "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label,
@@ -132,11 +132,12 @@ def _create_subsumption_relation(tx, source):
     return result
 
 
-def _create_relation(tx, a_id, b_id, relation_name):
+def _create_relation(tx, a_id, b_id, relation_name, weight):
     tx_result = tx.run("MATCH (a:Node {id: $a_id}) WITH a "
                        "MATCH (b:Node {id: $b_id}) "
                        f"MERGE (a)-[r:{relation_name}]->(b) "
-                       "RETURN r as relation", a_id=a_id, b_id=b_id)
+                       "SET r.weight = $weight "
+                       "RETURN r as relation", a_id=a_id, b_id=b_id, weight=weight)
 
     result = []
     for record in tx_result:
