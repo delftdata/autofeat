@@ -38,7 +38,6 @@ def _path_enumeration(graph_name="graph") -> dict:
         print(err)
 
     init_graph(graph_name)
-    # TODO: Change all_paths to have IDs instead of labels
     result = enumerate_all_paths(graph_name)  # list of lists [from, to, distance]
 
     # transform the list of lists into a dictionary (from: [...to])

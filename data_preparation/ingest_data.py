@@ -1,15 +1,14 @@
 import csv
 import glob
 import itertools
-import json
 import os
 
 import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from utils.file_naming_convention import MAPPING, CONNECTIONS, DATA_FOLDER, MAPPING_FOLDER
-from utils.neo4j_utils import create_table_node, merge_nodes_relation, create_relation
+from utils.file_naming_convention import CONNECTIONS, DATA_FOLDER
+from utils.neo4j_utils import merge_nodes_relation, create_relation
 from utils.relation_types import SIBLING, RELATED
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -73,4 +72,3 @@ def profile_valentine_all():
                 node_id_target = f"{tab2}/{col_to}"
 
                 create_relation(node_id_source, node_id_target, RELATED, similarity)
-
