@@ -52,21 +52,21 @@ def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b
     return relation
 
 
-def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_name, rel_name, weight=1):
+def merge_nodes_relation(a_id, a_label, a_name, a_source_name, b_id, b_label, b_name, b_source_name, rel_name, weight=1):
     with driver.session() as session:
-        result = session.write_transaction(_merge_nodes_relation, a_id, a_label, a_source_name, b_id, b_label,
-                                           b_source_name, rel_name, weight)
+        result = session.write_transaction(_merge_nodes_relation, a_id, a_label, a_name, a_source_name, b_id, b_label,
+                                           b_name, b_source_name, rel_name, weight)
     return result
 
 
-def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, rel_name, weight):
-    tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, source_name: $a_source_name}) "
-                       "merge (b:Node {id: $b_id, label: $b_label, source_name: $b_source_name}) "
+def _merge_nodes_relation(tx, a_id, a_label, a_name, a_source_name, b_id, b_label, b_name, b_source_name, rel_name, weight):
+    tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, name: $a_name, source_name: $a_source_name}) "
+                       "merge (b:Node {id: $b_id, label: $b_label, name: $b_name, source_name: $b_source_name}) "
                        f"merge (a)-[r:{rel_name}]-(b) "
                        "on match set (case when r.weight < $weight then r end).weight = $weight "
                        "on create set r.weight = $weight "
-                       "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label,
-                       a_source_name=a_source_name, b_source_name=b_source_name, weight=weight)
+                       "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label, a_name=a_name,
+                       b_name=b_name, a_source_name=a_source_name, b_source_name=b_source_name, weight=weight)
 
     record = tx_result.single()
     if not record:
@@ -226,7 +226,7 @@ def _enumerate_all_paths(tx, name):
                        "MATCH (source:Node) WHERE id(source) = sourceNodeId "
                        "MATCH (target:Node) WHERE id(target) = targetNodeId "
                        "WITH source, target, distance WHERE source <> target "
-                       "RETURN source.label AS source, target.label AS target, distance "
+                       "RETURN source.id AS source, target.id AS target, distance "
                        "ORDER BY distance ASC, source ASC, target ASC")
     values = []
     for record in tx_result:
