@@ -9,6 +9,7 @@ class Datasets:
         "base_table_name": "titanic.csv",
         "path": "other-data/decision-trees-split/titanic",
         "mappings_folder_name": "mappings/titanic",
+        "id": "../other-data/synthetic/titanic/titanic.csv"
     }
 
     steel_data: Dict[str, str] = {
@@ -25,6 +26,7 @@ class Datasets:
         "base_table_name": "football.csv",
         "path": "other-data/decision-trees-split/football",
         "mappings_folder_name": "mappings/football",
+        "id": "../other-data/synthetic/football/football.csv"
     }
 
     citeSeer_data: Dict[str, str] = {

@@ -10,7 +10,7 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 def data_preparation():
-    mapping = _data_ingestion()
+    mapping = _data_ingestion(True)
 
     with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'w') as fp:
         json.dump(mapping, fp)

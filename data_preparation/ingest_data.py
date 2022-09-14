@@ -27,8 +27,7 @@ def ingest_fabricated_data() -> dict:
         df = pd.read_csv(f, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1)
         for column_pair in itertools.combinations(df.columns, r=2):
             (col1, col2) = column_pair
-            merge_nodes_relation(f"{table_path}/{col1}", f"{table_name}/{col1}", col1, table_path,
-                                 f"{table_path}/{col2}", f"{table_name}/{col2}", col2, table_path, SIBLING, 0)
+            merge_nodes_relation(col1, col2, table_name, table_path, SIBLING, 0)
 
         mapping[table_name] = table_path
 

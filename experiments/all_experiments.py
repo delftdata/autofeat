@@ -14,7 +14,7 @@ from arda.arda import wrapper_algo
 from augmentation.ranking import ranking_multigraph
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from experiments.config import Datasets
-from utils.file_naming_convention import CONNECTIONS, MAPPING, ENUMERATED_PATHS
+from utils.file_naming_convention import CONNECTIONS, MAPPING, ENUMERATED_PATHS, JOIN_RESULT_FOLDER
 from utils.util_functions import prepare_data_for_ml
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -186,12 +186,22 @@ def non_aug_results(dataset_config):
     return results
 
 
+def _get_join_path(path: str):
+    # Path looks like table_source/table_name/key--table_source...
+    # Join path looks like table_source--table_name--table_source...
+
+    path_tokens = path.split("--")
+    join_path_tokens = ["--".join(token.split('/')[:-1]) for token in path_tokens]
+    return "--".join(join_path_tokens)
+
+
 def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str):
     data = {}
     # 0. Get the baseline params
     print(f"Processing case 0: Baseline")
     base_table_df = pd.read_csv(
-        os.path.join(folder_name, "../", base_table_name),
+        # os.path.join(folder_name, "../", base_table_name),
+        base_table_name,
         header=0,
         engine="python",
         encoding="utf8",
@@ -199,24 +209,28 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         escapechar="\\",
     )
     X, y = prepare_data_for_ml(base_table_df, target_column)
-    acc_b, params_b, _ = train_CART(X, y)
+    acc_b, params_b, _, _, _ = train_CART(X, y)
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
 
     for path in ranking.keys():
-        join_path, features, score = ranking[path]
+        # join_path, features, score = ranking[path]
+        score, features = ranking[path]
+        join_path = _get_join_path(path)
 
         if score == math.inf:
             continue
 
         result = {"base-table": (acc_b, params_b["max_depth"])}
         joined_df = pd.read_csv(
-            join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+            # join_path,
+            f"../{JOIN_RESULT_FOLDER}/{join_path}",
+            header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
-        # Three type of experiments
+        # Two type of experiments
         # 1. Keep the entire path
         print(f"Processing case 1: Keep the entire path")
         X, y = prepare_data_for_ml(joined_df, target_column)
-        acc, params, _ = train_CART(X, y)
+        acc, params, _, _, _ = train_CART(X, y)
         result["keep-all"] = (acc, params["max_depth"])
         print(X.columns)
         print(result)

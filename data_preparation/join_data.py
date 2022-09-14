@@ -3,6 +3,7 @@ from collections import Counter
 
 import pandas as pd
 
+from utils.file_naming_convention import JOIN_RESULT_FOLDER
 from utils.neo4j_utils import get_relation_properties
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -75,6 +76,37 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
     joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"
+    joined_df.to_csv(joined_path, index=False)
+
+    return joined_path, joined_df, left_table_df
+
+
+def prune_or_join_2(left_path, right_path, left_key, right_key, join_result_name, prune_threshold=0.3):
+    # Read left side table
+    left_table_df = pd.read_csv(left_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+    right_table_df = pd.read_csv(right_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+
+    # Verify join quality
+    print(f"Verifying join quality:\n\t{left_path}\n\t\t{left_key}\n\t{right_path}\n\t\t{right_key}")
+    result = prune_table(left_table_df[left_key], right_table_df[right_key], prune_threshold)
+    if result:
+        print("Null value ratio exceeding threshold. Pruning the table ... ")
+        return None
+
+    # Test join scenario 1:N - aggregate, M:N - prune
+    right_table = join_scenario(left_table_df, right_table_df, left_key, right_key)
+    if right_table is None:
+        return None
+
+    print(f"\tJoining {left_path} with {right_path}\n\tOn keys: {left_key} - {right_key}")
+    joined_df = pd.merge(left_table_df, right_table, how="left", left_on=left_key, right_on=right_key,
+                         suffixes=("_b", ""))
+
+    # If both tables have the same column, drop one of them
+    duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
+    joined_df.drop(columns=duplicate_col, inplace=True)
+    # Save join result
+    joined_path = f"../{JOIN_RESULT_FOLDER}/{join_result_name}"
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df

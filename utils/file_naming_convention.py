@@ -7,5 +7,5 @@ RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'ranking_data.csv'
 
 MAPPING_FOLDER = 'mappings/revision'
-JOIN_RESULT_FOLDER = 'joined-df'
+JOIN_RESULT_FOLDER = 'joined-df/revision'
 DATA_FOLDER = 'other-data/synthetic'
