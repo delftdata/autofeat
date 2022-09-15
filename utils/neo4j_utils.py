@@ -287,3 +287,20 @@ def _get_node_by_source_name(tx, source_name):
     for record in tx_result:
         result.append(record['node'])
     return result
+
+
+def get_pk_fk_nodes(source_path):
+    with driver.session() as session:
+        result = session.write_transaction(_get_pk_fk_nodes, source_path)
+    return result
+
+
+def _get_pk_fk_nodes(tx, source_path):
+    tx_result = tx.run("match (n {source_path: $source_path})-[r:RELATED {weight: 1}]-(m) "
+                       "return n, m", source_path=source_path)
+
+    values = []
+    for record in tx_result:
+        values.append(record.values())
+    return values
+

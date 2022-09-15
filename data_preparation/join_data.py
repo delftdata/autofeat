@@ -4,7 +4,8 @@ from collections import Counter
 import pandas as pd
 
 from utils.file_naming_convention import JOIN_RESULT_FOLDER
-from utils.neo4j_utils import get_relation_properties
+from utils.neo4j_utils import get_relation_properties, get_node_by_id, get_node_by_source_name, get_pk_fk_nodes
+from utils.util_functions import transform_node_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -79,6 +80,65 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df
+
+
+def join_all(base_table_id: str):
+    queue = []
+    queue.append(base_table_id)
+
+    partial_join = None
+    foreign_keys = []
+    visited = set()
+
+    mapping_columns = {}
+
+    while len(queue) > 0:
+        current_table = queue.pop()
+        nodes = get_pk_fk_nodes(current_table)
+        visited.add(current_table)
+        primary_keys = set()
+        for pk, fk in nodes:
+            pk_node = transform_node_to_dict(pk)
+            fk_node = transform_node_to_dict(fk)
+
+            left_on = pk_node['name']
+            if pk_node['source_path'] in mapping_columns:
+                left_source = mapping_columns[pk_node['source_path']]
+                if pk_node['name'] in left_source:
+                    left_on = left_source[pk_node['name']]
+
+            if not left_on == fk_node['name']:
+                primary_keys.add(left_on)
+
+            if fk_node['source_path'] in visited:
+                continue
+            else:
+                visited.add(fk_node['source_path'])
+
+            queue.append(fk_node['source_path'])
+
+            left_table = pd.read_csv(pk_node['source_path'])
+            right_table = pd.read_csv(fk_node['source_path'])
+            if partial_join is not None:
+                left_table = partial_join
+
+            partial_join = pd.merge(left_table, right_table, how="left", left_on=left_on,
+                                    right_on=fk_node['name'], suffixes=("", fk_node['source_name']))
+            modified_columns = {col.partition(fk_node['source_name'])[0]: col for col in partial_join.columns if col.endswith(fk_node['source_name'])}
+            if fk_node['name'] in modified_columns:
+                foreign_keys.append(modified_columns[fk_node['name']])
+            else:
+                foreign_keys.append(fk_node['name'])
+
+            mapping = {fk_node['source_path']: modified_columns}
+            mapping_columns.update(mapping)
+            # duplicate_col = [col for col in partial_join.columns if col.endswith('_b')]
+            # partial_join.drop(columns=duplicate_col, inplace=True)
+        partial_join.drop(columns=list(primary_keys), inplace=True)
+
+    partial_join.drop(columns=list(set(foreign_keys).intersection(set(partial_join.columns))), inplace=True)
+
+    return partial_join
 
 
 def prune_or_join_2(left_path, right_path, left_key, right_key, join_result_name, prune_threshold=0.3):
