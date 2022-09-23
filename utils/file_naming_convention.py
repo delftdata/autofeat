@@ -5,6 +5,7 @@ TRAINING_DATASET = "results.csv"
 JOINED_PATHS = "joined-paths.json"
 RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'ranking_data.csv'
+ALL_PATHS = 'all_paths'
 
 MAPPING_FOLDER = 'mappings/revision'
 JOIN_RESULT_FOLDER = 'joined-df/revision'

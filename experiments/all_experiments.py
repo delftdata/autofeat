@@ -67,7 +67,7 @@ def tfd_results(dataset_config):
         accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
         entry = {
             "approach": "all-in-path",
-            "dataset": top_1,
+            "data_path": top_1,
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -93,7 +93,7 @@ def tfd_results(dataset_config):
         accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
         entry = {
             "approach": "best-ranked",
-            "dataset": top_1,
+            "data_path": top_1,
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -137,7 +137,7 @@ def arda_results(dataset_config):
     if len(indices) == 0:
         entry = {
             "approach": "arda",
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": None,
             "depth": 0,
             "accuracy": 0,
@@ -158,7 +158,7 @@ def arda_results(dataset_config):
         )
         entry = {
             "approach": "arda",
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -197,7 +197,7 @@ def non_aug_results(dataset_config):
         )
         entry = {
             "approach": "non-aug",
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -407,7 +407,7 @@ def join_all_results(dataset_config, do_feature_selection=False):
 
         entry = {
             "approach": approach,
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -427,10 +427,10 @@ def join_all_results(dataset_config, do_feature_selection=False):
 def run_all_experiments(dataset_config):
     all_results = []
 
-    # non_aug = non_aug_results(dataset_config)
-    # all_results += non_aug
-    # best_ranked = tfd_results(dataset_config)
-    # all_results += best_ranked
+    non_aug = non_aug_results(dataset_config)
+    all_results += non_aug
+    best_ranked = tfd_results(dataset_config)
+    all_results += best_ranked
     arda = arda_results(dataset_config)
     all_results += arda
     join_all_r = join_all_results(dataset_config)
@@ -455,6 +455,6 @@ if __name__ == "__main__":
     #     results = p.map(run_all_experiments, dataset_configs)
 
     results = run_all_experiments(dataset_configs)
-    flattened_results = [entry for sub_list in results for entry in sub_list]
-    results_df = pd.DataFrame(flattened_results)
+    # flattened_results = [entry for sub_list in results for entry in sub_list]
+    results_df = pd.DataFrame(results)
     results_df.to_csv("ranking_func_results.csv", index=False)

@@ -1,10 +1,11 @@
+import json
 import os
 from collections import Counter
 
 import pandas as pd
 
-from utils.file_naming_convention import JOIN_RESULT_FOLDER
-from utils.neo4j_utils import get_relation_properties, get_node_by_id, get_node_by_source_name, get_pk_fk_nodes
+from utils.file_naming_convention import JOIN_RESULT_FOLDER, MAPPING_FOLDER, ENUMERATED_PATHS
+from utils.neo4j_utils import get_relation_properties, get_pk_fk_nodes
 from utils.util_functions import transform_node_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
@@ -124,7 +125,8 @@ def join_all(base_table_id: str):
 
             partial_join = pd.merge(left_table, right_table, how="left", left_on=left_on,
                                     right_on=fk_node['name'], suffixes=("", fk_node['source_name']))
-            modified_columns = {col.partition(fk_node['source_name'])[0]: col for col in partial_join.columns if col.endswith(fk_node['source_name'])}
+            modified_columns = {col.partition(fk_node['source_name'])[0]: col for col in partial_join.columns if
+                                col.endswith(fk_node['source_name'])}
             if fk_node['name'] in modified_columns:
                 foreign_keys.append(modified_columns[fk_node['name']])
             else:
@@ -196,7 +198,6 @@ def prune_or_join(partial_join_path, left_table_name, right_table_name, mapping,
         print(f"ERROR! Key {right_key} not in table {right_table_name}")
         return None
 
-
     # Verify join quality
     print(f"Verifying join quality:\n\t{partial_join_path}\n\t\t{left_key}\n\t{right_table_name}\n\t\t{right_key}")
     result = prune_table(left_table_df[left_key], right_table_df[right_key], prune_threshold)
@@ -229,7 +230,7 @@ def prune_table(left_column, right_column, null_threshold=0.3):
         return True
 
     set_difference = list(set(left_column) - set(right_column))
-    null_ratio = sum([Counter(left_column)[el] for el in set_difference])/len(left_column)
+    null_ratio = sum([Counter(left_column)[el] for el in set_difference]) / len(left_column)
 
     print(f"Null values ratio: {null_ratio}")
     if null_ratio > null_threshold:
@@ -266,8 +267,30 @@ def aggregate_rows(dataframe, join_column):
     return dataframe.loc[indexes, :]
 
 
+def enumerate_all(base_table_id: str, all_paths: dict, path: list, enumerated_paths: list, visited: list):
+    all_paths_keys = all_paths.keys()
+    nodes = [k for k in all_paths_keys if base_table_id in k]
 
+    visited.append(base_table_id)
+    for node in nodes:
+        if node not in path:
+            path.append(node)
+            enumerated_paths.append(path)
 
+        related = all_paths[node]
+        for rel in related:
+            table_id = '/'.join(rel.split('/')[:-1])
+            if table_id in visited:
+                continue
 
+            cp = path.copy()
+            cp.append(rel)
+            enumerated_paths.append(cp)
 
+            path = enumerate_all(table_id, all_paths, cp.copy(), enumerated_paths, visited)
+
+        path.pop()
+
+    visited.pop()
+    return path
 

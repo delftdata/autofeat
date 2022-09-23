@@ -57,8 +57,8 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
     if prepare_data:
         data_preparation()
 
-    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'r') as fp:
-        mapping = json.load(fp)
+    # with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{MAPPING}", 'r') as fp:
+    #     mapping = json.load(fp)
 
     with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'r') as fp:
         all_paths = json.load(fp)
@@ -80,11 +80,21 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
 
 def data_pipeline():
 
-    prepare_data = False
-    test_ranking = True
+    prepare_data = True
+    test_ranking = False
     # pipeline(football_data, prepare_data, test_ranking)
-    pipeline_multigraph(Datasets.football_data, prepare_data, test_ranking)
+    pipeline_multigraph(Datasets.steel_data, prepare_data, test_ranking)
 
 
 if __name__ == '__main__':
+    # with open(f"../{MAPPING_FOLDER}/{ENUMERATED_PATHS}", 'r') as fp:
+    #     all_paths = json.load(fp)
+    #
+    # dataset_configs = [
+    #     getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
+    # ]
+    #
+    # for dataset in dataset_configs:
+    #     pipeline_multigraph(dataset, True, False)
     data_pipeline()
+
