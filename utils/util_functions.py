@@ -49,3 +49,11 @@ def prepare_data_for_ml(dataframe, target_column):
     y = pd.Series(le.fit_transform(y), name=target_column)
 
     return normalized_X, y
+
+
+def transform_node_to_dict(node):
+    dict_node = {'id': node.get('id'), 'label': node.get('label'), 'name': node.get('name'),
+                 'source_name': node.get('source_name'), 'source_path': node.get('source_path')}
+    return dict_node
+
+

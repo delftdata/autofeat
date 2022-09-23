@@ -1,73 +1,60 @@
 import csv
 import glob
 import itertools
-import json
 import os
 
 import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from utils.file_naming_convention import MAPPING, CONNECTIONS
-from utils.neo4j_utils import create_table_node, merge_nodes_relation
+from utils.file_naming_convention import CONNECTIONS, DATA_FOLDER
+from utils.neo4j_utils import merge_nodes_relation, create_relation
+from utils.relation_types import SIBLING, RELATED
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.8
 
 
-# Not used in this version
-def ingest_fabricated_data(directory_path: str, mappings_path) -> dict:
-    files = glob.glob(f"../{directory_path}/**/*.csv", recursive=True)
+def ingest_fabricated_data() -> dict:
+    files = glob.glob(f"../{DATA_FOLDER}/**/*.csv", recursive=True)
+    # Filter out connections.csv file
+    files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
     mapping = {}
     for f in files:
         table_path = f
-        table_name = '/'.join(f.split('/')[-2:])
+        table_name = f.partition(f"{DATA_FOLDER}/")[2]
+        print(f"Creating nodes from {f}")
+        df = pd.read_csv(f, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1)
+        for column_pair in itertools.combinations(df.columns, r=2):
+            (col1, col2) = column_pair
+            merge_nodes_relation(col1, col2, table_name, table_path, SIBLING, 0)
 
-        if CONNECTIONS not in f and f.endswith("csv"):
-            print(f"Creating nodes from {f}")
-            mapping[table_name] = table_path
-            node = create_table_node(table_name, table_path)
+        mapping[table_name] = table_path
 
-    with open(f"{os.path.join(folder_name, '../', mappings_path)}/{MAPPING}", 'w') as fp:
-        json.dump(mapping, fp)
     return mapping
 
 
-def ingest_connections(directory_path: str):
-    files = glob.glob(f"../{directory_path}/**/{CONNECTIONS}", recursive=True)
-    mapping = {}
+def ingest_connections():
+    files = glob.glob(f"../{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)
 
     for f in files:
         print(f"Ingesting connections from {f}")
         with open(f) as rd:
             connections = list(csv.reader(rd))
         node_source_name = f.partition(CONNECTIONS)[0]
-        source_folder = node_source_name.split('/')[-2]
 
-        for link in connections:
+        for link in connections[1:]:
             source_name, source_id, target_name, target_id = link
             node_id_source = f"{node_source_name}{source_name}/{source_id}"
             node_id_target = f"{node_source_name}{target_name}/{target_id}"
 
-            label_source = f"{source_folder}/{source_name}/{source_id}"
-            label_target = f"{source_folder}/{target_name}/{target_id}"
-
-            mapping[label_source] = f"{node_source_name}{source_name}"
-            mapping[label_target] = f"{node_source_name}{target_name}"
-
-            merge_nodes_relation(node_id_source, label_source, f"{source_folder}/{source_name}",
-                                 node_id_target, label_target, f"{source_folder}/{target_name}")
-
-            # create_relation_between_table_nodes(mapping[f"{source}/{source_name}"], mapping[f"{source}/{target_name}"],
-            #                                     source_id, target_id)
-    return mapping
+            create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all(directory_path: str):
-    files = glob.glob(f"../{directory_path}/**/*.csv", recursive=True)
+def profile_valentine_all():
+    files = glob.glob(f"../{DATA_FOLDER}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
-    mapping = {}
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
         print(f"Processing the match between:\n\t{tab1}\n\t{tab2}")
@@ -79,12 +66,8 @@ def profile_valentine_all(directory_path: str):
             ((_, col_from), (_, col_to)), similarity = item
             if similarity > threshold:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
-                label_1 = '/'.join(tab1.split('/')[-2:])
-                label_2 = '/'.join(tab2.split('/')[-2:])
 
-                mapping[f"{label_1}/{col_from}"] = tab1
-                mapping[f"{label_2}/{col_to}"] = tab2
+                node_id_source = f"{tab1}/{col_from}"
+                node_id_target = f"{tab2}/{col_to}"
 
-                relation = merge_nodes_relation(f"{tab1}/{col_from}", f"{label_1}/{col_from}", label_1,
-                                                f"{tab2}/{col_to}", f"{label_2}/{col_to}", label_2)
-    return mapping
+                create_relation(node_id_source, node_id_target, RELATED, similarity)

@@ -11,56 +11,63 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from arda.arda import wrapper_algo
-from augmentation.ranking import ranking_multigraph
+from augmentation.ranking import ranking_multigraph, start_ranking
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
+from data_preparation.join_data import join_all
 from experiments.config import Datasets
-from utils.file_naming_convention import CONNECTIONS, MAPPING, ENUMERATED_PATHS
+from utils.file_naming_convention import CONNECTIONS, MAPPING, ENUMERATED_PATHS, JOIN_RESULT_FOLDER, MAPPING_FOLDER
 from utils.util_functions import prepare_data_for_ml
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 def tfd_results(dataset_config):
-    print(f'======== Dataset: {dataset_config["path"]} ========')
+    print(f'======== TFD Dataset: {dataset_config["path"]} ========')
 
-    with open(f"{os.path.join(folder_name, '../', dataset_config['mappings_folder_name'])}/{MAPPING}", 'r') as fp:
-        mapping = json.load(fp)
+    # with open(f"{os.path.join(folder_name, '../', dataset_config['mappings_folder_name'])}/{MAPPING}", 'r') as fp:
+    #     mapping = json.load(fp)
 
-    with open(f"{os.path.join(folder_name, '../', dataset_config['mappings_folder_name'])}/{ENUMERATED_PATHS}",
-              'r') as fp:
+    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'r') as fp:
         all_paths = json.load(fp)
 
     target_column = dataset_config["label_column"]
 
     start = time.time()
-    ranking = ranking_multigraph(all_paths, mapping, f"{dataset_config['path']}/{dataset_config['base_table_name']}",
-                                 dataset_config["label_column"],
-                                 dataset_config['join_result_folder_path'])
-    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][2]))
+    # ranking = ranking_multigraph(all_paths, mapping, f"{dataset_config['path']}/{dataset_config['base_table_name']}",
+    #                              dataset_config["label_column"],
+    #                              dataset_config['join_result_folder_path'])
+    # sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][2]))
+    ranking = start_ranking(dataset_config['id'], target_column, all_paths)
+    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0]))
     end = time.time()
     join_time = end - start
 
-    base_table_features = pd.read_csv(f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
-                                      engine="python",
-                                      encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
+    base_table_features = pd.read_csv(
+        # f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+        dataset_config['id'],
+        engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
         columns=[target_column]).columns
     top_1 = list(sorted_ranking.keys())[0]
-    join_path, features, score = sorted_ranking[top_1]
+    # join_path, features, score = sorted_ranking[top_1]
+    score, features = sorted_ranking[top_1]
+    join_path = _get_join_path(top_1)
 
     ### CASE 1: KEEP THE ENTIRE PATH
     print(f"Processing case 1: Keep the entire path")
     joined_df = pd.read_csv(
-        join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+        # join_path,
+        f"../{JOIN_RESULT_FOLDER}/{join_path}",
+        header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
     )
     X, y = prepare_data_for_ml(joined_df, target_column)
     training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = _hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
         entry = {
             "approach": "all-in-path",
-            "dataset": top_1,
+            "data_path": top_1,
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -83,10 +90,10 @@ def tfd_results(dataset_config):
     X, y = prepare_data_for_ml(aux_df, target_column)
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
-        accuracy, max_depth, feature_importances, train_time = _hp_tune_join_all(X, y, training_fun)
+        accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
         entry = {
             "approach": "best-ranked",
-            "dataset": top_1,
+            "data_path": top_1,
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -103,13 +110,17 @@ def tfd_results(dataset_config):
 
 
 def arda_results(dataset_config):
-    print(f'======== Dataset: {dataset_config["path"]} ========')
+    print(f'======== ARDA Dataset: {dataset_config["path"]} ========')
+    results = []
+
     start = time.time()
-    dataset_df = _join_all(dataset_config["path"])
+    # dataset_df = _join_all(dataset_config["path"])
+    dataset_df = join_all(dataset_config['id'])
     end = time.time()
     join_time = end - start
 
-    label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    # label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    label_column = dataset_config['label_column']
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
     print(X.shape)
     if X.shape[0] > 10000:
@@ -123,8 +134,23 @@ def arda_results(dataset_config):
     end = time.time()
     fs_time = end - start
 
+    if len(indices) == 0:
+        entry = {
+            "approach": "arda",
+            "data_path": dataset_config["path"],
+            "algorithm": None,
+            "depth": 0,
+            "accuracy": 0,
+            "join_time": join_time,
+            "train_time": 0,
+            "total_time": join_time + 0 + fs_time,
+            "feature_importances": 0,
+            "fs_time": fs_time,
+        }
+        results.append(entry)
+        return results
+
     training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
-    results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
         accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(
@@ -132,7 +158,7 @@ def arda_results(dataset_config):
         )
         entry = {
             "approach": "arda",
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -150,9 +176,10 @@ def arda_results(dataset_config):
 
 
 def non_aug_results(dataset_config):
-    print(f'======== Dataset: {dataset_config["path"]} ========')
+    print(f'======== NON-AUG Dataset: {dataset_config["path"]} ========')
     dataset_df = pd.read_csv(
-        f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+        # f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+        dataset_config['id'],
         engine="python",
         encoding="utf8",
         quotechar='"',
@@ -170,7 +197,7 @@ def non_aug_results(dataset_config):
         )
         entry = {
             "approach": "non-aug",
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -186,12 +213,22 @@ def non_aug_results(dataset_config):
     return results
 
 
+def _get_join_path(path: str):
+    # Path looks like table_source/table_name/key--table_source...
+    # Join path looks like table_source--table_name--table_source...
+
+    path_tokens = path.split("--")
+    join_path_tokens = ["--".join(token.split('/')[:-1]) for token in path_tokens]
+    return "--".join(join_path_tokens)
+
+
 def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str):
     data = {}
     # 0. Get the baseline params
     print(f"Processing case 0: Baseline")
     base_table_df = pd.read_csv(
-        os.path.join(folder_name, "../", base_table_name),
+        # os.path.join(folder_name, "../", base_table_name),
+        base_table_name,
         header=0,
         engine="python",
         encoding="utf8",
@@ -199,24 +236,28 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         escapechar="\\",
     )
     X, y = prepare_data_for_ml(base_table_df, target_column)
-    acc_b, params_b, _ = train_CART(X, y)
+    acc_b, params_b, _, _, _ = train_CART(X, y)
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
 
     for path in ranking.keys():
-        join_path, features, score = ranking[path]
+        # join_path, features, score = ranking[path]
+        score, features = ranking[path]
+        join_path = _get_join_path(path)
 
         if score == math.inf:
             continue
 
         result = {"base-table": (acc_b, params_b["max_depth"])}
         joined_df = pd.read_csv(
-            join_path, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+            # join_path,
+            f"../{JOIN_RESULT_FOLDER}/{join_path}",
+            header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
-        # Three type of experiments
+        # Two type of experiments
         # 1. Keep the entire path
         print(f"Processing case 1: Keep the entire path")
         X, y = prepare_data_for_ml(joined_df, target_column)
-        acc, params, _ = train_CART(X, y)
+        acc, params, _, _, _ = train_CART(X, y)
         result["keep-all"] = (acc, params["max_depth"])
         print(X.columns)
         print(result)
@@ -335,14 +376,15 @@ def _hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
 
 
 def join_all_results(dataset_config, do_feature_selection=False):
-    print(f'======== Dataset: {dataset_config["path"]} ========')
+    print(f'======== JOIN-ALL Dataset: {dataset_config["path"]} ========')
     start = time.time()
-    dataset_df = _join_all(dataset_config["path"])
+    # dataset_df = _join_all(dataset_config["path"])
+    dataset_df = join_all(dataset_config['id'])
     end = time.time()
     join_time = end - start
-    # do_sfs = True
 
-    label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    # label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
+    label_column = dataset_config['label_column']
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
 
     if do_feature_selection:
@@ -350,7 +392,7 @@ def join_all_results(dataset_config, do_feature_selection=False):
         training_funs = {"CART": train_CART, "XGBoost": train_XGBoost}
     else:
         training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
-    # training_funs = {"XGBoost": train_XGBoost}
+
     results = []
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
@@ -365,7 +407,7 @@ def join_all_results(dataset_config, do_feature_selection=False):
 
         entry = {
             "approach": approach,
-            "dataset": dataset_config["path"],
+            "data_path": dataset_config["path"],
             "algorithm": model_name,
             "depth": max_depth,
             "accuracy": accuracy,
@@ -391,8 +433,8 @@ def run_all_experiments(dataset_config):
     all_results += best_ranked
     arda = arda_results(dataset_config)
     all_results += arda
-    join_all = join_all_results(dataset_config)
-    all_results += join_all
+    join_all_r = join_all_results(dataset_config)
+    all_results += join_all_r
     join_all_fs = join_all_results(dataset_config, True)
     all_results += join_all_fs
 
@@ -400,16 +442,19 @@ def run_all_experiments(dataset_config):
 
 
 if __name__ == "__main__":
-    dataset_configs = [
-        getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
-    ]
+    # dataset_configs = [
+    #     getattr(Datasets, entry) for entry in dir(Datasets) if not entry.startswith("__")
+    # ]
+
+    dataset_configs = Datasets.titanic_data
 
     # There are 7 datasets
     pool_size = min(multiprocessing.cpu_count(), 6)
 
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
-        results = p.map(run_all_experiments, dataset_configs)
+    # with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+    #     results = p.map(run_all_experiments, dataset_configs)
 
-    flattened_results = [entry for sub_list in results for entry in sub_list]
-    results_df = pd.DataFrame(flattened_results)
+    results = run_all_experiments(dataset_configs)
+    # flattened_results = [entry for sub_list in results for entry in sub_list]
+    results_df = pd.DataFrame(results)
     results_df.to_csv("ranking_func_results.csv", index=False)

@@ -1,16 +1,122 @@
-import json
 import math
 import os
 import statistics
 
 import pandas as pd
 
-from data_preparation.join_data import prune_or_join
+from data_preparation.join_data import prune_or_join, prune_or_join_2
 from feature_selection.util_functions import compute_correlation, compute_relevance_redundancy
-from utils.file_naming_convention import MAPPING_FOLDER, MAPPING
-from utils.util_functions import normalize_dict_values, get_elements_higher_than_value
+from utils.file_naming_convention import JOIN_RESULT_FOLDER
+from utils.neo4j_utils import get_node_by_source_name, get_node_by_id
+from utils.util_functions import normalize_dict_values, get_elements_higher_than_value, transform_node_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
+
+
+def start_ranking(base_table_id: str, target_column: str, all_paths: dict):
+    base_table_features = list(
+        pd.read_csv(base_table_id, header=0, engine="python", encoding="utf8", quotechar='"',
+                    escapechar='\\', nrows=1).drop(columns=[target_column]).columns)
+    path = []
+    ranked_paths = {}
+    joined_tables = {}
+    visited = set()
+    ranking_recursion(base_table_id, base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+    print(ranked_paths)
+    return ranked_paths
+
+
+def ranking_recursion(base_table_id: str, base_table_features: list, target_column: str, all_paths: dict, path: list, ranked_paths: dict, joined_tables: dict, visited):
+    base_table_node = get_node_by_source_name(base_table_id)
+    features = [transform_node_to_dict(node) for node in base_table_node if not node.get('name') == target_column]
+
+    for column in features:
+        # TODO: replace paths with pathlib
+        if column['id'] not in all_paths:
+            continue
+
+        print(f"Column: {column['label']}")
+        visited.add(column['source_name'])
+        for related_column in all_paths[column['id']]:
+            node = get_node_by_id(related_column)
+            related_node = transform_node_to_dict(node)
+
+            if related_node['source_name'] in visited:
+                continue
+
+            print(f"\tRelated to: {related_node['label']}")
+            ranked_path = ranking_func_2(column, related_node, base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+            if ranked_path:
+                ranked_paths.update(ranked_path)
+                visited.remove(related_node['source_name'])
+        if column['label'] in path:
+            path.remove(column['label'])
+    print(f"Processed all columns of table: {base_table_id}")
+    return path
+
+
+def ranking_func_2(left_node, right_node, base_table_features, target_column, all_paths, path: list, ranked_paths, joined_tables: dict, visited):
+    if left_node['label'] not in path:
+        path.append(left_node['label'])
+    selected_features = []
+    left_path = left_node['source_path']
+    left_node_name = left_node['source_name']
+
+    # If we already joined the tables on the path, we retrieve the join result
+    if "--".join(path) in joined_tables:
+        partial_join_path, selected_features = joined_tables["--".join(path)]
+        left_path = partial_join_path
+        left_node_name = partial_join_path.partition(f"../{JOIN_RESULT_FOLDER}/")[2]
+        print(f"\t\tPartial join: {partial_join_path}")
+
+    # Recursion logic
+    # 1. Join existing left table with the current table visiting
+    join_result_name = f"{left_node_name}--{right_node['source_name']}".replace("/", "--")
+    result = prune_or_join_2(left_path, right_node['source_path'], left_node['name'], right_node['name'],
+                             join_result_name)
+    if result is None:
+        return None
+
+    joined_path, joined_df, left_table_df = result
+
+    # Get the features from base table excluding target
+    left_table_features = list(left_table_df.drop(columns=[target_column]).columns)
+    join_table_features = list(joined_df.drop(columns=[target_column]).columns)
+    features_right = [feat for feat in join_table_features if feat not in left_table_features]
+
+    # 2. Select dependent features
+    dependent_features_scores = compute_correlation(left_table_features, joined_df, target_column)
+
+    # 3. Compute the scores of the new features
+    # Case 1: Foreign features vs selected features
+    foreign_features_scores_1 = compute_relevance_redundancy(selected_features + base_table_features,
+                                                             features_right,
+                                                             joined_df, target_column)
+
+    # 4. Select only the top uncorrelated features which are in the dependent features list
+    score, features = _compute_ranking_score(dependent_features_scores, foreign_features_scores_1)
+    print(f"Path score: {score} and selected features\n\t{features}")
+    # TODO: Future work
+    # # Case 2: Foreign features vs base table features only
+    # foreign_features_scores_2 = select_uncorrelated_with_selected(base_table_features, features_right,
+    #                                                               joined_df, target_column)
+    #
+    # # 4. Select only the top uncorrelated features which are in the dependent features list
+    # score_2, features_2 = _compute_ranking_score(dependent_features_scores, foreign_features_scores_2)
+
+    # 5. Save the join for future reference/usage
+    # features, score = (features_1, score_1) if score_1 < score_2 else (features_2, score_2)
+    path_copy = path.copy()
+    path_copy.append(right_node['label'])
+    joined_tables["--".join(path_copy)] = (joined_path, selected_features + features)
+
+    print(f"Initiating recursion for {right_node['label']}")
+    path = ranking_recursion(right_node['source_path'], base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+    print(f"Exiting recursion with {path} \n\tscore: {score}")
+    path.pop()
+    rank = {"--".join(path_copy): (score, features)}
+
+    return rank
 
 
 def ranking_multigraph(all_paths, mapping, base_table_root_path, target_column, join_result_folder_path):

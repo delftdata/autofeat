@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from augmentation.pipeline import prepare_data_for_ml
+from utils.util_functions import prepare_data_for_ml
 from augmentation.train_algorithms import train_CART
 from utils.util_functions import get_top_k_from_dict
 

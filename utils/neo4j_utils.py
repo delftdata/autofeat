@@ -4,6 +4,7 @@ from utils import relation_types
 
 driver = GraphDatabase.driver(
     f"neo4j://localhost:7687", auth=("neo4j", "pass")
+    # f"neo4j://neo4j:7687", auth=("neo4j", "pass")
 )
 
 
@@ -38,9 +39,9 @@ def create_node(source, source_path, label):
     return node
 
 
-def create_relation(from_node_id, to_node_id, relation_name):
+def create_relation(from_node_id, to_node_id, relation_name, weight=1):
     with driver.session() as session:
-        relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name)
+        relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name, weight)
     return relation
 
 
@@ -52,21 +53,25 @@ def create_relation_with_path(from_node_id, to_node_id, path_name_a, path_name_b
     return relation
 
 
-def merge_nodes_relation(a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight=1):
+def merge_nodes_relation(a_name, b_name, table_name, table_path, rel_name, weight=1):
     with driver.session() as session:
-        result = session.write_transaction(_merge_nodes_relation, a_id, a_label, a_source_name, b_id, b_label,
-                                           b_source_name, weight)
+        result = session.write_transaction(_merge_nodes_relation, a_name, b_name, table_name, table_path, rel_name,
+                                           weight)
     return result
 
 
-def _merge_nodes_relation(tx, a_id, a_label, a_source_name, b_id, b_label, b_source_name, weight):
-    tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, source_name: $a_source_name}) "
-                       "merge (b:Node {id: $b_id, label: $b_label, source_name: $b_source_name}) "
-                       "merge (a)-[r:RELATED]-(b) "
+def _merge_nodes_relation(tx, a_name, b_name, table_name, table_path, rel_name, weight):
+    a_id = f"{table_path}/{a_name}"
+    b_id = f"{table_path}/{b_name}"
+    a_label = f"{table_name}/{a_name}"
+    b_label = f"{table_name}/{b_name}"
+    tx_result = tx.run("merge (a:Node {id: $a_id, label: $a_label, name: $a_name, source_name: $source_name, source_path: $source_path}) "
+                       "merge (b:Node {id: $b_id, label: $b_label, name: $b_name, source_name: $source_name, source_path: $source_path}) "
+                       f"merge (a)-[r:{rel_name}]-(b) "
                        "on match set (case when r.weight < $weight then r end).weight = $weight "
                        "on create set r.weight = $weight "
-                       "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label,
-                       a_source_name=a_source_name, b_source_name=b_source_name, weight=weight)
+                       "return r as relation", a_id=a_id, b_id=b_id, a_label=a_label, b_label=b_label, a_name=a_name,
+                       b_name=b_name, source_name=table_name, source_path=table_path, weight=weight)
 
     record = tx_result.single()
     if not record:
@@ -132,11 +137,13 @@ def _create_subsumption_relation(tx, source):
     return result
 
 
-def _create_relation(tx, a_id, b_id, relation_name):
+def _create_relation(tx, a_id, b_id, relation_name, weight):
     tx_result = tx.run("MATCH (a:Node {id: $a_id}) WITH a "
                        "MATCH (b:Node {id: $b_id}) "
-                       f"MERGE (a)-[r:{relation_name}]->(b) "
-                       "RETURN r as relation", a_id=a_id, b_id=b_id)
+                       f"MERGE (a)-[r:{relation_name}]-(b) "
+                       "on match set (case when r.weight < $weight then r end).weight = $weight "
+                       "on create set r.weight = $weight "
+                       "RETURN r as relation", a_id=a_id, b_id=b_id, weight=weight)
 
     result = []
     for record in tx_result:
@@ -225,7 +232,7 @@ def _enumerate_all_paths(tx, name):
                        "MATCH (source:Node) WHERE id(source) = sourceNodeId "
                        "MATCH (target:Node) WHERE id(target) = targetNodeId "
                        "WITH source, target, distance WHERE source <> target "
-                       "RETURN source.label AS source, target.label AS target, distance "
+                       "RETURN source.id AS source, target.id AS target, distance "
                        "ORDER BY distance ASC, source ASC, target ASC")
     values = []
     for record in tx_result:
@@ -251,3 +258,50 @@ def get_relation_properties(from_id, to_id):
         result = session.write_transaction(_get_relation_properties, from_id, to_id)
 
     return result
+
+
+def get_node_by_id(node_id):
+    with driver.session() as session:
+        result = session.write_transaction(_get_node_by_id, node_id)
+
+    return result
+
+
+def _get_node_by_id(tx, node_id):
+    result = tx.run("match (n {id: $node_id}) return n as node", node_id=node_id)
+    record = result.single()
+    if not record:
+        return None
+    return record['node']
+
+
+def get_node_by_source_name(source_name):
+    with driver.session() as session:
+        result = session.write_transaction(_get_node_by_source_name, source_name)
+
+    return result
+
+
+def _get_node_by_source_name(tx, source_name):
+    tx_result = tx.run("match (n {source_path: $source_name}) return n as node", source_name=source_name)
+    result = []
+    for record in tx_result:
+        result.append(record['node'])
+    return result
+
+
+def get_pk_fk_nodes(source_path):
+    with driver.session() as session:
+        result = session.write_transaction(_get_pk_fk_nodes, source_path)
+    return result
+
+
+def _get_pk_fk_nodes(tx, source_path):
+    tx_result = tx.run("match (n {source_path: $source_path})-[r:RELATED {weight: 1}]-(m) "
+                       "return n, m", source_path=source_path)
+
+    values = []
+    for record in tx_result:
+        values.append(record.values())
+    return values
+
