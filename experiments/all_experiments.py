@@ -112,6 +112,13 @@ def tfd_results(dataset_config):
 def arda_results(dataset_config):
     print(f'======== ARDA Dataset: {dataset_config["path"]} ========')
     results = []
+    target_column = dataset_config['label_column']
+
+    base_table_features = pd.read_csv(
+        # f"../{dataset_config['path']}/{dataset_config['base_table_name']}",
+        dataset_config['id'],
+        engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
+        columns=[target_column]).columns
 
     start = time.time()
     # dataset_df = _join_all(dataset_config["path"])
@@ -120,8 +127,7 @@ def arda_results(dataset_config):
     join_time = end - start
 
     # label_column = _suffix_column(dataset_config["label_column"], dataset_config["base_table_name"])
-    label_column = dataset_config['label_column']
-    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=label_column)
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
     print(X.shape)
     if X.shape[0] > 10000:
         _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
@@ -130,7 +136,7 @@ def arda_results(dataset_config):
     start = time.time()
     T = np.arange(0.0, 1.0, 0.1)
     indices = wrapper_algo(X, y, T)
-    fs_X = X.iloc[:, indices]
+    fs_X = X.iloc[:, indices].columns
     end = time.time()
     fs_time = end - start
 
@@ -150,11 +156,16 @@ def arda_results(dataset_config):
         results.append(entry)
         return results
 
+    columns_to_drop = [
+        c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
+    ]
+    X.drop(columns=columns_to_drop, inplace=True)
+
     training_funs = {"CART": train_CART, "ID3": train_ID3, "XGBoost": train_XGBoost}
     for model_name, training_fun in training_funs.items():
         print(f"==== Model Name: {model_name} ====")
         accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(
-            fs_X, y, training_fun, False
+            X, y, training_fun, False
         )
         entry = {
             "approach": "arda",
