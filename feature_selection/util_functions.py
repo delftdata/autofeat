@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 from ITMO_FS.utils.information_theory import matrix_mutual_information
 
+from data_preparation.utils import prepare_data_for_ml
 from experiments.understand_cife import measure_conditional_dependency, measure_relevance
 from feature_selection.feature_selection_algorithms import FSAlgorithms
-from utils.util_functions import prepare_data_for_ml, get_elements_higher_than_value
+from utils.util_functions import get_elements_higher_than_value
 
 
 def apply_feat_sel(joined_df, base_table_df, target_column, path):

@@ -1,33 +1,27 @@
-import json
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 
 from arda.arda import wrapper_algo
-from augmentation.ranking import start_ranking
+from augmentation.ranking import Ranking
+from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import join_all
-from experiments.all_experiments import _get_join_path
-from experiments.config import Datasets
-from utils.file_naming_convention import MAPPING_FOLDER, ENUMERATED_PATHS, JOIN_RESULT_FOLDER
-from utils.util_functions import prepare_data_for_ml
+from data_preparation.utils import prepare_data_for_ml, _get_join_path
+from experiments.datasets import Datasets
+from utils.file_naming_convention import JOIN_RESULT_FOLDER
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
-def get_paths():
-    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'r') as fp:
-        all_paths = json.load(fp)
-    return all_paths
-
-
 class LearningCurves:
-    def __init__(self, dataset_config):
-        self.dataset_config = dataset_config
+    def __init__(self, dataset: Dataset):
+        self.dataset = dataset
+        self.dataset.set_features()
         self.all_in_path_train_scores = []
         self.all_in_path_test_scores = []
         self.best_ranked_train_scores = []
@@ -35,26 +29,18 @@ class LearningCurves:
         self.arda_train = []
         self.arda_test = []
         self.depth_values = [i for i in range(1, 21)]
-        self.ranking = self._get_ranks()
-
-    def _get_ranks(self):
-        all_paths = get_paths()
-        target_column = self.dataset_config["label_column"]
-        ranking = start_ranking(self.dataset_config['id'], target_column, all_paths)
-        sorted_ranks = dict(sorted(ranking.items(), key=lambda item: item[1][0]))
-        return sorted_ranks
+        self.ranked_paths = Ranking(dataset).start_ranking().ranked_paths
 
     def all_in_path_curves(self):
         print(f'======== All in path Pipeline ========')
-        target_column = self.dataset_config["label_column"]
-        top_1 = list(self.ranking.keys())[0]
+        top_1 = list(self.ranked_paths.keys())[0]
         join_path = _get_join_path(top_1)
 
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
             header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
-        X, y = prepare_data_for_ml(joined_df, target_column)
+        X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
         print(f"All in path features: {X.columns}")
 
@@ -72,14 +58,8 @@ class LearningCurves:
             print(f"Depth {i}:\tTrain acc: {train_acc}\tTest acc: {test_acc}")
 
     def best_ranked_curves(self):
-        target_column = self.dataset_config["label_column"]
-
-        base_table_features = pd.read_csv(
-            self.dataset_config['id'],
-            engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
-            columns=[target_column]).columns
-        top_1 = list(self.ranking.keys())[0]
-        score, features = self.ranking[top_1]
+        top_1 = list(self.ranked_paths.keys())[0]
+        score, features = self.ranked_paths[top_1]
         join_path = _get_join_path(top_1)
 
         joined_df = pd.read_csv(
@@ -88,13 +68,13 @@ class LearningCurves:
         )
 
         aux_features = list(joined_df.columns)
-        aux_features.remove(target_column)
+        aux_features.remove(self.dataset.target_column)
         columns_to_drop = [
-            c for c in aux_features if (c not in base_table_features) and (c not in features)
+            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in features)
         ]
         joined_df.drop(columns=columns_to_drop, inplace=True)
 
-        X, y = prepare_data_for_ml(joined_df, target_column)
+        X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
         print(f"Best ranked features: {X.columns}")
 
@@ -113,15 +93,9 @@ class LearningCurves:
 
     def arda_results(self):
         print(f'======== ARDA Pipeline ========')
-        target_column = self.dataset_config['label_column']
 
-        base_table_features = pd.read_csv(
-            self.dataset_config['id'],
-            engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1).drop(
-            columns=[target_column]).columns
-
-        dataset_df = join_all(self.dataset_config['id'])
-        X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
+        dataset_df = join_all(self.dataset.base_table_id)
+        X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=self.dataset.target_column)
         print(X.shape)
         if X.shape[0] > 10000:
             _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
@@ -134,7 +108,7 @@ class LearningCurves:
 
         fs_X = X.iloc[:, indices].columns
         columns_to_drop = [
-            c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
+            c for c in list(X.columns) if (c not in self.dataset.base_table_features) and (c not in fs_X)
         ]
         X.drop(columns=columns_to_drop, inplace=True)
 
@@ -171,13 +145,12 @@ class LearningCurves:
 
         fig.legend()
         fig.show()
-        fig.savefig(f'../plots/learning-curves-{self.dataset_config["base_table_label"]}.pdf', dpi=300, bbox_inches="tight")
+        fig.savefig(f'../plots/learning-curves-{self.dataset.base_table_label}.pdf', dpi=300, bbox_inches="tight")
 
 
 if __name__ == '__main__':
-    titanic_lc = LearningCurves(Datasets.steel_data)
+    titanic_lc = LearningCurves(Datasets.steel_plate_fault)
     titanic_lc.all_in_path_curves()
     titanic_lc.best_ranked_curves()
     titanic_lc.arda_results()
     titanic_lc.plot_curves()
-
