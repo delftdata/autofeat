@@ -21,12 +21,16 @@ def start_ranking(base_table_id: str, target_column: str, all_paths: dict):
     ranked_paths = {}
     joined_tables = {}
     visited = set()
-    ranking_recursion(base_table_id, base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+    ranking_recursion(base_table_id, base_table_features, target_column, all_paths, path, ranked_paths, joined_tables,
+                      visited)
     print(ranked_paths)
-    return ranked_paths
+    sorted_ranking = dict(sorted(ranked_paths.items(), key=lambda item: -item[1][0]))
+
+    return sorted_ranking
 
 
-def ranking_recursion(base_table_id: str, base_table_features: list, target_column: str, all_paths: dict, path: list, ranked_paths: dict, joined_tables: dict, visited):
+def ranking_recursion(base_table_id: str, base_table_features: list, target_column: str, all_paths: dict, path: list,
+                      ranked_paths: dict, joined_tables: dict, visited):
     base_table_node = get_node_by_source_name(base_table_id)
     features = [transform_node_to_dict(node) for node in base_table_node if not node.get('name') == target_column]
 
@@ -45,7 +49,8 @@ def ranking_recursion(base_table_id: str, base_table_features: list, target_colu
                 continue
 
             print(f"\tRelated to: {related_node['label']}")
-            ranked_path = ranking_func_2(column, related_node, base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+            ranked_path = ranking_func_2(column, related_node, base_table_features, target_column, all_paths, path,
+                                         ranked_paths, joined_tables, visited)
             if ranked_path:
                 ranked_paths.update(ranked_path)
                 visited.remove(related_node['source_name'])
@@ -55,7 +60,8 @@ def ranking_recursion(base_table_id: str, base_table_features: list, target_colu
     return path
 
 
-def ranking_func_2(left_node, right_node, base_table_features, target_column, all_paths, path: list, ranked_paths, joined_tables: dict, visited):
+def ranking_func_2(left_node, right_node, base_table_features, target_column, all_paths, path: list, ranked_paths,
+                   joined_tables: dict, visited):
     if left_node['label'] not in path:
         path.append(left_node['label'])
     selected_features = []
@@ -90,8 +96,8 @@ def ranking_func_2(left_node, right_node, base_table_features, target_column, al
     # 3. Compute the scores of the new features
     # Case 1: Foreign features vs selected features
     foreign_features_scores_1 = compute_relevance_redundancy(selected_features + base_table_features,
-                                                             features_right,
-                                                             joined_df, target_column)
+                                                                      features_right,
+                                                                      joined_df, target_column)
 
     # 4. Select only the top uncorrelated features which are in the dependent features list
     score, features = _compute_ranking_score(dependent_features_scores, foreign_features_scores_1)
@@ -111,10 +117,11 @@ def ranking_func_2(left_node, right_node, base_table_features, target_column, al
     joined_tables["--".join(path_copy)] = (joined_path, selected_features + features)
 
     print(f"Initiating recursion for {right_node['label']}")
-    path = ranking_recursion(right_node['source_path'], base_table_features, target_column, all_paths, path, ranked_paths, joined_tables, visited)
+    path = ranking_recursion(right_node['source_path'], base_table_features, target_column, all_paths, path,
+                             ranked_paths, joined_tables, visited)
     print(f"Exiting recursion with {path} \n\tscore: {score}")
     path.pop()
-    rank = {"--".join(path_copy): (score, features)}
+    rank = {"--".join(path_copy): (score, features + selected_features)}
 
     return rank
 
@@ -212,22 +219,23 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, v
     return path
 
 
-def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.2) -> tuple:
+def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.5) -> tuple:
     # Create dataframe and normalise the data
-    normalised_dfs = normalize_dict_values(dependent_features_scores)
+    # normalised_dfs = normalize_dict_values(dependent_features_scores)
     normalised_ffs = normalize_dict_values(foreign_features_scores)
 
     # Compute a score for each feature based on the dependent score and the foreign feature score
-    feat_scores = {feat: normalised_dfs[feat] + normalised_ffs[feat] for feat in foreign_features_scores.keys() if
-                   feat in dependent_features_scores}
+    # feat_scores = {feat: normalised_dfs[feat] + normalised_ffs[feat]
+    feat_scores = {feat: 2 * dependent_features_scores[feat] + normalised_ffs[feat]
+                   for feat in normalised_ffs.keys() if feat in dependent_features_scores}
 
-    normalised_fs = normalize_dict_values(feat_scores)
+    # normalised_fs = normalize_dict_values(feat_scores)
     # Sort the features ascending based on the score
-    normalised_fs = dict(sorted(normalised_fs.items(), key=lambda item: item[1], reverse=True))
-    print(f"Normalised score on features:\n\t{normalised_fs}")
-    selected_features = get_elements_higher_than_value(normalised_fs, threshold)
-    ns = normalize_dict_values(selected_features)
+    # print(f"Normalised score on features:\n\t{normalised_fs}")
+    selected_features = get_elements_higher_than_value(feat_scores, threshold)
+    selected_features = dict(sorted(selected_features.items(), key=lambda item: item[1], reverse=True))
+    # ns = normalize_dict_values(selected_features)
     # Assign a score to each join path for ranking
-    score = statistics.mean(ns.values()) if ns else -math.inf
+    score = statistics.mean(selected_features.values()) if selected_features else -math.inf
 
     return score, list(selected_features.keys())

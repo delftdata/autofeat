@@ -63,9 +63,9 @@ def pipeline_multigraph(data: dict, prepare_data=False, test_ranking=False):
     with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'r') as fp:
         all_paths = json.load(fp)
 
-    ranking = start_ranking(base_table_id, target_column, all_paths)
+    sorted_ranking = start_ranking(base_table_id, target_column, all_paths)
     # ranking = ranking_multigraph(all_paths, mapping, f"{path}/{base_table_name}", target_column, join_result_folder_path)
-    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0]))
+    # sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0], reverse=True))
     print(sorted_ranking)
 
     with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{RANKING_FUNCTION}", 'w') as fp:

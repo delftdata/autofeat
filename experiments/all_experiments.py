@@ -38,7 +38,8 @@ def tfd_results(dataset_config):
     #                              dataset_config['join_result_folder_path'])
     # sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][2]))
     ranking = start_ranking(dataset_config['id'], target_column, all_paths)
-    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0]))
+    # TODO: Save ranking
+    sorted_ranking = dict(sorted(ranking.items(), key=lambda item: item[1][0], reverse=True))
     end = time.time()
     join_time = end - start
 
@@ -140,22 +141,6 @@ def arda_results(dataset_config):
     end = time.time()
     fs_time = end - start
 
-    if len(indices) == 0:
-        entry = {
-            "approach": "arda",
-            "data_path": dataset_config["path"],
-            "algorithm": None,
-            "depth": 0,
-            "accuracy": 0,
-            "join_time": join_time,
-            "train_time": 0,
-            "total_time": join_time + 0 + fs_time,
-            "feature_importances": 0,
-            "fs_time": fs_time,
-        }
-        results.append(entry)
-        return results
-
     columns_to_drop = [
         c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
     ]
@@ -246,8 +231,8 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         quotechar='"',
         escapechar="\\",
     )
-    X, y = prepare_data_for_ml(base_table_df, target_column)
-    acc_b, params_b, _, _, _ = train_CART(X, y)
+    X_b, y = prepare_data_for_ml(base_table_df, target_column)
+    acc_b, params_b, feature_imp_b, _, _ = train_CART(X_b, y)
     base_table_features = list(base_table_df.drop(columns=[target_column]).columns)
 
     for path in ranking.keys():
@@ -258,7 +243,11 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         if score == math.inf:
             continue
 
-        result = {"base-table": (acc_b, params_b["max_depth"])}
+        result = {"base-table": {
+            "accuracy": acc_b,
+            "max_depth": params_b["max_depth"],
+            "feature_importances": _map_features_scores(feature_imp_b, X_b)
+        }}
         joined_df = pd.read_csv(
             # join_path,
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
@@ -268,8 +257,12 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         # 1. Keep the entire path
         print(f"Processing case 1: Keep the entire path")
         X, y = prepare_data_for_ml(joined_df, target_column)
-        acc, params, _, _, _ = train_CART(X, y)
-        result["keep-all"] = (acc, params["max_depth"])
+        acc, params, feature_imp, _, _ = train_CART(X, y)
+        result["keep-all"] = {
+            "accuracy": acc,
+            "max_depth": params["max_depth"],
+            "feature_importances": _map_features_scores(feature_imp, X)
+        }
         print(X.columns)
         print(result)
 
@@ -284,12 +277,17 @@ def verify_ranking_func(ranking: dict, base_table_name: str, target_column: str)
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, target_column)
-        acc, params, _, _, _ = train_CART(X, y)
-        result["keep-all-but-ranked"] = (acc, params["max_depth"])
+        acc, params, feature_imp, _, _ = train_CART(X, y)
+        result["keep-all-but-ranked"] = {
+            "accuracy": acc,
+            "max_depth": params["max_depth"],
+            "feature_importances":  _map_features_scores(feature_imp, X)
+        }
         print(X.columns)
         print(result)
-        data[path] = {"features": features}
-        data[path].update(result)
+        data[path] = result
+        # data[path] = {"features": features}
+        # data[path].update(result)
 
     return data
 
@@ -369,6 +367,18 @@ def _join_all(data_path: str) -> pd.DataFrame:
     joined_df.drop(columns=columns_to_drop, inplace=True)
 
     return joined_df
+
+
+def _map_features_scores(feature_importances, X):
+    final_feature_importances = (
+        dict(zip(X.columns, feature_importances)) if len(feature_importances) > 0 else {}
+    )
+    final_feature_importances = {
+        feature: importance
+        for feature, importance in final_feature_importances.items()
+        if importance > 0
+    }
+    return final_feature_importances
 
 
 def _hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):

@@ -55,8 +55,8 @@ class LearningCurves:
             header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
         X, y = prepare_data_for_ml(joined_df, target_column)
-        print(f"All in path features: {X.columns}")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
+        print(f"All in path features: {X.columns}")
 
         for i in self.depth_values:
             decision_tree = tree.DecisionTreeClassifier(max_depth=i)
@@ -94,9 +94,9 @@ class LearningCurves:
         ]
         joined_df.drop(columns=columns_to_drop, inplace=True)
 
-        print(f"Best ranked features: {joined_df.columns}")
         X, y = prepare_data_for_ml(joined_df, target_column)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
+        print(f"Best ranked features: {X.columns}")
 
         for i in self.depth_values:
             decision_tree = tree.DecisionTreeClassifier(max_depth=i)
