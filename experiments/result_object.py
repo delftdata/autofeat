@@ -1,11 +1,11 @@
 
 class Result:
-    TFD_PATH = "tfd-path"
-    TFD = 'tfd'
-    ARDA = 'arda'
-    JOIN_ALL = "join-all"
-    JOIN_ALL_FS = "join-all-fs"
-    BASE = "base-table"
+    TFD_PATH = "TFD_PATH"
+    TFD = 'TFD'
+    ARDA = 'ARDA'
+    JOIN_ALL = "TFD_JOIN_ALL"
+    JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
+    BASE = "BASE"
 
     def __init__(self, approach, data_path, dataset_label, algorithm, join_time=None):
         self.approach = approach
@@ -19,6 +19,16 @@ class Result:
         self.accuracy = None
         self.train_time = None
         self.feature_importance = None
+        self.cutoff_threshold = None
+        self.redundancy_threshold = None
+
+    def set_cutoff_threshold(self, cutoff_threshold):
+        self.cutoff_threshold = cutoff_threshold
+        return self
+
+    def set_redundancy_threshold(self, redundancy_threshold):
+        self.redundancy_threshold = redundancy_threshold
+        return self
 
     def set_depth(self, depth):
         self.depth = depth

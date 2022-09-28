@@ -1,17 +1,15 @@
 import os
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-from arda.arda import wrapper_algo
+import arda.arda
 from augmentation.ranking import Ranking
 from data_preparation.dataset_base import Dataset
-from data_preparation.join_data import join_all
-from data_preparation.utils import prepare_data_for_ml, _get_join_path
+from data_preparation.utils import prepare_data_for_ml, get_join_path
 from experiments.datasets import Datasets
 from utils.file_naming_convention import JOIN_RESULT_FOLDER
 
@@ -19,7 +17,7 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 class LearningCurves:
-    def __init__(self, dataset: Dataset):
+    def __init__(self, dataset: Dataset, ranked_paths=None):
         self.dataset = dataset
         self.dataset.set_features()
         self.all_in_path_train_scores = []
@@ -29,12 +27,15 @@ class LearningCurves:
         self.arda_train = []
         self.arda_test = []
         self.depth_values = [i for i in range(1, 21)]
-        self.ranked_paths = Ranking(dataset).start_ranking().ranked_paths
+        self.ranked_paths = ranked_paths if ranked_paths is not None else self.set_ranked_paths()
+
+    def set_ranked_paths(self):
+        return Ranking(self.dataset).start_ranking().ranked_paths
 
     def all_in_path_curves(self):
         print(f'======== All in path Pipeline ========')
         top_1 = list(self.ranked_paths.keys())[0]
-        join_path = _get_join_path(top_1)
+        join_path = get_join_path(top_1)
 
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
@@ -60,7 +61,7 @@ class LearningCurves:
     def best_ranked_curves(self):
         top_1 = list(self.ranked_paths.keys())[0]
         score, features = self.ranked_paths[top_1]
-        join_path = _get_join_path(top_1)
+        join_path = get_join_path(top_1)
 
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
@@ -94,23 +95,8 @@ class LearningCurves:
     def arda_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        dataset_df = join_all(self.dataset.base_table_id)
-        X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=self.dataset.target_column)
-        print(X.shape)
-        if X.shape[0] > 10000:
-            _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
-        print(X.shape)
-
-        T = np.arange(0.0, 1.0, 0.1)
-        indices = wrapper_algo(X, y, T)
-        if len(indices) == 0:
-            return
-
-        fs_X = X.iloc[:, indices].columns
-        columns_to_drop = [
-            c for c in list(X.columns) if (c not in self.dataset.base_table_features) and (c not in fs_X)
-        ]
-        X.drop(columns=columns_to_drop, inplace=True)
+        X, y, _, _ = arda.arda.select_features(self.dataset.base_table_id, self.dataset.target_column,
+                                               self.dataset.base_table_features)
 
         print(f"ARDA features: {X.columns}")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)

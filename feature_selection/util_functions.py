@@ -5,7 +5,7 @@ from ITMO_FS.utils.information_theory import matrix_mutual_information
 from data_preparation.utils import prepare_data_for_ml
 from experiments.understand_cife import measure_conditional_dependency, measure_relevance
 from feature_selection.feature_selection_algorithms import FSAlgorithms
-from utils.util_functions import get_elements_higher_than_value
+from utils.util_functions import get_elements_higher_than_value, normalize_dict_values
 
 
 def apply_feat_sel(joined_df, base_table_df, target_column, path):
@@ -77,7 +77,7 @@ def compute_correlation(left_table_features: list, joined_df: pd.DataFrame, targ
 
 
 def compute_relevance_redundancy(left_table_features, features_to_compare, joined_df, target_column,
-                                 redundancy_threshold=10):
+                                 redundancy_threshold):
     print(f"Selecting un-correlated features...")
     all_columns = list(joined_df.columns)
     all_columns.remove(target_column)
@@ -95,7 +95,7 @@ def compute_relevance_redundancy(left_table_features, features_to_compare, joine
     scores = fs.feature_selection_foreign_table(fs.CIFE, list(left_features.keys()), list(right_features.keys()), X, y)
     # Map the scores to the columns
     result = dict(zip(list(right_features.values()), scores))
-
+    normalised_result = normalize_dict_values(result)
     # Broke down the metrics from CIFE to understand how the measure works
     # metrics = _understand_metrics(left_features, right_features, X, y)
 
@@ -104,7 +104,7 @@ def compute_relevance_redundancy(left_table_features, features_to_compare, joine
     selected_redundant = get_elements_higher_than_value(redundant_features, redundancy_threshold).keys()
 
     # Sort the scores in ascending order
-    selected_non_redundant = {k: v for k, v in result.items() if k not in selected_redundant}
+    selected_non_redundant = {k: v for k, v in normalised_result.items() if k not in selected_redundant}
     # sorted_result = dict(sorted(selected_non_redundant.items(), key=lambda item: abs(item[1])))
     print(f"CIFE score result:\n\t{selected_non_redundant}")
 

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 import logging
@@ -9,6 +11,10 @@ from sklearn.model_selection import train_test_split
 # n                     the amount of features to generate
 #
 # Return: A matrix of generated random features, where each column represents one feature
+from data_preparation.join_data import join_directly_connected
+from data_preparation.utils import prepare_data_for_ml
+
+
 def gen_features(A, eta):
     L = []
     d = A.shape[1]
@@ -107,3 +113,32 @@ def wrapper_algo(
             last_indices = indices
 
     return last_indices
+
+
+def select_features(base_table_id, target_column, base_table_features):
+    start = time.time()
+    dataset_df = join_directly_connected(base_table_id)
+    end = time.time()
+    join_time = end - start
+
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
+    print(X.shape)
+    if X.shape[0] > 10000:
+        _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
+    print(X.shape)
+
+    start = time.time()
+    T = np.arange(0.0, 1.0, 0.1)
+    indices = wrapper_algo(X, y, T)
+    if len(indices) == 0:
+        return
+    fs_X = X.iloc[:, indices].columns
+    end = time.time()
+    fs_time = end - start
+
+    columns_to_drop = [
+        c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
+    ]
+    X.drop(columns=columns_to_drop, inplace=True)
+
+    return X, y, join_time, fs_time

@@ -6,7 +6,7 @@ import pandas as pd
 from augmentation.data_preparation_pipeline import data_preparation
 from augmentation.ranking import ranking_func, Ranking
 from data_preparation.dataset_base import Dataset
-from experiments.accuracy_experiments import Experiments
+from experiments.accuracy_experiments import AccuracyExperiments
 from experiments.datasets import Datasets
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY, MAPPING_FOLDER
 from utils.util_functions import objects_to_dict
@@ -52,7 +52,7 @@ def pipeline_multigraph(dataset: Dataset, test_ranking=False):
     print(objects_to_dict(ranking.ranked_paths))
 
     if test_ranking:
-        experiments = Experiments(dataset, ranking.ranked_paths).verify_ranking_func()
+        experiments = AccuracyExperiments(dataset, ranking.ranked_paths).verify_ranking_func()
         data = objects_to_dict(experiments.results)
         print(data)
         # pd.DataFrame.from_dict(data).transpose().reset_index().to_csv(f"../{MAPPING_FOLDER}/{RANKING_VERIFY}", index=False)

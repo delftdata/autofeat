@@ -4,16 +4,14 @@ import time
 from pathlib import Path
 from typing import Callable, List
 
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
-from arda.arda import wrapper_algo
+import arda.arda
 from augmentation.rank_object import Rank
 from augmentation.ranking import Ranking
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from data_preparation.join_data import join_all
-from data_preparation.utils import prepare_data_for_ml, _get_join_path
+from data_preparation.utils import prepare_data_for_ml, get_join_path
 from experiments.datasets import Datasets
 from experiments.result_object import Result
 from utils.file_naming_convention import CONNECTIONS, JOIN_RESULT_FOLDER
@@ -22,15 +20,15 @@ from utils.util_functions import objects_to_dict
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
-class Experiments:
+class AccuracyExperiments:
     CART = "CART"
     ID3 = "ID3"
     XGBOOST = "XGBoost"
 
     TRAINING_FUNCTIONS = {CART: train_CART, ID3: train_ID3, XGBOOST: train_XGBoost}
 
-    def __init__(self, dataset, ranked_paths: List[Rank] = None):
-        self.dataset = dataset
+    def __init__(self, data, ranked_paths: List[Rank] = None):
+        self.dataset = data
         self.dataset.set_base_table_df()
         self.results = []
         self.ranked_paths = ranked_paths
@@ -45,23 +43,15 @@ class Experiments:
         self.ranked_paths = tfd_ranking.ranked_paths
 
         top_1 = tfd_ranking.ranked_paths[0]
-        join_path = _get_join_path(top_1.path)
+        join_path = get_join_path(top_1.path)
 
-        ### CASE 1: KEEP THE ENTIRE PATH
         print(f"Processing case 1: Keep the entire path")
         joined_df = pd.read_csv(
-            # join_path,
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
             header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
         X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
-        for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
-            print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.TFD_PATH, top_1.path, self.dataset.base_table_label, model_name, join_time)
-            accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time)
-            self.results.append(entry)
+        self.train_approach(X, y, Result.TFD_PATH, top_1.path, join_time)
 
         print(f"Processing case 2: Remove all, but the ranked feature")
         aux_df = joined_df.copy(deep=True)
@@ -73,67 +63,41 @@ class Experiments:
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
-        for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
-            print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.TFD, top_1.path, self.dataset.base_table_label, model_name, join_time)
-            accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time)
-            self.results.append(entry)
+        self.train_approach(X, y, Result.TFD, top_1.path, join_time)
 
-        print(f"======== Finished dataset ========")
+        print(f"======== Finished TFD Pipeline ========")
 
     def arda_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        start = time.time()
-        dataset_df = join_all(self.dataset.base_table_id)
-        end = time.time()
-        join_time = end - start
+        X, y, join_time, fs_time = arda.arda.select_features(self.dataset.base_table_id, self.dataset.target_column,
+                                                             self.dataset.base_table_features)
+        self.train_approach(X, y, Result.ARDA, self.dataset.base_table_id, join_time, fs_time)
 
-        X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=self.dataset.target_column)
-        print(X.shape)
-        if X.shape[0] > 10000:
-            _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
+        print(f"======== Finished ARDA Pipeline ========")
 
-        start = time.time()
-        T = np.arange(0.0, 1.0, 0.1)
-        indices = wrapper_algo(X, y, T)
-        fs_X = X.iloc[:, indices].columns
-        end = time.time()
-        fs_time = end - start
-
-        columns_to_drop = [
-            c for c in list(X.columns) if (c not in self.dataset.base_table_features) and (c not in fs_X)
-        ]
-        X.drop(columns=columns_to_drop, inplace=True)
-
+    def train_approach(self, X, y, approach, data_path, join_time=None, fs_time=None):
         for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.ARDA, self.dataset.base_table_id, self.dataset.base_table_label, model_name,
+            entry = Result(approach, data_path, self.dataset.base_table_label, model_name,
                            join_time)
-            accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
+            accuracy, max_depth, feature_importances, train_time, ffs_time = _hp_tune_join_all(X, y, training_fun,
+                                                                                               False)
             entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time).set_feature_selection_time(fs_time)
+                feature_importances).set_train_time(train_time)
+            if fs_time:
+                entry.set_feature_selection_time(fs_time)
             self.results.append(entry)
-
-        print(f"======== Finished dataset ========")
 
     def non_aug_results(self):
         print(f'======== NON-AUG Pipeline ========')
+
         if self.dataset.base_table_df is None:
             self.dataset.set_base_table_df()
         X, y = prepare_data_for_ml(dataframe=self.dataset.base_table_df, target_column=self.dataset.target_column)
+        self.train_approach(X, y, Result.BASE, self.dataset.base_table_id)
 
-        for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
-            print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.BASE, self.dataset.base_table_id, self.dataset.base_table_label, model_name)
-            accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time)
-            self.results.append(entry)
-
-        print(f"======== Finished dataset ========")
+        print(f"======== Finished NON-AUG Pipeline ========")
 
     def verify_ranking_func(self):
         # 0. Get the baseline params
@@ -154,7 +118,7 @@ class Experiments:
             self.ranked_paths = tfd_ranking.ranked_paths
 
         for ranked_path in self.ranked_paths:
-            join_path = _get_join_path(ranked_path.path)
+            join_path = get_join_path(ranked_path.path)
 
             if ranked_path.score == math.inf:
                 continue
@@ -335,8 +299,8 @@ def run_all_experiments():
     all_results = []
     all_ranks = []
 
-    for dataset in Datasets.ALL:
-        experiment = Experiments(dataset)
+    for data in Datasets.ALL:
+        experiment = AccuracyExperiments(data)
         experiment.run_all_experiments()
         all_results.extend(objects_to_dict(experiment.results))
         all_ranks.extend(objects_to_dict(experiment.ranked_paths))
@@ -354,11 +318,12 @@ if __name__ == "__main__":
     #     results = p.map(run_all_experiments, dataset_configs)
 
     # results, ranks = run_all_experiments()
-    experiments = Experiments(Datasets.titanic).run_all_experiments()
-    ranks = objects_to_dict(experiments.ranked_paths)
+    dataset = Datasets.football
+    experiments = AccuracyExperiments(dataset).run_all_experiments()
     results = objects_to_dict(experiments.results)
+    ranks = objects_to_dict(experiments.ranked_paths)
     # flattened_results = [entry for sub_list in results for entry in sub_list]
-    label = Datasets.titanic.base_table_label
+    label = dataset.base_table_label
     # label = "all"
     pd.DataFrame(ranks).to_csv(f"ranks_{label}.csv", index=False)
     pd.DataFrame(results).to_csv(f"accuracy_results_{label}.csv", index=False)

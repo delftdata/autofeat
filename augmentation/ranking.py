@@ -8,20 +8,23 @@ import pandas as pd
 from augmentation.rank_object import Rank
 from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import prune_or_join, prune_or_join_2
-from data_preparation.utils import get_paths, _get_path_length
+from data_preparation.utils import get_paths, get_path_length
 from feature_selection.util_functions import compute_correlation, compute_relevance_redundancy
 from utils.file_naming_convention import JOIN_RESULT_FOLDER
 from utils.neo4j_utils import get_node_by_source_name, get_node_by_id
-from utils.util_functions import normalize_dict_values, get_elements_higher_than_value, transform_node_to_dict
+from utils.util_functions import get_elements_higher_than_value, transform_node_to_dict, \
+    objects_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 class Ranking:
-    def __init__(self, dataset: Dataset):
+    def __init__(self, dataset: Dataset, redundancy_threshold=20, cutoff_threshold=0.3):
         self.ranked_paths: List[Rank] = []
         self.joined_tables = {}
         self.dataset = dataset
+        self.redundancy_threshold = redundancy_threshold
+        self.cutoff_threshold = cutoff_threshold
         self.all_paths = get_paths()
 
     def start_ranking(self):
@@ -31,8 +34,8 @@ class Ranking:
             self.dataset.set_features()
         self.ranking_recursion(self.dataset.base_table_id, path, visited)
         self.ranked_paths = sorted(self.ranked_paths,
-                                   key=lambda r: (r.score, len(r.features), -_get_path_length(r.path)), reverse=True)
-        print(self.ranks_to_dict())
+                                   key=lambda r: (r.score, len(r.features), -get_path_length(r.path)), reverse=True)
+        print(objects_to_dict(self.ranked_paths))
         return self
 
     def ranking_recursion(self, base_table_id: str, path: list, visited: set):
@@ -98,10 +101,12 @@ class Ranking:
         # 3. Compute the scores of the new features
         # Case 1: Foreign features vs selected features
         foreign_features_scores_1 = compute_relevance_redundancy(selected_features + self.dataset.base_table_features,
-                                                                 features_right, joined_df, self.dataset.target_column)
+                                                                 features_right, joined_df, self.dataset.target_column,
+                                                                 self.redundancy_threshold)
 
         # 4. Select only the top uncorrelated features which are in the dependent features list
-        score, features = _compute_ranking_score(dependent_features_scores, foreign_features_scores_1)
+        score, features = _compute_ranking_score(dependent_features_scores, foreign_features_scores_1,
+                                                 self.cutoff_threshold)
         print(f"Path score: {score} and selected features\n\t{features}")
         # TODO: Future work
         # # Case 2: Foreign features vs base table features only
@@ -220,23 +225,27 @@ def ranking_func(all_paths: dict, mapping, current_table, target_column, path, v
     return path
 
 
-def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, threshold=0.5) -> tuple:
+def _compute_ranking_score(dependent_features_scores: dict, foreign_features_scores: dict, cutoff_threshold) -> tuple:
     # Create dataframe and normalise the data
     # normalised_dfs = normalize_dict_values(dependent_features_scores)
-    normalised_ffs = normalize_dict_values(foreign_features_scores)
+    # normalised_ffs = normalize_dict_values(foreign_features_scores)
 
     # Compute a score for each feature based on the dependent score and the foreign feature score
     # feat_scores = {feat: normalised_dfs[feat] + normalised_ffs[feat]
-    feat_scores = {feat: 2 * dependent_features_scores[feat] + normalised_ffs[feat]
-                   for feat in normalised_ffs.keys() if feat in dependent_features_scores}
+    feat_scores = {feat: 2 * dependent_features_scores[feat] + foreign_features_scores[feat]
+                   for feat in foreign_features_scores.keys() if feat in dependent_features_scores}
 
     # normalised_fs = normalize_dict_values(feat_scores)
     # Sort the features ascending based on the score
     # print(f"Normalised score on features:\n\t{normalised_fs}")
-    selected_features = get_elements_higher_than_value(feat_scores, threshold)
+    selected_features = get_elements_higher_than_value(feat_scores, cutoff_threshold)
     selected_features = dict(sorted(selected_features.items(), key=lambda item: item[1], reverse=True))
     # ns = normalize_dict_values(selected_features)
     # Assign a score to each join path for ranking
-    score = statistics.mean(selected_features.values()) if selected_features else -math.inf
-
+    # score = statistics.mean(selected_features.values()) if selected_features else -math.inf
+    if selected_features:
+        max_feat = max(selected_features, key=lambda item: item[0])
+        score = selected_features[max_feat]
+    else:
+        score = -math.inf
     return score, list(selected_features.keys())
