@@ -4,6 +4,12 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
 
+def get_ID3_tree_depth(node, depth=0):
+    max_depth = depth
+    for t in node.children:
+        max_depth = max(max_depth, get_tree_depth(t[0], depth+1))
+    return max_depth
+
 def get_top_k_from_dict(join_paths: dict, k: int):
     return {key: join_paths[key] for i, key in enumerate(join_paths) if i < k}
 
