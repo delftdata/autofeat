@@ -1,12 +1,14 @@
 import math
 import os
 import statistics
+from typing import List
 
 import pandas as pd
 
+from augmentation.rank_object import Rank
 from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import prune_or_join, prune_or_join_2
-from data_preparation.utils import get_paths
+from data_preparation.utils import get_paths, _get_path_length
 from feature_selection.util_functions import compute_correlation, compute_relevance_redundancy
 from utils.file_naming_convention import JOIN_RESULT_FOLDER
 from utils.neo4j_utils import get_node_by_source_name, get_node_by_id
@@ -17,7 +19,7 @@ folder_name = os.path.abspath(os.path.dirname(__file__))
 
 class Ranking:
     def __init__(self, dataset: Dataset):
-        self.ranked_paths = {}
+        self.ranked_paths: List[Rank] = []
         self.joined_tables = {}
         self.dataset = dataset
         self.all_paths = get_paths()
@@ -28,8 +30,9 @@ class Ranking:
         if self.dataset.base_table_features is None:
             self.dataset.set_features()
         self.ranking_recursion(self.dataset.base_table_id, path, visited)
-        print(self.ranked_paths)
-        self.ranked_paths = dict(sorted(self.ranked_paths.items(), key=lambda item: -item[1][0]))
+        self.ranked_paths = sorted(self.ranked_paths,
+                                   key=lambda r: (r.score, len(r.features), -_get_path_length(r.path)), reverse=True)
+        print(self.ranks_to_dict())
         return self
 
     def ranking_recursion(self, base_table_id: str, path: list, visited: set):
@@ -38,7 +41,6 @@ class Ranking:
                     not node.get('name') == self.dataset.target_column]
 
         for column in features:
-            # TODO: replace paths with pathlib
             if column['id'] not in self.all_paths:
                 continue
 
@@ -54,7 +56,7 @@ class Ranking:
                 print(f"\tRelated to: {related_node['label']}")
                 ranked_path = self.ranking_func_2(column, related_node, path, visited)
                 if ranked_path:
-                    self.ranked_paths.update(ranked_path)
+                    self.ranked_paths.append(ranked_path)
                     visited.remove(related_node['source_name'])
             if column['label'] in path:
                 path.remove(column['label'])
@@ -119,7 +121,8 @@ class Ranking:
         path = self.ranking_recursion(right_node['source_path'], path, visited)
         print(f"Exiting recursion with {path} \n\tscore: {score}")
         path.pop()
-        rank = {"--".join(path_copy): (score, features + selected_features)}
+        rank = Rank("--".join(path_copy), score, features + selected_features)
+        # rank = {"--".join(path_copy): (score, features + selected_features)}
 
         return rank
 

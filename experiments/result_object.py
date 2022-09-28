@@ -7,9 +7,10 @@ class Result:
     JOIN_ALL_FS = "join-all-fs"
     BASE = "base-table"
 
-    def __init__(self, approach, data_path, algorithm, join_time=None):
+    def __init__(self, approach, data_path, dataset_label, algorithm, join_time=None):
         self.approach = approach
         self.data_path = data_path
+        self.dataset = dataset_label
         self.algorithm = algorithm
         self.join_time = join_time
         self.total_time = join_time if join_time else 0

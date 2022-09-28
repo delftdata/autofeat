@@ -6,8 +6,10 @@ import pandas as pd
 from augmentation.data_preparation_pipeline import data_preparation
 from augmentation.ranking import ranking_func, Ranking
 from data_preparation.dataset_base import Dataset
+from experiments.accuracy_experiments import Experiments
 from experiments.datasets import Datasets
 from utils.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY, MAPPING_FOLDER
+from utils.util_functions import objects_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -47,31 +49,22 @@ def pipeline(data: dict, prepare_data=False, test_ranking=False):
 def pipeline_multigraph(dataset: Dataset, test_ranking=False):
     ranking = Ranking(dataset)
     ranking.start_ranking()
-    print(ranking.ranked_paths)
-
-    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{RANKING_FUNCTION}", 'w') as fp:
-        json.dump(ranking.ranked_paths, fp)
+    print(objects_to_dict(ranking.ranked_paths))
 
     if test_ranking:
-        data = ranking.verify_ranking_func()
+        experiments = Experiments(dataset, ranking.ranked_paths).verify_ranking_func()
+        data = objects_to_dict(experiments.results)
         print(data)
-        pd.DataFrame.from_dict(data).transpose().reset_index().to_csv(f"../{MAPPING_FOLDER}/{RANKING_VERIFY}",
-                                                                      index=False)
+        # pd.DataFrame.from_dict(data).transpose().reset_index().to_csv(f"../{MAPPING_FOLDER}/{RANKING_VERIFY}", index=False)
+        pd.DataFrame(data).to_csv(f"../{MAPPING_FOLDER}/{RANKING_VERIFY}", index=False)
 
 
 def data_pipeline(prepare_data=False):
     if prepare_data:
         data_preparation()
 
-    titanic_dataset = Dataset(
-        Datasets.titanic_data['id'],
-        Datasets.titanic_data['base_table_name'],
-        Datasets.titanic_data['base_table_label'],
-        Datasets.titanic_data['label_column'],
-    )
-    test_ranking = True
-    # pipeline(football_data, prepare_data, test_ranking)
-    pipeline_multigraph(titanic_dataset, test_ranking)
+    test_ranking = False
+    pipeline_multigraph(Datasets.steel_plate_fault, test_ranking)
 
 
 if __name__ == '__main__':

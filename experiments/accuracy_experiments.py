@@ -2,13 +2,14 @@ import math
 import os
 import time
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from arda.arda import wrapper_algo
+from augmentation.rank_object import Rank
 from augmentation.ranking import Ranking
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from data_preparation.join_data import join_all
@@ -16,6 +17,7 @@ from data_preparation.utils import prepare_data_for_ml, _get_join_path
 from experiments.datasets import Datasets
 from experiments.result_object import Result
 from utils.file_naming_convention import CONNECTIONS, JOIN_RESULT_FOLDER
+from utils.util_functions import objects_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -27,26 +29,23 @@ class Experiments:
 
     TRAINING_FUNCTIONS = {CART: train_CART, ID3: train_ID3, XGBOOST: train_XGBoost}
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, ranked_paths: List[Rank] = None):
         self.dataset = dataset
         self.dataset.set_base_table_df()
         self.results = []
-        self.ranked_paths = None
+        self.ranked_paths = ranked_paths
 
     def tfd_results(self):
         print(f'======== TFD Pipeline ========')
 
         start = time.time()
-        # TODO: Save ranking
-        tfd_ranking = Ranking(self.dataset)
-        tfd_ranking.start_ranking()
+        tfd_ranking = Ranking(self.dataset).start_ranking()
         end = time.time()
         join_time = end - start
         self.ranked_paths = tfd_ranking.ranked_paths
 
-        top_1 = list(tfd_ranking.ranked_paths.keys())[0]
-        score, features = tfd_ranking.ranked_paths[top_1]
-        join_path = _get_join_path(top_1)
+        top_1 = tfd_ranking.ranked_paths[0]
+        join_path = _get_join_path(top_1.path)
 
         ### CASE 1: KEEP THE ENTIRE PATH
         print(f"Processing case 1: Keep the entire path")
@@ -58,7 +57,7 @@ class Experiments:
         X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
         for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.TFD_PATH, top_1, model_name, join_time)
+            entry = Result(Result.TFD_PATH, top_1.path, self.dataset.base_table_label, model_name, join_time)
             accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
             entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
                 feature_importances).set_train_time(train_time)
@@ -69,14 +68,14 @@ class Experiments:
         aux_features = list(joined_df.columns)
         aux_features.remove(self.dataset.target_column)
         columns_to_drop = [
-            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in features)
+            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in top_1.features)
         ]
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
         for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.TFD, top_1, model_name, join_time)
+            entry = Result(Result.TFD, top_1.path, self.dataset.base_table_label, model_name, join_time)
             accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
             entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
                 feature_importances).set_train_time(train_time)
@@ -111,7 +110,8 @@ class Experiments:
 
         for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.ARDA, self.dataset.base_table_id, model_name, join_time)
+            entry = Result(Result.ARDA, self.dataset.base_table_id, self.dataset.base_table_label, model_name,
+                           join_time)
             accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
             entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
                 feature_importances).set_train_time(train_time).set_feature_selection_time(fs_time)
@@ -127,7 +127,7 @@ class Experiments:
 
         for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(Result.BASE, self.dataset.base_table_id, model_name)
+            entry = Result(Result.BASE, self.dataset.base_table_id, self.dataset.base_table_label, model_name)
             accuracy, max_depth, feature_importances, train_time, _ = _hp_tune_join_all(X, y, training_fun, False)
             entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
                 feature_importances).set_train_time(train_time)
@@ -143,7 +143,7 @@ class Experiments:
             self.dataset.set_base_table_df()
         X_b, y = prepare_data_for_ml(self.dataset.base_table_df, self.dataset.target_column)
         acc_b, params_b, feature_imp_b, _, _ = train_CART(X_b, y)
-        entry = Result(Result.BASE, self.dataset.base_table_id, self.CART)
+        entry = Result(Result.BASE, self.dataset.base_table_id, self.dataset.base_table_label, self.CART)
         entry.set_accuracy(acc_b).set_depth(params_b["max_depth"]).set_feature_importance(
             _map_features_scores(feature_imp_b, X_b))
         self.results.append(entry)
@@ -153,11 +153,10 @@ class Experiments:
             tfd_ranking.start_ranking()
             self.ranked_paths = tfd_ranking.ranked_paths
 
-        for path in self.ranked_paths.keys():
-            score, features = self.ranked_paths[path]
-            join_path = _get_join_path(path)
+        for ranked_path in self.ranked_paths:
+            join_path = _get_join_path(ranked_path.path)
 
-            if score == math.inf:
+            if ranked_path.score == math.inf:
                 continue
 
             joined_df = pd.read_csv(
@@ -170,7 +169,7 @@ class Experiments:
             X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
             acc, params, feature_imp, _, _ = train_CART(X, y)
 
-            entry = Result(Result.TFD_PATH, join_path, self.CART)
+            entry = Result(Result.TFD_PATH, ranked_path.path, self.dataset.base_table_label, self.CART)
             entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
                 _map_features_scores(feature_imp, X))
             self.results.append(entry)
@@ -181,17 +180,19 @@ class Experiments:
             aux_features = list(joined_df.columns)
             aux_features.remove(self.dataset.target_column)
             columns_to_drop = [
-                c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in features)
+                c for c in aux_features if
+                (c not in self.dataset.base_table_features) and (c not in ranked_path.features)
             ]
             aux_df.drop(columns=columns_to_drop, inplace=True)
 
             X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
             acc, params, feature_imp, _, _ = train_CART(X, y)
 
-            entry = Result(Result.TFD, join_path, self.CART)
+            entry = Result(Result.TFD, ranked_path.path, self.dataset.base_table_label, self.CART)
             entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
                 _map_features_scores(feature_imp, X))
             self.results.append(entry)
+        return self
 
     def join_all_results(self, do_feature_selection=False):
         print(f'======== JOIN-ALL Dataset Pipeline - feature selection - {do_feature_selection} ========')
@@ -212,7 +213,7 @@ class Experiments:
                 approach = Result.JOIN_ALL_FS
             else:
                 approach = Result.JOIN_ALL
-            entry = Result(approach, self.dataset.base_table_id, model_name, join_time)
+            entry = Result(approach, self.dataset.base_table_id, self.dataset.base_table_label, model_name, join_time)
             accuracy, max_depth, feature_importances, train_time, sfs_time = _hp_tune_join_all(
                 X, y, training_fun, do_feature_selection
             )
@@ -332,13 +333,15 @@ def _hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
 
 def run_all_experiments():
     all_results = []
+    all_ranks = []
 
     for dataset in Datasets.ALL:
         experiment = Experiments(dataset)
         experiment.run_all_experiments()
-        all_results.extend(experiment.results)
+        all_results.extend(objects_to_dict(experiment.results))
+        all_ranks.extend(objects_to_dict(experiment.ranked_paths))
 
-    return all_results
+    return all_results, all_ranks
 
 
 if __name__ == "__main__":
@@ -350,9 +353,12 @@ if __name__ == "__main__":
     # with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
     #     results = p.map(run_all_experiments, dataset_configs)
 
-    # results = run_all_experiments()
-    results = Experiments(Datasets.titanic).run_all_experiments().results
-    results = [vars(res) for res in results]
+    # results, ranks = run_all_experiments()
+    experiments = Experiments(Datasets.titanic).run_all_experiments()
+    ranks = objects_to_dict(experiments.ranked_paths)
+    results = objects_to_dict(experiments.results)
     # flattened_results = [entry for sub_list in results for entry in sub_list]
-    results_df = pd.DataFrame(results)
-    results_df.to_csv("ranking_func_results.csv", index=False)
+    label = Datasets.titanic.base_table_label
+    # label = "all"
+    pd.DataFrame(ranks).to_csv(f"ranks_{label}.csv", index=False)
+    pd.DataFrame(results).to_csv(f"accuracy_results_{label}.csv", index=False)

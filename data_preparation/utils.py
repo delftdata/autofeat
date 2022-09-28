@@ -33,11 +33,18 @@ def prepare_data_for_ml(dataframe, target_column):
     return normalized_X, y
 
 
-def _get_join_path(path: str):
+def _get_join_path(path: str) -> str:
     # Path looks like table_source/table_name/key--table_source...
     # Join path looks like table_source--table_name--table_source...
 
     path_tokens = path.split("--")
     join_path_tokens = ["--".join(token.split('/')[:-1]) for token in path_tokens]
     return "--".join(join_path_tokens)
+
+
+def _get_path_length(path: str) -> int:
+    # Path looks like table_source/table_name/key--table_source...
+    path_tokens = path.split("--")
+    # Length = 1 means that we have 2 tables
+    return len(path_tokens)-1
 

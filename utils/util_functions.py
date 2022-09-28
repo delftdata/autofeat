@@ -1,4 +1,5 @@
 import statistics
+from typing import List
 
 
 def get_top_k_from_dict(join_paths: dict, k: int):
@@ -34,3 +35,7 @@ def transform_node_to_dict(node):
     dict_node = {'id': node.get('id'), 'label': node.get('label'), 'name': node.get('name'),
                  'source_name': node.get('source_name'), 'source_path': node.get('source_path')}
     return dict_node
+
+
+def objects_to_dict(objects: List) -> List:
+    return [vars(obj) for obj in objects]
