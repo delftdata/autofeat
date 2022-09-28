@@ -115,7 +115,7 @@ def wrapper_algo(
     return last_indices
 
 
-def select_features(base_table_id, target_column, base_table_features):
+def select_arda_features(base_table_id, target_column, base_table_features):
     start = time.time()
     dataset_df = join_directly_connected(base_table_id)
     end = time.time()
@@ -130,8 +130,6 @@ def select_features(base_table_id, target_column, base_table_features):
     start = time.time()
     T = np.arange(0.0, 1.0, 0.1)
     indices = wrapper_algo(X, y, T)
-    if len(indices) == 0:
-        return
     fs_X = X.iloc[:, indices].columns
     end = time.time()
     fs_time = end - start

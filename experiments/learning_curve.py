@@ -34,8 +34,8 @@ class LearningCurves:
 
     def all_in_path_curves(self):
         print(f'======== All in path Pipeline ========')
-        top_1 = list(self.ranked_paths.keys())[0]
-        join_path = get_join_path(top_1)
+        top_1 = self.ranked_paths[0]
+        join_path = get_join_path(top_1.path)
 
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
@@ -59,9 +59,8 @@ class LearningCurves:
             print(f"Depth {i}:\tTrain acc: {train_acc}\tTest acc: {test_acc}")
 
     def best_ranked_curves(self):
-        top_1 = list(self.ranked_paths.keys())[0]
-        score, features = self.ranked_paths[top_1]
-        join_path = get_join_path(top_1)
+        top_1 = self.ranked_paths[0]
+        join_path = get_join_path(top_1.path)
 
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
@@ -71,7 +70,7 @@ class LearningCurves:
         aux_features = list(joined_df.columns)
         aux_features.remove(self.dataset.target_column)
         columns_to_drop = [
-            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in features)
+            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in top_1.features)
         ]
         joined_df.drop(columns=columns_to_drop, inplace=True)
 
@@ -95,8 +94,8 @@ class LearningCurves:
     def arda_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        X, y, _, _ = arda.arda.select_features(self.dataset.base_table_id, self.dataset.target_column,
-                                               self.dataset.base_table_features)
+        X, y, _, _ = arda.arda.select_arda_features(self.dataset.base_table_id, self.dataset.target_column,
+                                                    self.dataset.base_table_features)
 
         print(f"ARDA features: {X.columns}")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)

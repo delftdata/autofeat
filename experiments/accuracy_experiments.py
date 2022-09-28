@@ -70,8 +70,9 @@ class AccuracyExperiments:
     def arda_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        X, y, join_time, fs_time = arda.arda.select_features(self.dataset.base_table_id, self.dataset.target_column,
-                                                             self.dataset.base_table_features)
+        X, y, join_time, fs_time = arda.arda.select_arda_features(self.dataset.base_table_id,
+                                                                  self.dataset.target_column,
+                                                                  self.dataset.base_table_features)
         self.train_approach(X, y, Result.ARDA, self.dataset.base_table_id, join_time, fs_time)
 
         print(f"======== Finished ARDA Pipeline ========")
