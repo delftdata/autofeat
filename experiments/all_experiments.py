@@ -72,14 +72,26 @@ class AllExperiments:
             results_df = pd.DataFrame(dataset_results[dataset])
             results_df.to_csv(f"acc-results-{dataset.base_table_label}.csv", index=False)
 
-            sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach", ax=axs[i])
-            axs[i].set_title(f"{dataset.base_table_label.title()}")
-            axs[i].set_ylabel("Accuracy")
+            if len(self.datasets) == 1:
+                sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach", ax=axs)
+                axs.set_title(f"{dataset.base_table_label.title()}")
+                axs.set_ylabel("Accuracy")
+            else:
+                sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach", ax=axs[i])
+                axs[i].set_title(f"{dataset.base_table_label.title()}")
+                axs[i].set_ylabel("Accuracy")
 
-        h, l = axs[0].get_legend_handles_labels()
-        axs[0].legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
+        if len(self.datasets) == 1:
+            h, l = axs.get_legend_handles_labels()
+            axs.legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
 
-        fig = axs[0].get_figure()
+            fig = axs.get_figure()
+        else:
+            h, l = axs[0].get_legend_handles_labels()
+            axs[0].legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
+
+            fig = axs[0].get_figure()
+
         fig.show()
         fig.savefig(f'../plots/accuracy-results-all.png', dpi=300, bbox_inches="tight")
 
@@ -89,12 +101,12 @@ class AllExperiments:
 
             axs[0].set_title("Best Ranked Features")
             axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
-            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
+            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd, '-o')
 
             axs[1].set_title("All in path Features")
             axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
                         '-o')
-            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
+            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd_path,
                         '-o')
 
             axs[2].set_title("Arda")
@@ -105,7 +117,7 @@ class AllExperiments:
 
             fig.legend()
             fig.show()
-            fig.savefig(f'../plots/learning-curves-{dataset.base_table_label}.pdf', dpi=300, bbox_inches="tight")
+            fig.savefig(f'../plots/learning-curves-{dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
 
     def plot_sensitivity_results(self, dataset):
         tfd = TFDExperiment(dataset, self.learning_curves_depth_values)
