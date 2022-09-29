@@ -4,7 +4,7 @@ ENUMERATED_PATHS = "enumerated-paths.json"
 TRAINING_DATASET = "results.csv"
 JOINED_PATHS = "joined-paths.json"
 RANKING_FUNCTION = 'ranking-func.json'
-RANKING_VERIFY = 'ranking_data.csv'
+RANKING_VERIFY = 'verify_ranking.csv'
 ALL_PATHS = 'all_paths'
 
 MAPPING_FOLDER = 'mappings/revision'

@@ -1,7 +1,11 @@
+import numpy as np
 import pandas as pd
+from ITMO_FS.utils.information_theory import matrix_mutual_information
 
+from data_preparation.utils import prepare_data_for_ml
+from experiments.understand_cife import measure_conditional_dependency, measure_relevance
 from feature_selection.feature_selection_algorithms import FSAlgorithms
-from utils.util_functions import prepare_data_for_ml
+from utils_module.util_functions import get_elements_higher_than_value, normalize_dict_values
 
 
 def apply_feat_sel(joined_df, base_table_df, target_column, path):
@@ -72,11 +76,13 @@ def compute_correlation(left_table_features: list, joined_df: pd.DataFrame, targ
     return dependent_features
 
 
-def compute_relevance_redundancy(left_table_features, features_to_compare, joined_df, target_column):
+def compute_relevance_redundancy(left_table_features, features_to_compare, joined_df, target_column,
+                                 redundancy_threshold):
     print(f"Selecting un-correlated features...")
     all_columns = list(joined_df.columns)
     all_columns.remove(target_column)
-    to_drop_features = [feat for feat in all_columns if feat not in left_table_features and feat not in features_to_compare]
+    to_drop_features = [feat for feat in all_columns if
+                        feat not in left_table_features and feat not in features_to_compare]
     df = joined_df.drop(columns=to_drop_features)
 
     X, y = prepare_data_for_ml(df, target_column)
@@ -87,11 +93,55 @@ def compute_relevance_redundancy(left_table_features, features_to_compare, joine
 
     fs = FSAlgorithms()
     scores = fs.feature_selection_foreign_table(fs.CIFE, list(left_features.keys()), list(right_features.keys()), X, y)
-
     # Map the scores to the columns
     result = dict(zip(list(right_features.values()), scores))
-    # Sort the scores in ascending order
-    sorted_result = dict(sorted(result.items(), key=lambda item: abs(item[1])))
-    print(f"CIFE score result:\n\t{sorted_result}")
+    normalised_result = normalize_dict_values(result)
+    # Broke down the metrics from CIFE to understand how the measure works
+    # metrics = _understand_metrics(left_features, right_features, X, y)
 
-    return sorted_result
+    redundancy_scores = measure_redundancy(list(left_features.keys()), list(right_features.keys()), X)
+    redundant_features = dict(zip(list(right_features.values()), redundancy_scores))
+    selected_redundant = get_elements_higher_than_value(redundant_features, redundancy_threshold).keys()
+
+    # Sort the scores in ascending order
+    selected_non_redundant = {k: v for k, v in normalised_result.items() if k not in selected_redundant}
+    # sorted_result = dict(sorted(selected_non_redundant.items(), key=lambda item: abs(item[1])))
+    print(f"CIFE score result:\n\t{selected_non_redundant}")
+
+    return selected_non_redundant
+
+
+def _understand_metrics(left_features, right_features, X, y):
+    ###
+    redn = measure_redundancy(list(left_features.keys()), list(right_features.keys()), X)
+    feat_red = dict(zip(list(right_features.values()), redn))
+    cnd_dep = measure_conditional_dependency(list(left_features.keys()), list(right_features.keys()), X, y)
+    feat_cnd_dep = dict(zip(list(right_features.values()), cnd_dep))
+    relv = measure_relevance(list(right_features.keys()), X, y)
+    feat_relv = dict(zip(list(right_features.values()), relv))
+    metrics = {
+        'redundancy': feat_red,
+        'cond-dependency': feat_cnd_dep,
+        'relevance': feat_relv
+    }
+    ###
+    return metrics
+
+
+def measure_redundancy(selected_features, free_features, X):
+    """
+
+    :param selected_features: list of indices of the selected features
+    :param free_features: list of indices of the features to compare
+    :param X: dataframe - training data
+    :return: list of indices and scores
+    """
+
+    selected = np.array(selected_features)
+    free = np.array(free_features)
+    arr_X = np.array(X)
+    redundancy = np.vectorize(
+        lambda free_feature: np.sum(matrix_mutual_information(arr_X[:, selected], arr_X[:, free_feature])))(
+        free)
+    print(f"Redundancy: {redundancy}")
+    return redundancy

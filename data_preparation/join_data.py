@@ -1,12 +1,11 @@
-import json
 import os
 from collections import Counter
 
 import pandas as pd
 
-from utils.file_naming_convention import JOIN_RESULT_FOLDER, MAPPING_FOLDER, ENUMERATED_PATHS
-from utils.neo4j_utils import get_relation_properties, get_pk_fk_nodes
-from utils.util_functions import transform_node_to_dict
+from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
+from utils_module.neo4j_utils import get_relation_properties, get_pk_fk_nodes
+from utils_module.util_functions import transform_node_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -294,3 +293,22 @@ def enumerate_all(base_table_id: str, all_paths: dict, path: list, enumerated_pa
     visited.pop()
     return path
 
+
+def join_directly_connected(base_table_id: str):
+    nodes = get_pk_fk_nodes(base_table_id)
+    partial_join = None
+    for pk, fk in nodes:
+        pk_node = transform_node_to_dict(pk)
+        fk_node = transform_node_to_dict(fk)
+
+        left_table = pd.read_csv(pk_node['source_path'])
+        right_table = pd.read_csv(fk_node['source_path'])
+        if partial_join is not None:
+            left_table = partial_join
+
+        partial_join = pd.merge(left_table, right_table, how="left", left_on=pk_node['name'],
+                                right_on=fk_node['name'], suffixes=("", "_b"))
+        columns_to_drop = [c for c in list(partial_join.columns) if c.endswith("_b")]
+        partial_join.drop(columns=columns_to_drop, inplace=True)
+
+    return partial_join

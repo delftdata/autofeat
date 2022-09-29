@@ -1,14 +1,18 @@
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-import logging
-from sklearn.model_selection import train_test_split
+import time
 
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
 # algo 2
 # A                     the (normalized) data matrix
 # n                     the amount of features to generate
 #
 # Return: A matrix of generated random features, where each column represents one feature
+from data_preparation.join_data import join_directly_connected
+from data_preparation.utils import prepare_data_for_ml
+
+
 def gen_features(A, eta):
     L = []
     d = A.shape[1]
@@ -25,8 +29,8 @@ def gen_features(A, eta):
 # bin_size             size of the bin array, corresponds to the amount of columns in the data matrix (the amount of "real" features)
 def _bin_count_ranking(importances, mask, bin_size):
     indices = importances.argsort()[
-        ::-1
-    ]  # Then we obtain sorting indices for the rankings, flip order since we have importances
+              ::-1
+              ]  # Then we obtain sorting indices for the rankings, flip order since we have importances
     sorted_mask = mask[
         indices[::]
     ]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
@@ -79,7 +83,7 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestClassifi
 #
 # Returns: An array of indices, corresponding to selected features from A
 def wrapper_algo(
-    A, y, T, eta=0.2, k=10, estimator=RandomForestClassifier, regressor=RandomForestClassifier
+        A, y, T, eta=0.2, k=10, estimator=RandomForestClassifier, regressor=RandomForestClassifier
 ):
     if A.shape[0] != y.shape[0]:
         raise ValueError("Criterion/feature 'y' should have the same amount of rows as 'A'")
@@ -107,3 +111,30 @@ def wrapper_algo(
             last_indices = indices
 
     return last_indices
+
+
+def select_arda_features(base_table_id, target_column, base_table_features):
+    start = time.time()
+    dataset_df = join_directly_connected(base_table_id)
+    end = time.time()
+    join_time = end - start
+
+    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
+    print(X.shape)
+    if X.shape[0] > 10000:
+        _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
+    print(X.shape)
+
+    start = time.time()
+    T = np.arange(0.0, 1.0, 0.1)
+    indices = wrapper_algo(X, y, T)
+    fs_X = X.iloc[:, indices].columns
+    end = time.time()
+    fs_time = end - start
+
+    columns_to_drop = [
+        c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
+    ]
+    X.drop(columns=columns_to_drop, inplace=True)
+
+    return X, y, join_time, fs_time

@@ -1,7 +1,32 @@
 from typing import Dict
 
+from data_preparation.dataset_base import Dataset
+
 
 class Datasets:
+
+    titanic = Dataset(
+        "../other-data/synthetic/titanic/titanic.csv",
+        "titanic.csv",
+        "titanic",
+        "Survived"
+    )
+
+    steel_plate_fault = Dataset(
+        "../other-data/synthetic/steel-plate-fault/steel_plate_fault.csv",
+        "steel_plate_fault.csv",
+        "steel_plate_fault",
+        "Class"
+    )
+
+    football = Dataset(
+        "../other-data/synthetic/football/football.csv",
+        "football.csv",
+        "football",
+        "win"
+    )
+
+    ALL = [titanic, steel_plate_fault, football]
 
     titanic_data: Dict[str, str] = {
         "join_result_folder_path": "joined-df/titanic",
