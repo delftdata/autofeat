@@ -2,8 +2,8 @@ import json
 import os
 
 from data_preparation.ingest_data import ingest_connections, profile_valentine_all, ingest_fabricated_data
-from utils.file_naming_convention import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
-from utils.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
+from utils_module.file_naming_convention import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
+from utils_module.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
 
 sys_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../")
 folder_name = os.path.abspath(os.path.dirname(__file__))

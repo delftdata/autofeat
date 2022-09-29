@@ -72,7 +72,7 @@ class AllExperiments:
             results_df = pd.DataFrame(dataset_results[dataset])
             results_df.to_csv(f"acc-results-{dataset.base_table_label}.csv", index=False)
 
-            axs[i] = sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach")
+            sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach", ax=axs[i])
             axs[i].set_title(f"{dataset.base_table_label.title()}")
             axs[i].set_ylabel("Accuracy")
 
