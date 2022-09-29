@@ -1,122 +1,120 @@
-import math
-from typing import List
+from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
-from augmentation.ranking import Ranking
-from data_preparation.utils import get_join_path, prepare_data_for_ml
-from experiments.accuracy_experiments import AccuracyExperiments, _map_features_scores
+from data_preparation.dataset_base import Dataset
+from experiments.arda_experiments import ArdaExperiment
+from experiments.base_table_experiments import BaseTableExperiment
 from experiments.datasets import Datasets
-from experiments.experiment_object import Experiment
-from experiments.result_object import Result
-from utils.file_naming_convention import JOIN_RESULT_FOLDER
-from utils.util_functions import objects_to_dict
+from experiments.join_all_experiments import JoinAllExperiment
+from experiments.tfd_experiments import TFDExperiment
+from utils_module.util_functions import objects_to_dict
 
 
 class AllExperiments:
     def __init__(self):
-        self.results: List[Experiment] = []
-        self.arda_features = None
-        self.ranked_paths = None
-        self.learning_curve_results = None
-        self.cutoff_th_values = [0.1, 0.2, 0.3, 0.4, 0.5]
-        self.redundancy_th_values = [5, 7, 9, 10, 15, 20, 25, 30]
+        self.arda_experiments: Dict[Dataset, ArdaExperiment] = {}
+        self.base_table_experiments: Dict[Dataset, BaseTableExperiment] = {}
+        self.join_all_experiments: Dict[Dataset, JoinAllExperiment] = {}
+        self.join_all_fs_experiments: Dict[Dataset, JoinAllExperiment] = {}
+        self.tfd_experiments: Dict[Dataset, TFDExperiment] = {}
+        self.learning_curves_depth_values = [i for i in range(1, 21)]
+        self.datasets: List[Dataset] = []
 
-    def variate_thresholds(self, dataset):
-        model = AccuracyExperiments.CART
+    def experiments_per_dataset(self, dataset: Dataset):
+        self.datasets.append(dataset)
 
-        for redundancy_th in self.redundancy_th_values:
-            print(f"\n\tREDUNDANCY THRESHOLD: {redundancy_th}")
-            for cutoff_th in self.cutoff_th_values:
-                print(f"\n\tCUTOFF THRESHOLD: {cutoff_th}")
-                ranking = Ranking(dataset, redundancy_th, cutoff_th)
-                ranking.start_ranking()
+        base_table = BaseTableExperiment(dataset)
+        base_table.accuracy_results()
+        self.base_table_experiments[dataset] = base_table
 
-                for i, ranked_path in enumerate(ranking.ranked_paths[0:3]):
-                    # TFD - All in path
-                    print(f"Path: {i} - score: {ranked_path.score}\n\t{ranked_path.path}\n\t{ranked_path.features}")
-                    print(f"Processing case 1: Keep the entire path")
-                    join_path = get_join_path(ranked_path.path)
+        join_all = JoinAllExperiment(dataset)
+        join_all.accuracy_results()
+        self.join_all_experiments[dataset] = join_all
 
-                    if ranked_path.score == math.inf:
-                        continue
+        join_all_fs = JoinAllExperiment(dataset, True)
+        join_all_fs.accuracy_results()
+        self.join_all_fs_experiments[dataset] = join_all_fs
 
-                    joined_df = pd.read_csv(
-                        f"../{JOIN_RESULT_FOLDER}/{join_path}",
-                        header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
-                    )
+        arda = ArdaExperiment(dataset, self.learning_curves_depth_values)
+        arda.accuracy_results()
+        arda.learning_curve_results()
+        self.arda_experiments[dataset] = arda
 
-                    X, y = prepare_data_for_ml(joined_df, dataset.target_column)
-                    acc, params, feature_imp, _, _ = AccuracyExperiments.TRAINING_FUNCTIONS[model](X, y)
+        tfd = TFDExperiment(dataset, self.learning_curves_depth_values)
+        tfd.get_results()
+        self.tfd_experiments[dataset] = tfd
 
-                    experiment = Experiment(join_path, dataset.base_table_label, model, acc, Result.TFD_PATH)
-                    experiment.set_depth(params['max_depth']).set_rank(i).set_cutoff_th(cutoff_th).set_redundancy_th(
-                        redundancy_th).set_features(_map_features_scores(feature_imp, X))
-                    self.results.append(experiment)
+    def __get_results(self):
+        dataset_results = {}
 
-                    print(f"Processing case 2: Remove all, but the ranked feature")
-                    aux_df = joined_df.copy(deep=True)
-                    aux_features = list(joined_df.columns)
-                    aux_features.remove(dataset.target_column)
-                    columns_to_drop = [
-                        c for c in aux_features if
-                        (c not in dataset.base_table_features) and (c not in ranked_path.features)
-                    ]
-                    aux_df.drop(columns=columns_to_drop, inplace=True)
+        for dataset in self.datasets:
+            dataset_results[dataset] = []
 
-                    X, y = prepare_data_for_ml(aux_df, dataset.target_column)
-                    acc, params, feature_imp, _, _ = AccuracyExperiments.TRAINING_FUNCTIONS[model](X, y)
+        for dataset in self.datasets:
+            dataset_results[dataset].extend(objects_to_dict(self.base_table_experiments[dataset].results))
+            dataset_results[dataset].extend(objects_to_dict(self.join_all_experiments[dataset].results))
+            dataset_results[dataset].extend(objects_to_dict(self.join_all_fs_experiments[dataset].results))
+            dataset_results[dataset].extend(objects_to_dict(self.arda_experiments[dataset].results))
+            dataset_results[dataset].extend(objects_to_dict(self.tfd_experiments[dataset].results))
 
-                    experiment = Experiment(join_path, dataset.base_table_label, model, acc, Result.TFD)
-                    experiment.set_depth(params['max_depth']).set_rank(i).set_cutoff_th(cutoff_th).set_redundancy_th(
-                        redundancy_th).set_features(_map_features_scores(feature_imp, X))
-                    self.results.append(experiment)
+        return dataset_results
 
-    def plot_redundancy_sensitivity(self, dataset_label, results: pd.DataFrame = None):
-        fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(12, 6))
+    def plot_results(self):
+        dataset_results = self.__get_results()
+        print(dataset_results)
+        columns = len(self.datasets)
+        fig, axs = plt.subplots(nrows=1, ncols=columns, figsize=(12, 6))
 
-        if results is None:
-            results = pd.DataFrame(objects_to_dict(self.results))
+        for i, dataset in enumerate(self.datasets):
+            results_df = pd.DataFrame(dataset_results[dataset])
+            results_df.to_csv(f"acc-results-{dataset.base_table_label}.csv", index=False)
 
-        for i, cutoff_th in enumerate(self.cutoff_th_values):
-            df = results[results['cutoff_th'] == cutoff_th]
+            axs[i] = sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach")
+            axs[i].set_title(f"{dataset.base_table_label.title()}")
+            axs[i].set_ylabel("Accuracy")
 
-            colors = ['red', 'black', 'green']
-            for j, rank in enumerate(df['rank'].unique()):
-                df_ranks = df[df['rank'] == rank]
+        h, l = axs[0].get_legend_handles_labels()
+        axs[0].legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
 
-                marker = ['*', 'H'
-                               '']
-                for k, approach in enumerate(df['approach'].unique()):
-                    values = df_ranks[df_ranks['approach'] == approach]
-                    if i == len(self.cutoff_th_values)-1:
-                        axs[i].plot(self.redundancy_th_values, values['accuracy'], marker=marker[k], color=colors[j],
-                                    label=f"{approach}-{rank}")
-                    else:
-                        axs[i].plot(self.redundancy_th_values, values['accuracy'], marker=marker[k], color=colors[j])
-            axs[i].set_title(f"Cut-off Threshold = {cutoff_th}")
-
-        fig.legend()
+        fig = axs[0].get_figure()
         fig.show()
-        fig.savefig(f'../plots/sensitivity-plots-{dataset_label}2.png', dpi=300, bbox_inches="tight")
+        fig.savefig(f'../plots/accuracy-results-all.png', dpi=300, bbox_inches="tight")
 
+    def plot_learning_curves(self):
+        for dataset in self.datasets:
+            fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 6))
 
-def get_sensitivity_results(dataset):
-    all_exp = AllExperiments()
-    all_exp.variate_thresholds(dataset)
-    result = objects_to_dict(all_exp.results)
-    print(result)
-    pd.DataFrame(result).to_csv(f"threshold-sensitivity-{dataset.base_table_label}2.csv", index=False)
+            axs[0].set_title("Best Ranked Features")
+            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
+            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
 
+            axs[1].set_title("All in path Features")
+            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
+                        '-o')
+            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
+                        '-o')
 
-def plot_sensitivity_results(dataset):
-    results = pd.read_csv(f"threshold-sensitivity-{dataset.base_table_label}2.csv")
-    all_exp = AllExperiments()
-    all_exp.plot_redundancy_sensitivity(dataset.base_table_label, results)
+            axs[2].set_title("Arda")
+            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_train, '-o',
+                        label='Train')
+            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_test, '-o',
+                        label='Test')
+
+            fig.legend()
+            fig.show()
+            fig.savefig(f'../plots/learning-curves-{dataset.base_table_label}.pdf', dpi=300, bbox_inches="tight")
+
+    def plot_sensitivity_results(self, dataset):
+        tfd = TFDExperiment(dataset, self.learning_curves_depth_values)
+        tfd.run_sensitivity_experiments()
 
 
 if __name__ == "__main__":
-    data = Datasets.steel_plate_fault
-    get_sensitivity_results(data)
-    plot_sensitivity_results(data)
+    data = Datasets.titanic
+    experiments = AllExperiments()
+    experiments.experiments_per_dataset(data)
+    experiments.plot_results()
+    experiments.plot_learning_curves()

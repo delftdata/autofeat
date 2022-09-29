@@ -7,13 +7,13 @@ class Result:
     JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
     BASE = "BASE"
 
-    def __init__(self, approach, data_path, dataset_label, algorithm, join_time=None):
+    def __init__(self, approach, data_path, dataset_label, algorithm):
         self.approach = approach
         self.data_path = data_path
-        self.dataset = dataset_label
+        self.data_label = dataset_label
         self.algorithm = algorithm
-        self.join_time = join_time
-        self.total_time = join_time if join_time else 0
+        self.join_time = None
+        self.total_time = 0
         self.feature_selection_time = None
         self.depth = None
         self.accuracy = None
@@ -21,6 +21,16 @@ class Result:
         self.feature_importance = None
         self.cutoff_threshold = None
         self.redundancy_threshold = None
+        self.rank = None
+
+    def set_join_time(self, join_time):
+        self.join_time = join_time
+        self.total_time += join_time
+        return self
+
+    def set_rank(self, rank):
+        self.rank = rank
+        return self
 
     def set_cutoff_threshold(self, cutoff_threshold):
         self.cutoff_threshold = cutoff_threshold

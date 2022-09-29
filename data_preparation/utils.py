@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-from utils.file_naming_convention import MAPPING_FOLDER, ENUMERATED_PATHS
+from utils_module.file_naming_convention import MAPPING_FOLDER, ENUMERATED_PATHS
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 

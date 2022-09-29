@@ -1,10 +1,8 @@
 import time
 
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-import logging
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-
 
 # algo 2
 # A                     the (normalized) data matrix
@@ -31,8 +29,8 @@ def gen_features(A, eta):
 # bin_size             size of the bin array, corresponds to the amount of columns in the data matrix (the amount of "real" features)
 def _bin_count_ranking(importances, mask, bin_size):
     indices = importances.argsort()[
-        ::-1
-    ]  # Then we obtain sorting indices for the rankings, flip order since we have importances
+              ::-1
+              ]  # Then we obtain sorting indices for the rankings, flip order since we have importances
     sorted_mask = mask[
         indices[::]
     ]  # These indices are then used to sort the mask, so we know where the generated columns are located in terms of ranking
@@ -85,7 +83,7 @@ def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestClassifi
 #
 # Returns: An array of indices, corresponding to selected features from A
 def wrapper_algo(
-    A, y, T, eta=0.2, k=10, estimator=RandomForestClassifier, regressor=RandomForestClassifier
+        A, y, T, eta=0.2, k=10, estimator=RandomForestClassifier, regressor=RandomForestClassifier
 ):
     if A.shape[0] != y.shape[0]:
         raise ValueError("Criterion/feature 'y' should have the same amount of rows as 'A'")

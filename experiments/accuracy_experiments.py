@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable, List
 
 import pandas as pd
+import seaborn as sns
 
 import arda.arda
 from augmentation.rank_object import Rank
@@ -12,20 +13,18 @@ from augmentation.ranking import Ranking
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 from data_preparation.join_data import join_all
 from data_preparation.utils import prepare_data_for_ml, get_join_path
+from experiments.all_experiments import TRAINING_FUNCTIONS, CART, ID3
 from experiments.datasets import Datasets
 from experiments.result_object import Result
 from utils.file_naming_convention import CONNECTIONS, JOIN_RESULT_FOLDER
 from utils.util_functions import objects_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
+sns.set(font_scale=2.2, style="whitegrid")
+colors = sns.color_palette("Set2")
 
 
 class AccuracyExperiments:
-    CART = "CART"
-    ID3 = "ID3"
-    XGBOOST = "XGBoost"
-
-    TRAINING_FUNCTIONS = {CART: train_CART, ID3: train_ID3, XGBOOST: train_XGBoost}
 
     def __init__(self, data, ranked_paths: List[Rank] = None):
         self.dataset = data
@@ -78,7 +77,7 @@ class AccuracyExperiments:
         print(f"======== Finished ARDA Pipeline ========")
 
     def train_approach(self, X, y, approach, data_path, join_time=None, fs_time=None):
-        for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
+        for model_name, training_fun in TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
             entry = Result(approach, data_path, self.dataset.base_table_label, model_name,
                            join_time)
@@ -108,7 +107,7 @@ class AccuracyExperiments:
             self.dataset.set_base_table_df()
         X_b, y = prepare_data_for_ml(self.dataset.base_table_df, self.dataset.target_column)
         acc_b, params_b, feature_imp_b, _, _ = train_CART(X_b, y)
-        entry = Result(Result.BASE, self.dataset.base_table_id, self.dataset.base_table_label, self.CART)
+        entry = Result(Result.BASE, self.dataset.base_table_id, self.dataset.base_table_label, CART)
         entry.set_accuracy(acc_b).set_depth(params_b["max_depth"]).set_feature_importance(
             _map_features_scores(feature_imp_b, X_b))
         self.results.append(entry)
@@ -134,7 +133,7 @@ class AccuracyExperiments:
             X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
             acc, params, feature_imp, _, _ = train_CART(X, y)
 
-            entry = Result(Result.TFD_PATH, ranked_path.path, self.dataset.base_table_label, self.CART)
+            entry = Result(Result.TFD_PATH, ranked_path.path, self.dataset.base_table_label, CART)
             entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
                 _map_features_scores(feature_imp, X))
             self.results.append(entry)
@@ -153,7 +152,7 @@ class AccuracyExperiments:
             X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
             acc, params, feature_imp, _, _ = train_CART(X, y)
 
-            entry = Result(Result.TFD, ranked_path.path, self.dataset.base_table_label, self.CART)
+            entry = Result(Result.TFD, ranked_path.path, self.dataset.base_table_label, CART)
             entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
                 _map_features_scores(feature_imp, X))
             self.results.append(entry)
@@ -168,10 +167,10 @@ class AccuracyExperiments:
 
         X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=self.dataset.target_column)
 
-        for model_name, training_fun in self.TRAINING_FUNCTIONS.items():
+        for model_name, training_fun in TRAINING_FUNCTIONS.items():
             if do_feature_selection:
                 # ID3 not supported for feature selection
-                if model_name == self.ID3:
+                if model_name == ID3:
                     continue
             print(f"==== Model Name: {model_name} ====")
             if do_feature_selection:
@@ -197,6 +196,21 @@ class AccuracyExperiments:
         self.join_all_results()
         self.join_all_results(True)
         return self
+
+    def plot_experiments(self, results_df=None):
+        if results_df is None:
+            results_df = pd.DataFrame(objects_to_dict(self.results))
+
+        ax = sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach")
+        ax.set_title(f"{self.dataset.base_table_label.title()}")
+        ax.set_ylabel("Accuracy")
+
+        h, l = ax.get_legend_handles_labels()
+        ax.legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
+
+        fig = ax.get_figure()
+        fig.show()
+        fig.savefig(f'../plots/accuracy-{self.dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
 
 
 def _suffix_column(column_name: str, table_name: str) -> str:
@@ -276,26 +290,6 @@ def _join_all(data_path: str) -> pd.DataFrame:
     return joined_df
 
 
-def _map_features_scores(feature_importances, X):
-    final_feature_importances = (
-        dict(zip(X.columns, feature_importances)) if len(feature_importances) > 0 else {}
-    )
-    final_feature_importances = {
-        feature: importance
-        for feature, importance in final_feature_importances.items()
-        if importance > 0
-    }
-    return final_feature_importances
-
-
-def _hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
-    accuracy, params, feature_importances, train_time, sfs_time = training_fun(X, y, do_sfs)
-
-    final_feature_importances = _map_features_scores(feature_importances, X)
-
-    return accuracy, params["max_depth"], final_feature_importances, train_time, sfs_time
-
-
 def run_all_experiments():
     all_results = []
     all_ranks = []
@@ -309,6 +303,12 @@ def run_all_experiments():
     return all_results, all_ranks
 
 
+def plot_experiments(data):
+    result_df = pd.read_csv(f"../experiment_results/accuracy_results_{data.base_table_label}.csv")
+    exp = AccuracyExperiments(data)
+    exp.plot_experiments(result_df)
+
+
 if __name__ == "__main__":
     # dataset_configs = Datasets.titanic_data
 
@@ -319,12 +319,15 @@ if __name__ == "__main__":
     #     results = p.map(run_all_experiments, dataset_configs)
 
     # results, ranks = run_all_experiments()
-    dataset = Datasets.football
-    experiments = AccuracyExperiments(dataset).run_all_experiments()
-    results = objects_to_dict(experiments.results)
-    ranks = objects_to_dict(experiments.ranked_paths)
+    dataset = Datasets.steel_plate_fault
+    experiments = AccuracyExperiments(dataset)
+    # experiments.run_all_experiments()
+    # results = objects_to_dict(experiments.results)
+    # ranks = objects_to_dict(experiments.ranked_paths)
     # flattened_results = [entry for sub_list in results for entry in sub_list]
     label = dataset.base_table_label
     # label = "all"
-    pd.DataFrame(ranks).to_csv(f"ranks_{label}.csv", index=False)
-    pd.DataFrame(results).to_csv(f"accuracy_results_{label}.csv", index=False)
+    # pd.DataFrame(ranks).to_csv(f"ranks_{label}.csv", index=False)
+    # pd.DataFrame(results).to_csv(f"accuracy_results_{label}.csv", index=False)
+    plot_experiments(dataset)
+

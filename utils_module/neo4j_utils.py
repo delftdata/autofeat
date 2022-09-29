@@ -1,6 +1,6 @@
 from neo4j import GraphDatabase
 
-from utils import relation_types
+from utils_module import relation_types
 
 driver = GraphDatabase.driver(
     f"neo4j://localhost:7687", auth=("neo4j", "pass")

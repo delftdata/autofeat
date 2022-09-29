@@ -1,12 +1,11 @@
-import json
 import os
 from collections import Counter
 
 import pandas as pd
 
-from utils.file_naming_convention import JOIN_RESULT_FOLDER, MAPPING_FOLDER, ENUMERATED_PATHS
-from utils.neo4j_utils import get_relation_properties, get_pk_fk_nodes
-from utils.util_functions import transform_node_to_dict
+from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
+from utils_module.neo4j_utils import get_relation_properties, get_pk_fk_nodes
+from utils_module.util_functions import transform_node_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
@@ -313,8 +312,3 @@ def join_directly_connected(base_table_id: str):
         partial_join.drop(columns=columns_to_drop, inplace=True)
 
     return partial_join
-
-
-
-
-

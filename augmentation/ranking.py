@@ -1,6 +1,5 @@
 import math
 import os
-import statistics
 from typing import List
 
 import pandas as pd
@@ -10,9 +9,9 @@ from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import prune_or_join, prune_or_join_2
 from data_preparation.utils import get_paths, get_path_length
 from feature_selection.util_functions import compute_correlation, compute_relevance_redundancy
-from utils.file_naming_convention import JOIN_RESULT_FOLDER
-from utils.neo4j_utils import get_node_by_source_name, get_node_by_id
-from utils.util_functions import get_elements_higher_than_value, transform_node_to_dict, \
+from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
+from utils_module.neo4j_utils import get_node_by_source_name, get_node_by_id
+from utils_module.util_functions import get_elements_higher_than_value, transform_node_to_dict, \
     objects_to_dict
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
