@@ -9,7 +9,7 @@ from sklearn.feature_selection import SequentialFeatureSelector
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from xgboost import XGBClassifier
 
-from utils_module.id3_alg import GadId3Classifier
+from helpers.id3_alg import GadId3Classifier
 
 num_cv = 10
 

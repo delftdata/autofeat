@@ -1,6 +1,6 @@
 from neo4j import GraphDatabase
 
-from utils_module import relation_types
+from data_preparation import SIBLING
 
 driver = GraphDatabase.driver(
     f"neo4j://localhost:7687", auth=("neo4j", "pass")
@@ -129,7 +129,7 @@ def get_relation_between_table_nodes(from_id, to_id):
 def _create_subsumption_relation(tx, source):
     tx_result = tx.run("MATCH (a:Node), (b:Node) "
                        "WHERE a.source_name = $source AND b.source_name = $source AND NOT(a.id = b.id) "
-                       f"MERGE (a)-[s:{relation_types.SIBLING}]-(b) "
+                       f"MERGE (a)-[s:{SIBLING}]-(b) "
                        "RETURN type(s) as relation", source=source)
     result = []
     for record in tx_result:

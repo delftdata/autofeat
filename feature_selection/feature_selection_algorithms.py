@@ -1,15 +1,13 @@
 import math
+from typing import List
 
-from ITMO_FS.filters.univariate import reliefF_measure, chi2_measure, f_ratio_measure, su_measure
-from ITMO_FS.filters.multivariate import MIFS, CIFE, FCBFDiscreteFilter, TraceRatioFisher
 import numpy as np
 import pandas as pd
-
-
+from ITMO_FS.filters.multivariate import MIFS, CIFE, FCBFDiscreteFilter, TraceRatioFisher
+from ITMO_FS.filters.univariate import reliefF_measure, chi2_measure, f_ratio_measure, su_measure
 
 
 # Imported from https://github.com/ctlab/ITMO_FS as it is not available in the pip version of the package
-from typing import List
 
 
 def modified_t_score(x, y):
@@ -53,8 +51,8 @@ def modified_t_score(x, y):
     corr_with_others = np.nan_to_num(corr_with_others)
 
     mean_of_corr_with_others = (
-        corr_with_others.sum(axis=1)
-        - corr_with_others.diagonal()) / (len(corr_with_others) - 1)
+                                       corr_with_others.sum(axis=1)
+                                       - corr_with_others.diagonal()) / (len(corr_with_others) - 1)
 
     t_score_numerator = abs(mean_class0 - mean_class1)
     t_score_denominator = np.sqrt(
@@ -79,7 +77,7 @@ def _variance(dataframe: pd.DataFrame):
 
 
 def _trace_ration_filter(X, y):
-    tracer = TraceRatioFisher(math.floor(len(X.columns)/4))
+    tracer = TraceRatioFisher(math.floor(len(X.columns) / 4))
     features = np.array(X)
     label = np.array(y)
     tracer.fit(X, y, feature_names=X.columns)
@@ -129,22 +127,21 @@ def _t_score(X, y):
 
 
 class FSAlgorithms:
-
     # Statistical based - Chi and T score have very high values for the features selected by the decision tree
     # VARIANCE = 'variance' # REMOVED - for normalised data, variance is useless
-    CHI_SQ = 'chi-squared score' # values > 5
-    T_SCORE = 't-score' # values > 0.5
+    CHI_SQ = 'chi-squared score'  # values > 5
+    T_SCORE = 't-score'  # values > 0.5
 
     # Information theoretically based
     # for negative values: the highest, the better. If positive values, the smallest?
-    MIFS = 'mututal information feature selection' # params: selected, free, X, y, coef for redundancy
+    MIFS = 'mututal information feature selection'  # params: selected, free, X, y, coef for redundancy
     # for negative values: the highest, the better. If positive values, the smallest?
-    CIFE = 'conditional infomax feature extraction' # params: selected, free, X, y
+    CIFE = 'conditional infomax feature extraction'  # params: selected, free, X, y
     # FCBF = 'fast-correlation based filter' # REMOVED - does not return scores -- Replaced with SU
-    SU = 'symmetrical uncertainty' # features with scores > 0.4 are selected by the decision trees
+    SU = 'symmetrical uncertainty'  # features with scores > 0.4 are selected by the decision trees
 
     # Similarity based
-    FISHER = 'fisher score' # values > 0.1 for the features selected by the decision tree
+    FISHER = 'fisher score'  # values > 0.1 for the features selected by the decision tree
     # TR_CRITERION = 'trace ration criterion' # param: amount of feat to filter -- REMOVED - does not return scores
     # RELIEF = 'reliefF' # param: number of neighbors to consider -- REMOVED - un-informative
 
@@ -169,7 +166,8 @@ class FSAlgorithms:
         else:
             raise ValueError(selection_method)
 
-    def feature_selection_foreign_table(self, selection_method, selected_feat: List[int], free_features: List[int], X, y):
+    def feature_selection_foreign_table(self, selection_method, selected_feat: List[int], free_features: List[int], X,
+                                        y):
         feat_sel = self._get_feature_selection_foreign_table(selection_method)
         return feat_sel(selected_feat, free_features, X, y)
 
@@ -180,6 +178,3 @@ class FSAlgorithms:
             return _conditional_infonax_feat_extraction
         else:
             raise ValueError(selection_method)
-
-
-

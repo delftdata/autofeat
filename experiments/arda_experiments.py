@@ -21,7 +21,7 @@ class ArdaExperiment:
         self.depth_values = learning_curve_depth_values
         self.selected_features = None
 
-    def accuracy_results(self):
+    def compute_accuracy_results(self):
         print(f'======== ARDA Pipeline ========')
 
         X, y, join_time, fs_time, selected_features = select_arda_features(self.dataset.base_table_id,

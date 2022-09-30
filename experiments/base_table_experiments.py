@@ -14,7 +14,7 @@ class BaseTableExperiment:
         self.results: List[Result] = []
         self.approach = Result.BASE
 
-    def accuracy_results(self):
+    def compute_accuracy_results(self):
         print(f'======== NON-AUG Pipeline ========')
 
         if self.dataset.base_table_df is None:

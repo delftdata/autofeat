@@ -7,9 +7,9 @@ import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from utils.file_naming_convention import CONNECTIONS, DATA_FOLDER
-from utils.neo4j_utils import merge_nodes_relation, create_relation
-from utils.relation_types import SIBLING, RELATED
+from config import CONNECTIONS, DATA_FOLDER
+from data_preparation import SIBLING, RELATED
+from helpers.neo4j_utils import merge_nodes_relation, create_relation
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 threshold = 0.8

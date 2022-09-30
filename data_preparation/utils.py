@@ -4,13 +4,13 @@ import os
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-from utils_module.file_naming_convention import MAPPING_FOLDER, ENUMERATED_PATHS
+from config import MAPPING_FOLDER, ENUMERATED_PATHS
 
 folder_name = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_paths():
-    with open(f"{os.path.join(folder_name, '../', MAPPING_FOLDER)}/{ENUMERATED_PATHS}", 'r') as fp:
+    with open(MAPPING_FOLDER / ENUMERATED_PATHS, 'r') as fp:
         all_paths = json.load(fp)
     return all_paths
 

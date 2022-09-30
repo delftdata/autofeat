@@ -7,15 +7,14 @@ from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-from augmentation.rank_object import Rank
-from augmentation.ranking import Ranking
+from augmentation.ranking import Ranking, Rank
+from config import JOIN_RESULT_FOLDER, PLOTS_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import get_join_path, prepare_data_for_ml
-from experiments.utils import hp_tune_join_all, map_features_scores
-from experiments.utils import TRAINING_FUNCTIONS, CART
 from experiments.result_object import Result
-from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
-from utils_module.util_functions import objects_to_dict
+from experiments.utils import TRAINING_FUNCTIONS, CART
+from experiments.utils import hp_tune_join_all, map_features_scores
+from helpers.util_functions import objects_to_dict
 
 
 class TFDExperiment:
@@ -32,7 +31,7 @@ class TFDExperiment:
         self.cutoff_th_values = [0.1, 0.2, 0.3, 0.4, 0.5]
         self.redundancy_th_values = [5, 7, 9, 10, 15, 20, 25, 30]
 
-    def get_results(self):
+    def compute_results(self):
         print(f'======== TFD Pipeline ========')
 
         start = time.time()
@@ -112,7 +111,7 @@ class TFDExperiment:
 
         fig.legend()
         fig.show()
-        fig.savefig(f'../plots/sensitivity-plots-{self.dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
+        fig.savefig(PLOTS_FOLDER / f'sensitivity-plots-{self.dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
 
     def __process_joined_data_tfd(self, joined_df: pd.DataFrame, ranked_path: Rank):
         aux_df = joined_df.copy(deep=True)
@@ -129,7 +128,7 @@ class TFDExperiment:
 
         print(f"Processing case 1: Keep the entire path")
         joined_df = pd.read_csv(
-            f"../{JOIN_RESULT_FOLDER}/{join_path}",
+            JOIN_RESULT_FOLDER / join_path,
             header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
         return joined_df, join_path

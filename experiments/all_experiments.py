@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+from config import PLOTS_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.arda_experiments import ArdaExperiment
 from experiments.base_table_experiments import BaseTableExperiment
 from experiments.datasets import Datasets
 from experiments.join_all_experiments import JoinAllExperiment
 from experiments.tfd_experiments import TFDExperiment
-from utils_module.util_functions import objects_to_dict
+from helpers.util_functions import objects_to_dict
 
 
 class AllExperiments:
@@ -24,27 +25,30 @@ class AllExperiments:
         self.datasets: List[Dataset] = []
 
     def experiments_per_dataset(self, dataset: Dataset):
+        # TODO: Standardize experiments, create config containing list of experiments to run
+        # Instead of instantiating every experiment separately, loop through the config and
+        # collect the results
         self.datasets.append(dataset)
 
         base_table = BaseTableExperiment(dataset)
-        base_table.accuracy_results()
+        base_table.compute_accuracy_results()
         self.base_table_experiments[dataset] = base_table
 
         join_all = JoinAllExperiment(dataset)
-        join_all.accuracy_results()
+        join_all.compute_accuracy_results()
         self.join_all_experiments[dataset] = join_all
 
         join_all_fs = JoinAllExperiment(dataset, True)
-        join_all_fs.accuracy_results()
+        join_all_fs.compute_accuracy_results()
         self.join_all_fs_experiments[dataset] = join_all_fs
 
         arda = ArdaExperiment(dataset, self.learning_curves_depth_values)
-        arda.accuracy_results()
+        arda.compute_accuracy_results()
         arda.learning_curve_results()
         self.arda_experiments[dataset] = arda
 
         tfd = TFDExperiment(dataset, self.learning_curves_depth_values)
-        tfd.get_results()
+        tfd.compute_results()
         self.tfd_experiments[dataset] = tfd
 
     def __get_results(self):
@@ -82,18 +86,18 @@ class AllExperiments:
                 axs[i].set_ylabel("Accuracy")
 
         if len(self.datasets) == 1:
-            h, l = axs.get_legend_handles_labels()
-            axs.legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
+            handles, labels = axs.get_legend_handles_labels()
+            axs.legend(handles, labels, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
 
             fig = axs.get_figure()
         else:
-            h, l = axs[0].get_legend_handles_labels()
-            axs[0].legend(h, l, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
+            handles, labels = axs[0].get_legend_handles_labels()
+            axs[0].legend(handles, labels, bbox_to_anchor=(0, -0.25), loc=2, ncol=2, fontsize="xx-small")
 
             fig = axs[0].get_figure()
 
         fig.show()
-        fig.savefig(f'../plots/accuracy-results-all.png', dpi=300, bbox_inches="tight")
+        fig.savefig(PLOTS_FOLDER / 'accuracy-results-all.png', dpi=300, bbox_inches="tight")
 
     def plot_learning_curves(self):
         for dataset in self.datasets:
@@ -117,7 +121,7 @@ class AllExperiments:
 
             fig.legend()
             fig.show()
-            fig.savefig(f'../plots/learning-curves-{dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
+            fig.savefig(PLOTS_FOLDER / f'learning-curves-{dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
 
     def plot_sensitivity_results(self, dataset):
         tfd = TFDExperiment(dataset, self.learning_curves_depth_values)

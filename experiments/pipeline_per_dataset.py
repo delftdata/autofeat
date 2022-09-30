@@ -5,51 +5,16 @@ import os
 import pandas as pd
 
 from augmentation.data_preparation_pipeline import data_preparation
-from augmentation.ranking import ranking_func, Ranking
+from augmentation.ranking import Ranking
 from augmentation.train_algorithms import train_CART
+from config import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY, \
+    MAPPING_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import prepare_data_for_ml, get_join_path
 from experiments.datasets import Datasets
 from experiments.result_object import Result
 from experiments.utils import CART, map_features_scores
-from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
-from utils_module.file_naming_convention import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY, \
-    MAPPING_FOLDER
-from utils_module.util_functions import objects_to_dict
-
-folder_name = os.path.abspath(os.path.dirname(__file__))
-
-
-def pipeline(data: dict, prepare_data=False, test_ranking=False):
-    join_result_folder_path = data['join_result_folder_path']
-    label_column = data['label_column']
-    base_table_name = data['base_table_name']
-    path = data['path']
-    mappings_folder_name = data['mappings_folder_name']
-
-    if prepare_data:
-        data_preparation(path, mappings_folder_name)
-
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{MAPPING}", 'r') as fp:
-        mapping = json.load(fp)
-
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{ENUMERATED_PATHS}", 'r') as fp:
-        all_paths = json.load(fp)
-
-    allp = []
-    jm = {}
-
-    ranking_func(all_paths, mapping, base_table_name, label_column, "", allp, join_result_folder_path, jm, None)
-    sorted_ranking = dict(sorted(jm.items(), key=lambda item: item[1][2]))
-    print(sorted_ranking)
-
-    with open(f"{os.path.join(folder_name, '../', mappings_folder_name)}/{RANKING_FUNCTION}", 'w') as fp:
-        json.dump(sorted_ranking, fp)
-
-    # if test_ranking:
-    #     data = verify_ranking_func(sorted_ranking, mapping, join_result_folder_path, base_table_name, label_column)
-    #     pd.DataFrame.from_dict(data).transpose().reset_index().to_csv(
-    #         f"{folder_name}/../{mappings_folder_name}/{RANKING_VERIFY}", index=False)
+from helpers.util_functions import objects_to_dict
 
 
 def pipeline_multigraph(dataset: Dataset, test_ranking=False):
@@ -61,7 +26,7 @@ def pipeline_multigraph(dataset: Dataset, test_ranking=False):
         results = verify_ranking_func(dataset, ranking.ranked_paths)
         data = objects_to_dict(results)
         print(data)
-        pd.DataFrame(data).to_csv(f"../{MAPPING_FOLDER}/{RANKING_VERIFY}", index=False)
+        pd.DataFrame(data).to_csv(MAPPING_FOLDER / RANKING_VERIFY, index=False)
 
 
 def verify_ranking_func(dataset, ranked_paths=None):
@@ -91,7 +56,7 @@ def verify_ranking_func(dataset, ranked_paths=None):
             continue
 
         joined_df = pd.read_csv(
-            f"../{JOIN_RESULT_FOLDER}/{join_path}",
+            JOIN_RESULT_FOLDER / join_path,
             header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
         )
         # Two type of experiments

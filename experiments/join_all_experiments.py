@@ -16,7 +16,7 @@ class JoinAllExperiment:
         self.approach = Result.JOIN_ALL_FS if do_feature_selection else Result.JOIN_ALL
         self.do_feature_selection = do_feature_selection
 
-    def accuracy_results(self):
+    def compute_accuracy_results(self):
         print(f'======== JOIN-ALL Dataset Pipeline - feature selection - {self.do_feature_selection} ========')
         start = time.time()
         dataset_df = join_all(self.dataset.base_table_id)

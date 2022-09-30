@@ -3,11 +3,9 @@ from collections import Counter
 
 import pandas as pd
 
-from utils_module.file_naming_convention import JOIN_RESULT_FOLDER
-from utils_module.neo4j_utils import get_relation_properties, get_pk_fk_nodes
-from utils_module.util_functions import transform_node_to_dict
-
-folder_name = os.path.abspath(os.path.dirname(__file__))
+from config import JOIN_RESULT_FOLDER, ROOT_FOLDER
+from helpers.neo4j_utils import get_relation_properties, get_pk_fk_nodes
+from helpers.util_functions import transform_node_to_dict
 
 
 def join_tables_recursive(all_paths: dict, mapping, current_table, target_column, path, allp, join_result_path,
@@ -54,13 +52,13 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     # Getting the join keys
     from_col, to_col = get_relation_properties(left_table_path, right_table_path)
     # Read left side table
-    left_table_df = pd.read_csv(os.path.join(folder_name, "../", partial_join_path), header=0, engine="python",
+    left_table_df = pd.read_csv(ROOT_FOLDER / partial_join_path, header=0, engine="python",
                                 encoding="utf8", quotechar='"', escapechar='\\')
     if from_col not in left_table_df.columns:
         print(f"ERROR! Key {from_col} not in table {partial_join_path}")
         return None
 
-    right_table_df = pd.read_csv(os.path.join(folder_name, "../", right_table_path), header=0, engine="python",
+    right_table_df = pd.read_csv(ROOT_FOLDER / right_table_path, header=0, engine="python",
                                  encoding="utf8", quotechar='"', escapechar='\\')
     if to_col not in right_table_df.columns:
         print(f"ERROR! Key {to_col} not in table {right_table_path}")
@@ -76,7 +74,7 @@ def join_and_save(partial_join_path, left_table_path, right_table_path, join_res
     # duplicate_col.append(to_col)
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
-    joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{join_result_name}"
+    joined_path = ROOT_FOLDER / join_result_path / join_result_name
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df
@@ -167,7 +165,7 @@ def prune_or_join_2(left_path, right_path, left_key, right_key, join_result_name
     duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
-    joined_path = f"../{JOIN_RESULT_FOLDER}/{join_result_name}"
+    joined_path = JOIN_RESULT_FOLDER / join_result_name
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df
@@ -185,13 +183,13 @@ def prune_or_join(partial_join_path, left_table_name, right_table_name, mapping,
     right_key = right_tokens[-1]
 
     # Read left side table
-    left_table_df = pd.read_csv(os.path.join(folder_name, partial_join_path), header=0, engine="python",
+    left_table_df = pd.read_csv(ROOT_FOLDER / partial_join_path, header=0, engine="python",
                                 encoding="utf8", quotechar='"', escapechar='\\')
     if left_key not in left_table_df.columns:
         print(f"ERROR! Key {left_key} not in table {partial_join_path}")
         return None
 
-    right_table_df = pd.read_csv(os.path.join(folder_name, mapping[right_table_name]), header=0, engine="python",
+    right_table_df = pd.read_csv(ROOT_FOLDER / mapping[right_table_name], header=0, engine="python",
                                  encoding="utf8", quotechar='"', escapechar='\\')
     if right_key not in right_table_df.columns:
         print(f"ERROR! Key {right_key} not in table {right_table_name}")
@@ -217,7 +215,7 @@ def prune_or_join(partial_join_path, left_table_name, right_table_name, mapping,
     duplicate_col = [col for col in joined_df.columns if col.endswith('_b')]
     joined_df.drop(columns=duplicate_col, inplace=True)
     # Save join result
-    joined_path = f"{os.path.join(folder_name, '../', join_result_path)}/{left_name}--{right_name}"
+    joined_path = ROOT_FOLDER / join_result_path / f"{left_name}--{right_name}"
     joined_df.to_csv(joined_path, index=False)
 
     return joined_path, joined_df, left_table_df
