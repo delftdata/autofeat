@@ -6,9 +6,9 @@ from sklearn.model_selection import train_test_split
 
 from arda.arda import select_arda_features
 from data_preparation.dataset_base import Dataset
-from experiments.utils import hp_tune_join_all
 from experiments.result_object import Result
 from experiments.utils import TRAINING_FUNCTIONS
+from experiments.utils import hp_tune_join_all
 
 
 class ArdaExperiment:
@@ -19,12 +19,15 @@ class ArdaExperiment:
         self.learning_curve_train = []
         self.learning_curve_test = []
         self.depth_values = learning_curve_depth_values
+        self.selected_features = None
 
     def accuracy_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        X, y, join_time, fs_time = select_arda_features(self.dataset.base_table_id, self.dataset.target_column,
-                                                        self.dataset.base_table_features)
+        X, y, join_time, fs_time, selected_features = select_arda_features(self.dataset.base_table_id,
+                                                                           self.dataset.target_column,
+                                                                           self.dataset.base_table_features)
+        self.selected_features = selected_features
         for model_name, training_fun in TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
             entry = Result(self.approach, self.dataset.base_table_id, self.dataset.base_table_label, model_name)
@@ -39,8 +42,8 @@ class ArdaExperiment:
     def learning_curve_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        X, y, _, _ = select_arda_features(self.dataset.base_table_id, self.dataset.target_column,
-                                          self.dataset.base_table_features)
+        X, y, _, _, _ = select_arda_features(self.dataset.base_table_id, self.dataset.target_column,
+                                             self.dataset.base_table_features)
 
         print(f"ARDA features: {X.columns}")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)

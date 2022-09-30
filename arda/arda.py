@@ -137,4 +137,4 @@ def select_arda_features(base_table_id, target_column, base_table_features):
     ]
     X.drop(columns=columns_to_drop, inplace=True)
 
-    return X, y, join_time, fs_time
+    return X, y, join_time, fs_time, fs_X
