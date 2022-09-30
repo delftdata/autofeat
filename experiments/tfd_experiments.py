@@ -33,7 +33,7 @@ class TFDExperiment:
         self.redundancy_th_values = [5, 7, 9, 10, 15, 20, 25, 30]
 
     def get_results(self):
-        print(f'======== TFD Pipeline ========')
+        print(f"======== TFD Pipeline ========")
 
         start = time.time()
         tfd_ranking = Ranking(self.dataset).start_ranking()
@@ -66,15 +66,26 @@ class TFDExperiment:
 
                 for i, ranked_path in enumerate(ranking.ranked_paths[0:3]):
                     # TFD - All in path
-                    print(f"Path: {i} - score: {ranked_path.score}\n\t{ranked_path.path}\n\t{ranked_path.features}")
+                    print(
+                        f"Path: {i} - score: {ranked_path.score}\n\t{ranked_path.path}\n\t{ranked_path.features}"
+                    )
                     print(f"Processing case 1: Keep the entire path")
                     joined_df, join_path = self.__process_joined_data(ranked_path)
                     X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
                     acc, params, feature_imp, _, _ = TRAINING_FUNCTIONS[algorithm](X, y)
 
-                    result = Result(Result.TFD_PATH, join_path, self.dataset.base_table_label, algorithm)
-                    result.set_accuracy(acc).set_depth(params['max_depth']).set_rank(i).set_cutoff_th(
-                        cutoff_th).set_redundancy_th(redundancy_th).set_features(map_features_scores(feature_imp, X))
+                    result = Result(
+                        approach=Result.TFD_PATH,
+                        data_path=join_path,
+                        data_label=self.dataset.base_table_label,
+                        algorithm=algorithm,
+                        depth=params["max_depth"],
+                        rank=i,
+                        accuracy=acc,
+                        cutoff_threshold=cutoff_th,
+                        redundancy_threshold=redundancy_th,
+                        feature_importance=map_features_scores(feature_imp, X),
+                    )
                     self.sensitivity_results.append(result)
 
                     print(f"Processing case 2: Remove all, but the ranked feature")
@@ -82,9 +93,18 @@ class TFDExperiment:
                     X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
                     acc, params, feature_imp, _, _ = TRAINING_FUNCTIONS[algorithm](X, y)
 
-                    result = Result(Result.TFD, join_path, self.dataset.base_table_label, algorithm)
-                    result.set_accuracy(acc).set_depth(params['max_depth']).set_rank(i).set_cutoff_th(
-                        cutoff_th).set_redundancy_th(redundancy_th).set_features(map_features_scores(feature_imp, X))
+                    result = Result(
+                        approach=Result.TFD,
+                        data_path=join_path,
+                        data_label=self.dataset.base_table_label,
+                        algorithm=algorithm,
+                        depth=params["max_depth"],
+                        rank=i,
+                        accuracy=acc,
+                        cutoff_threshold=cutoff_th,
+                        redundancy_threshold=redundancy_th,
+                        feature_importance=map_features_scores(feature_imp, X),
+                    )
                     self.sensitivity_results.append(result)
 
     def plot_sensitivity_result(self, results: pd.DataFrame = None):
@@ -94,32 +114,48 @@ class TFDExperiment:
             results = pd.DataFrame(objects_to_dict(self.sensitivity_results))
 
         for i, cutoff_th in enumerate(self.cutoff_th_values):
-            df = results[results['cutoff_th'] == cutoff_th]
+            df = results[results["cutoff_th"] == cutoff_th]
 
-            colors = ['red', 'black', 'green']
-            for j, rank in enumerate(df['rank'].unique()):
-                df_ranks = df[df['rank'] == rank]
+            colors = ["red", "black", "green"]
+            for j, rank in enumerate(df["rank"].unique()):
+                df_ranks = df[df["rank"] == rank]
 
-                marker = ['*', 'H']
-                for k, approach in enumerate(df['approach'].unique()):
-                    values = df_ranks[df_ranks['approach'] == approach]
+                marker = ["*", "H"]
+                for k, approach in enumerate(df["approach"].unique()):
+                    values = df_ranks[df_ranks["approach"] == approach]
                     if i == len(self.cutoff_th_values) - 1:
-                        axs[i].plot(self.redundancy_th_values, values['accuracy'], marker=marker[k], color=colors[j],
-                                    label=f"{approach}-{rank}")
+                        axs[i].plot(
+                            self.redundancy_th_values,
+                            values["accuracy"],
+                            marker=marker[k],
+                            color=colors[j],
+                            label=f"{approach}-{rank}",
+                        )
                     else:
-                        axs[i].plot(self.redundancy_th_values, values['accuracy'], marker=marker[k], color=colors[j])
+                        axs[i].plot(
+                            self.redundancy_th_values,
+                            values["accuracy"],
+                            marker=marker[k],
+                            color=colors[j],
+                        )
             axs[i].set_title(f"Cut-off Threshold = {cutoff_th}")
 
         fig.legend()
         fig.show()
-        fig.savefig(f'../plots/sensitivity-plots-{self.dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
+        fig.savefig(
+            f"../plots/sensitivity-plots-{self.dataset.base_table_label}.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
 
     def __process_joined_data_tfd(self, joined_df: pd.DataFrame, ranked_path: Rank):
         aux_df = joined_df.copy(deep=True)
         aux_features = list(joined_df.columns)
         aux_features.remove(self.dataset.target_column)
         columns_to_drop = [
-            c for c in aux_features if (c not in self.dataset.base_table_features) and (c not in ranked_path.features)
+            c
+            for c in aux_features
+            if (c not in self.dataset.base_table_features) and (c not in ranked_path.features)
         ]
         aux_df.drop(columns=columns_to_drop, inplace=True)
         return aux_df
@@ -130,17 +166,31 @@ class TFDExperiment:
         print(f"Processing case 1: Keep the entire path")
         joined_df = pd.read_csv(
             f"../{JOIN_RESULT_FOLDER}/{join_path}",
-            header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\"
+            header=0,
+            engine="python",
+            encoding="utf8",
+            quotechar='"',
+            escapechar="\\",
         )
         return joined_df, join_path
 
     def __train_approach(self, X, y, approach, data_path, join_time):
         for model_name, training_fun in TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(approach, data_path, self.dataset.base_table_label, model_name)
-            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time).set_join_time(join_time)
+            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+                X, y, training_fun, False
+            )
+            entry = Result(
+                approach=approach,
+                data_path=data_path,
+                data_label=self.dataset.base_table_label,
+                algorithm=model_name,
+                depth=max_depth,
+                accuracy=accuracy,
+                feature_importance=feature_importances,
+                train_time=train_time,
+                join_time=join_time,
+            )
             self.results.append(entry)
 
     def __learning_curve_results_tfd_path(self, X, y):
