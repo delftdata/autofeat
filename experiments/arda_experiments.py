@@ -30,11 +30,12 @@ class ArdaExperiment:
         self.selected_features = selected_features
         for model_name, training_fun in TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(self.approach, self.dataset.base_table_id, self.dataset.base_table_label, model_name)
             accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time).set_feature_selection_time(fs_time).set_join_time(
-                join_time)
+            entry = Result(
+                approach=self.approach, data_path=self.dataset.base_table_id, data_label=self.dataset.base_table_label, algorithm=model_name,
+                depth=max_depth, accuracy=accuracy, feature_importance=feature_importances,
+                train_time=train_time, feature_selection_time=fs_time,  join_time=join_time
+            )
             self.results.append(entry)
 
         print(f"======== Finished ARDA Pipeline ========")

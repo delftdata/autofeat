@@ -24,6 +24,7 @@ class AllExperiments:
         self.datasets: List[Dataset] = []
 
     def experiments_per_dataset(self, dataset: Dataset):
+
         self.datasets.append(dataset)
 
         base_table = BaseTableExperiment(dataset)
@@ -54,9 +55,15 @@ class AllExperiments:
             dataset_results[dataset] = []
 
         for dataset in self.datasets:
-            dataset_results[dataset].extend(objects_to_dict(self.base_table_experiments[dataset].results))
-            dataset_results[dataset].extend(objects_to_dict(self.join_all_experiments[dataset].results))
-            dataset_results[dataset].extend(objects_to_dict(self.join_all_fs_experiments[dataset].results))
+            dataset_results[dataset].extend(
+                objects_to_dict(self.base_table_experiments[dataset].results)
+            )
+            dataset_results[dataset].extend(
+                objects_to_dict(self.join_all_experiments[dataset].results)
+            )
+            dataset_results[dataset].extend(
+                objects_to_dict(self.join_all_fs_experiments[dataset].results)
+            )
             dataset_results[dataset].extend(objects_to_dict(self.arda_experiments[dataset].results))
             dataset_results[dataset].extend(objects_to_dict(self.tfd_experiments[dataset].results))
 
@@ -93,31 +100,57 @@ class AllExperiments:
             fig = axs[0].get_figure()
 
         fig.show()
-        fig.savefig(f'../plots/accuracy-results-all.png', dpi=300, bbox_inches="tight")
+        fig.savefig(f"../plots/accuracy-results-all.png", dpi=300, bbox_inches="tight")
 
     def plot_learning_curves(self):
         for dataset in self.datasets:
             fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 6))
 
             axs[0].set_title("Best Ranked Features")
-            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
-            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd, '-o')
+            axs[0].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_train_tfd,
+                "-o",
+            )
+            axs[0].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_test_tfd,
+                "-o",
+            )
 
             axs[1].set_title("All in path Features")
-            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
-                        '-o')
-            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd_path,
-                        '-o')
+            axs[1].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_train_tfd_path,
+                "-o",
+            )
+            axs[1].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_test_tfd_path,
+                "-o",
+            )
 
             axs[2].set_title("Arda")
-            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_train, '-o',
-                        label='Train')
-            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_test, '-o',
-                        label='Test')
+            axs[2].plot(
+                self.learning_curves_depth_values,
+                self.arda_experiments[dataset].learning_curve_train,
+                "-o",
+                label="Train",
+            )
+            axs[2].plot(
+                self.learning_curves_depth_values,
+                self.arda_experiments[dataset].learning_curve_test,
+                "-o",
+                label="Test",
+            )
 
             fig.legend()
             fig.show()
-            fig.savefig(f'../plots/learning-curves-{dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
+            fig.savefig(
+                f"../plots/learning-curves-{dataset.base_table_label}.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
 
     def plot_sensitivity_results(self, dataset):
         tfd = TFDExperiment(dataset, self.learning_curves_depth_values)
