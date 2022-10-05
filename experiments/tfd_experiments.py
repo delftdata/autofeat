@@ -7,12 +7,12 @@ from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+from algorithms import BaseAlgorithm, TRAINING_FUNCTIONS, CART
 from augmentation.ranking import Ranking, Rank
 from config import JOIN_RESULT_FOLDER, PLOTS_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import get_join_path, prepare_data_for_ml
 from experiments.result_object import Result
-from experiments.utils import TRAINING_FUNCTIONS, CART_ALG
 from experiments.utils import hp_tune_join_all, map_features_scores
 from helpers.util_functions import objects_to_dict
 
@@ -55,7 +55,7 @@ class TFDExperiment:
 
         print(f"======== Finished TFD Pipeline ========")
 
-    def threshold_sensitivity_results(self, algorithm):
+    def threshold_sensitivity_results(self, algorithm: BaseAlgorithm):
         for redundancy_th in self.redundancy_th_values:
             print(f"\n\tREDUNDANCY THRESHOLD: {redundancy_th}")
             for cutoff_th in self.cutoff_th_values:
@@ -71,13 +71,13 @@ class TFDExperiment:
                     print(f"Processing case 1: Keep the entire path")
                     joined_df, join_path = self.__process_joined_data(ranked_path)
                     X, y = prepare_data_for_ml(joined_df, self.dataset.target_column)
-                    acc, params, feature_imp, _, _ = TRAINING_FUNCTIONS[algorithm](X, y)
+                    acc, params, feature_imp, _, _ = algorithm.train(X, y)
 
                     result = Result(
                         approach=Result.TFD_PATH,
                         data_path=join_path,
                         data_label=self.dataset.base_table_label,
-                        algorithm=algorithm,
+                        algorithm=algorithm.LABEL,
                         depth=params["max_depth"],
                         rank=i,
                         accuracy=acc,
@@ -90,13 +90,13 @@ class TFDExperiment:
                     print(f"Processing case 2: Remove all, but the ranked feature")
                     aux_df = self.__process_joined_data_tfd(joined_df, ranked_path)
                     X, y = prepare_data_for_ml(aux_df, self.dataset.target_column)
-                    acc, params, feature_imp, _, _ = TRAINING_FUNCTIONS[algorithm](X, y)
+                    acc, params, feature_imp, _, _ = algorithm.train(X, y)
 
                     result = Result(
                         approach=Result.TFD,
                         data_path=join_path,
                         data_label=self.dataset.base_table_label,
-                        algorithm=algorithm,
+                        algorithm=algorithm.LABEL,
                         depth=params["max_depth"],
                         rank=i,
                         accuracy=acc,
@@ -141,7 +141,8 @@ class TFDExperiment:
 
         fig.legend()
         fig.show()
-        fig.savefig(PLOTS_FOLDER / f'sensitivity-plots-{self.dataset.base_table_label}.png', dpi=300, bbox_inches="tight")
+        fig.savefig(PLOTS_FOLDER / f'sensitivity-plots-{self.dataset.base_table_label}.png', dpi=300,
+                    bbox_inches="tight")
 
     def __process_joined_data_tfd(self, joined_df: pd.DataFrame, ranked_path: Rank):
         aux_df = joined_df.copy(deep=True)
@@ -166,16 +167,16 @@ class TFDExperiment:
         return joined_df, join_path
 
     def __train_approach(self, X, y, approach, data_path, join_time):
-        for model_name, training_fun in TRAINING_FUNCTIONS.items():
-            print(f"==== Model Name: {model_name} ====")
+        for algorithm in TRAINING_FUNCTIONS:
+            print(f"==== Model Name: {algorithm.LABEL} ====")
             accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
-                X, y, training_fun, False
+                X, y, algorithm().train, False
             )
             entry = Result(
                 approach=approach,
                 data_path=data_path,
                 data_label=self.dataset.base_table_label,
-                algorithm=model_name,
+                algorithm=algorithm.LABEL,
                 depth=max_depth,
                 accuracy=accuracy,
                 feature_importance=feature_importances,
@@ -219,5 +220,5 @@ class TFDExperiment:
             print(f"Depth {i}:\tTrain acc: {train_acc}\tTest acc: {test_acc}")
 
     def run_sensitivity_experiments(self):
-        self.threshold_sensitivity_results(CART_ALG)
+        self.threshold_sensitivity_results(CART())
         self.plot_sensitivity_result()

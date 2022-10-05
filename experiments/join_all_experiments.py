@@ -1,12 +1,12 @@
 import time
 from typing import List
 
+from algorithms import TRAINING_FUNCTIONS, ID3
 from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import join_all
 from data_preparation.utils import prepare_data_for_ml
 from experiments.utils import hp_tune_join_all
 from experiments.result_object import Result
-from experiments.utils import TRAINING_FUNCTIONS, ID3_ALG
 
 
 class JoinAllExperiment:
@@ -25,21 +25,21 @@ class JoinAllExperiment:
 
         X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=self.dataset.target_column)
 
-        for model_name, training_fun in TRAINING_FUNCTIONS.items():
+        for algorithm in TRAINING_FUNCTIONS:
             if self.do_feature_selection:
                 # ID3 not supported for feature selection
-                if model_name == ID3_ALG:
+                if algorithm.LABEL == ID3.LABEL:
                     continue
-            print(f"==== Model Name: {model_name} ====")
+            print(f"==== Model Name: {algorithm.LABEL} ====")
 
             accuracy, max_depth, feature_importances, train_time, sfs_time = hp_tune_join_all(
-                X, y, training_fun, self.do_feature_selection
+                X, y, algorithm().train, self.do_feature_selection
             )
             entry = Result(
                 approach=self.approach,
                 data_path=self.dataset.base_table_id,
                 data_label=self.dataset.base_table_label,
-                algorithm=model_name,
+                algorithm=algorithm.LABEL,
                 depth=max_depth,
                 accuracy=accuracy,
                 feature_importance=feature_importances,

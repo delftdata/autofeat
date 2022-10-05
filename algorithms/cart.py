@@ -5,16 +5,17 @@ import numpy as np
 from sklearn import tree
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate
 
+from algorithms.base import BaseAlgorithm
 from algorithms.helpers import feature_selection
 from config import PLOTS_FOLDER
 
 
-class CART:
+class CART(BaseAlgorithm):
     LABEL = "CART"
 
     def __init__(self, num_cv: int = 10):
+        super().__init__()
         self.num_cv: int = num_cv
-        self.decision_tree = None
         self.max_depth = None
 
     def train(self, X, y, do_sfs: bool = False):
@@ -46,10 +47,10 @@ class CART:
 
         print(f"\t Training ... ")
 
-        self.decision_tree = grids.best_estimator_
+        self.algorithm = grids.best_estimator_
         start = time.time()
         cv_output = cross_validate(
-            estimator=self.decision_tree,
+            estimator=self.algorithm,
             X=X,
             y=y,
             scoring="accuracy",
@@ -72,7 +73,7 @@ class CART:
     def print_tree(self, X_train, y_train):
         with open(PLOTS_FOLDER / tree.dot, "w") as f:
             tree.export_graphviz(
-                self.decision_tree,
+                self.algorithm,
                 out_file=f,
                 max_depth=self.max_depth,
                 impurity=True,

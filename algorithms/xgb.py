@@ -4,14 +4,17 @@ import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate
 from xgboost import XGBClassifier
 
+from algorithms import BaseAlgorithm
 from algorithms.helpers import feature_selection
 
 
-class XGB:
+class XGB(BaseAlgorithm):
     LABEL = "XGBoost"
 
     def __init__(self, num_cv: int = 10):
+        super().__init__()
         self.num_cv: int = num_cv
+        self.max_depth = None
 
     def train(self, X, y, do_sfs: bool = False):
         sfs_time = None
@@ -42,11 +45,12 @@ class XGB:
         params = grids.best_params_
         print(f"Hyper-params: {params} for best score: {grids.best_score_}")
 
-        decision_tree = grids.best_estimator_
+        self.algorithm = grids.best_estimator_
+        self.max_depth = grids.best_params_["max_depth"]
 
         start = time.time()
         cv_output = cross_validate(
-            estimator=decision_tree,
+            estimator=self.algorithm,
             X=X,
             y=y,
             scoring="accuracy",

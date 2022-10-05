@@ -3,15 +3,18 @@ import time
 import numpy as np
 from sklearn.model_selection import cross_validate
 
+from algorithms import BaseAlgorithm
 from algorithms.helpers import feature_selection
 from id3_alg import GadId3Classifier
 
 
-class ID3:
+class ID3(BaseAlgorithm):
     LABEL = "ID3"
 
     def __init__(self, num_cv: int = 10):
+        super().__init__()
         self.num_cv: int = num_cv
+        self.max_depth = None
 
     def train(self, X, y, do_sfs: bool = False):
         sfs_time = None
@@ -21,10 +24,10 @@ class ID3:
             decision_tree = GadId3Classifier()
             X, sfs_time = feature_selection(X, y, decision_tree)
 
-        decision_tree = GadId3Classifier()
+        self.algorithm = GadId3Classifier()
         start = time.time()
         cv_output = cross_validate(
-            estimator=decision_tree,
+            estimator=self.algorithm,
             X=X,
             y=y,
             scoring="accuracy",
@@ -37,6 +40,7 @@ class ID3:
         train_time = end - start
         max_depths = [estimator.depth() for estimator in cv_output["estimator"]]
         params = {"max_depth": np.median(max_depths)}
+        self.max_depth = params["max_depth"]
 
         acc_decision_tree = np.mean(cv_output["test_score"])
 
