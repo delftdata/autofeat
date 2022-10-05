@@ -5,7 +5,7 @@ from sklearn.model_selection import cross_validate
 
 from algorithms import BaseAlgorithm
 from algorithms.helpers import feature_selection
-from id3_alg import GadId3Classifier
+from algorithms.id3_alg import GadId3Classifier
 
 
 class ID3(BaseAlgorithm):
