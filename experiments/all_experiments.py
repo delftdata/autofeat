@@ -4,14 +4,24 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from config import PLOTS_FOLDER
+from config import PLOTS_FOLDER, MAPPING_FOLDER, ACCURACY_RESULTS_ALL_PNG
 from data_preparation.dataset_base import Dataset
 from experiments.arda_experiments import ArdaExperiment
 from experiments.base_table_experiments import BaseTableExperiment
 from experiments.datasets import Datasets
 from experiments.join_all_experiments import JoinAllExperiment
+from experiments.result_object import Result
 from experiments.tfd_experiments import TFDExperiment
 from helpers.util_functions import objects_to_dict
+
+approach_plot_order = {
+    Result.TFD: 1,
+    Result.TFD_PATH: 2,
+    Result.ARDA: 3,
+    Result.JOIN_ALL: 4,
+    Result.JOIN_ALL_FS: 5,
+    Result.BASE: 6,
+}
 
 
 class AllExperiments:
@@ -66,15 +76,21 @@ class AllExperiments:
 
         return dataset_results
 
-    def plot_results(self):
-        dataset_results = self.__get_results()
-        print(dataset_results)
+    def plot_results(self, results_df: pd.DataFrame = None):
+        dataset_results = {}
+        if results_df is None:
+            dataset_results = self.__get_results()
+            print(dataset_results)
+
         columns = len(self.datasets)
         fig, axs = plt.subplots(nrows=1, ncols=columns, figsize=(12, 6))
 
         for i, dataset in enumerate(self.datasets):
-            results_df = pd.DataFrame(dataset_results[dataset])
-            results_df.to_csv(f"acc-results-{dataset.base_table_label}.csv", index=False)
+            if results_df is None and dataset in dataset_results:
+                results_df = pd.DataFrame(dataset_results[dataset])
+            results_df.sort_values(by=['approach', 'algorithm'], key=lambda x: x.map(approach_plot_order).fillna(x),
+                                   inplace=True)
+            results_df.to_csv(MAPPING_FOLDER / f"acc-results-{dataset.base_table_label}.csv", index=False)
 
             if len(self.datasets) == 1:
                 sns.barplot(data=results_df, x="algorithm", y="accuracy", hue="approach", ax=axs)
@@ -97,7 +113,7 @@ class AllExperiments:
             fig = axs[0].get_figure()
 
         fig.show()
-        fig.savefig(PLOTS_FOLDER / 'accuracy-results-all.png', dpi=300, bbox_inches="tight")
+        fig.savefig(ACCURACY_RESULTS_ALL_PNG, dpi=300, bbox_inches="tight")
 
     def plot_learning_curves(self):
         for dataset in self.datasets:
@@ -136,8 +152,16 @@ class AllExperiments:
         tfd.run_sensitivity_experiments()
 
 
+def plot_results_per_dataset(dataset: Dataset):
+    result_df = pd.read_csv(MAPPING_FOLDER / f"acc-results-{dataset.base_table_label}.csv")
+    exp = AllExperiments()
+    exp.datasets.append(dataset)
+    exp.plot_results(result_df)
+
+
 if __name__ == "__main__":
     data = Datasets.titanic
+    # plot_results_per_dataset(data)
     experiments = AllExperiments()
     experiments.experiments_per_dataset(data)
     experiments.plot_results()
