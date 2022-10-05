@@ -35,10 +35,16 @@ def verify_ranking_func(dataset, ranked_paths=None):
         dataset.set_base_table_df()
 
     X_b, y = prepare_data_for_ml(dataset.base_table_df, dataset.target_column)
-    acc_b, params_b, feature_imp_b, _, _ = CART().train(X_b, y)
-    entry = Result(Result.BASE, dataset.base_table_id, dataset.base_table_label, CART.LABEL)
-    entry.set_accuracy(acc_b).set_depth(params_b["max_depth"]).set_feature_importance(
-        map_features_scores(feature_imp_b, X_b))
+    acc_b, params_b, feature_imp_b, _, _ = train_CART(X_b, y)
+    entry = Result(
+        approach=Result.BASE,
+        data_path=dataset.base_table_id,
+        data_label=dataset.base_table_label,
+        algorithm=CART,
+        depth=params_b["max_depth"],
+        accuracy=acc_b,
+        feature_importance=map_features_scores(feature_imp_b, X_b),
+    )
     results.append(entry)
 
     if ranked_paths is None:
@@ -62,9 +68,15 @@ def verify_ranking_func(dataset, ranked_paths=None):
         X, y = prepare_data_for_ml(joined_df, dataset.target_column)
         acc, params, feature_imp, _, _ = CART().train(X, y)
 
-        entry = Result(Result.TFD_PATH, ranked_path.path, dataset.base_table_label, CART.LABEL)
-        entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
-            map_features_scores(feature_imp, X))
+        entry = Result(
+            approach=Result.TFD_PATH,
+            data_path=ranked_path.path,
+            data_label=dataset.base_table_label,
+            algorithm=CART,
+            depth=params["max_depth"],
+            accuracy=acc,
+            feature_importance=map_features_scores(feature_imp, X),
+        )
         results.append(entry)
 
         # 2. Remove all, but the ranked feature
@@ -73,17 +85,24 @@ def verify_ranking_func(dataset, ranked_paths=None):
         aux_features = list(joined_df.columns)
         aux_features.remove(dataset.target_column)
         columns_to_drop = [
-            c for c in aux_features if
-            (c not in dataset.base_table_features) and (c not in ranked_path.features)
+            c
+            for c in aux_features
+            if (c not in dataset.base_table_features) and (c not in ranked_path.features)
         ]
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, dataset.target_column)
         acc, params, feature_imp, _, _ = CART().train(X, y)
 
-        entry = Result(Result.TFD, ranked_path.path, dataset.base_table_label, CART.LABEL)
-        entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
-            map_features_scores(feature_imp, X))
+        entry = Result(
+            approach=Result.TFD,
+            data_path=ranked_path.path,
+            data_label=dataset.base_table_label,
+            algorithm=CART,
+            depth=params["max_depth"],
+            accuracy=acc,
+            feature_importance=map_features_scores(feature_imp, X),
+        )
         results.append(entry)
     return results
 
@@ -96,5 +115,5 @@ def data_pipeline(prepare_data=False):
     pipeline_multigraph(Datasets.steel_plate_fault, test_ranking)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     data_pipeline()

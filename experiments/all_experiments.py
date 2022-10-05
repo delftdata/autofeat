@@ -104,8 +104,16 @@ class AllExperiments:
             fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 6))
 
             axs[0].set_title("Best Ranked Features")
-            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd, '-o')
-            axs[0].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd, '-o')
+            axs[0].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_train_tfd,
+                "-o",
+            )
+            axs[0].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_test_tfd,
+                "-o",
+            )
 
             axs[1].set_title("All in path Features")
             axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,

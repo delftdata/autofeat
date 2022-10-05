@@ -24,10 +24,19 @@ class BaseTableExperiment:
 
         for model_name, training_fun in TRAINING_FUNCTIONS.items():
             print(f"==== Model Name: {model_name} ====")
-            entry = Result(self.approach, self.dataset.base_table_id, self.dataset.base_table_label, model_name)
-            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(X, y, training_fun, False)
-            entry.set_depth(max_depth).set_accuracy(accuracy).set_feature_importance(
-                feature_importances).set_train_time(train_time)
+            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(
+                X, y, training_fun, False
+            )
+            entry = Result(
+                approach=self.approach,
+                data_path=self.dataset.base_table_id,
+                data_label=self.dataset.base_table_label,
+                algorithm=model_name,
+                depth=max_depth,
+                accuracy=accuracy,
+                feature_importance=feature_importances,
+                train_time=train_time,
+            )
             self.results.append(entry)
 
         print(f"======== Finished NON-AUG Pipeline ========")
