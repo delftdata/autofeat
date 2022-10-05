@@ -1,19 +1,16 @@
-import json
 import math
-import os
 
 import pandas as pd
 
+from algorithms.cart import CART
 from augmentation.data_preparation_pipeline import data_preparation
 from augmentation.ranking import Ranking
-from augmentation.train_algorithms import train_CART
-from config import MAPPING, ENUMERATED_PATHS, RANKING_FUNCTION, RANKING_VERIFY, \
-    MAPPING_FOLDER, JOIN_RESULT_FOLDER
+from config import RANKING_VERIFY, MAPPING_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import prepare_data_for_ml, get_join_path
 from experiments.datasets import Datasets
 from experiments.result_object import Result
-from experiments.utils import CART, map_features_scores
+from experiments.utils import map_features_scores
 from helpers.util_functions import objects_to_dict
 
 
@@ -38,8 +35,8 @@ def verify_ranking_func(dataset, ranked_paths=None):
         dataset.set_base_table_df()
 
     X_b, y = prepare_data_for_ml(dataset.base_table_df, dataset.target_column)
-    acc_b, params_b, feature_imp_b, _, _ = train_CART(X_b, y)
-    entry = Result(Result.BASE, dataset.base_table_id, dataset.base_table_label, CART)
+    acc_b, params_b, feature_imp_b, _, _ = CART().train(X_b, y)
+    entry = Result(Result.BASE, dataset.base_table_id, dataset.base_table_label, CART.LABEL)
     entry.set_accuracy(acc_b).set_depth(params_b["max_depth"]).set_feature_importance(
         map_features_scores(feature_imp_b, X_b))
     results.append(entry)
@@ -63,9 +60,9 @@ def verify_ranking_func(dataset, ranked_paths=None):
         # 1. Keep the entire path
         print(f"Processing case 1: Keep the entire path")
         X, y = prepare_data_for_ml(joined_df, dataset.target_column)
-        acc, params, feature_imp, _, _ = train_CART(X, y)
+        acc, params, feature_imp, _, _ = CART().train(X, y)
 
-        entry = Result(Result.TFD_PATH, ranked_path.path, dataset.base_table_label, CART)
+        entry = Result(Result.TFD_PATH, ranked_path.path, dataset.base_table_label, CART.LABEL)
         entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
             map_features_scores(feature_imp, X))
         results.append(entry)
@@ -82,9 +79,9 @@ def verify_ranking_func(dataset, ranked_paths=None):
         aux_df.drop(columns=columns_to_drop, inplace=True)
 
         X, y = prepare_data_for_ml(aux_df, dataset.target_column)
-        acc, params, feature_imp, _, _ = train_CART(X, y)
+        acc, params, feature_imp, _, _ = CART().train(X, y)
 
-        entry = Result(Result.TFD, ranked_path.path, dataset.base_table_label, CART)
+        entry = Result(Result.TFD, ranked_path.path, dataset.base_table_label, CART.LABEL)
         entry.set_accuracy(acc).set_depth(params["max_depth"]).set_feature_importance(
             map_features_scores(feature_imp, X))
         results.append(entry)

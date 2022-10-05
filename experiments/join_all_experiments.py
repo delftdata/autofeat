@@ -6,7 +6,7 @@ from data_preparation.join_data import join_all
 from data_preparation.utils import prepare_data_for_ml
 from experiments.utils import hp_tune_join_all
 from experiments.result_object import Result
-from experiments.utils import TRAINING_FUNCTIONS, ID3
+from experiments.utils import TRAINING_FUNCTIONS, ID3_ALG
 
 
 class JoinAllExperiment:
@@ -28,7 +28,7 @@ class JoinAllExperiment:
         for model_name, training_fun in TRAINING_FUNCTIONS.items():
             if self.do_feature_selection:
                 # ID3 not supported for feature selection
-                if model_name == ID3:
+                if model_name == ID3_ALG:
                     continue
             print(f"==== Model Name: {model_name} ====")
 

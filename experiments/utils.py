@@ -2,12 +2,6 @@ from typing import Callable
 
 from augmentation.train_algorithms import train_CART, train_ID3, train_XGBoost
 
-CART = "CART"
-ID3 = "ID3"
-XGBOOST = "XGBoost"
-
-TRAINING_FUNCTIONS = {CART: train_CART, ID3: train_ID3, XGBOOST: train_XGBoost}
-
 
 def hp_tune_join_all(X, y, training_fun: Callable, do_sfs: bool):
     accuracy, params, feature_importances, train_time, sfs_time = training_fun(X, y, do_sfs)

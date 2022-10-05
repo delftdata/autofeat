@@ -12,7 +12,7 @@ from config import JOIN_RESULT_FOLDER, PLOTS_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import get_join_path, prepare_data_for_ml
 from experiments.result_object import Result
-from experiments.utils import TRAINING_FUNCTIONS, CART
+from experiments.utils import TRAINING_FUNCTIONS, CART_ALG
 from experiments.utils import hp_tune_join_all, map_features_scores
 from helpers.util_functions import objects_to_dict
 
@@ -177,5 +177,5 @@ class TFDExperiment:
             print(f"Depth {i}:\tTrain acc: {train_acc}\tTest acc: {test_acc}")
 
     def run_sensitivity_experiments(self):
-        self.threshold_sensitivity_results(CART)
+        self.threshold_sensitivity_results(CART_ALG)
         self.plot_sensitivity_result()
