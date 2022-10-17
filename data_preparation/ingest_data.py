@@ -7,16 +7,13 @@ import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from config import CONNECTIONS, DATA_FOLDER
+from config import CONNECTIONS, DATA_FOLDER, VALENTINE_THRESHOLD
 from data_preparation import SIBLING, RELATED
 from helpers.neo4j_utils import merge_nodes_relation, create_relation
 
-folder_name = os.path.abspath(os.path.dirname(__file__))
-threshold = 0.8
-
 
 def ingest_fabricated_data() -> dict:
-    files = glob.glob(f"../{DATA_FOLDER}/**/*.csv", recursive=True)
+    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
     # Filter out connections.csv file
     files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
     mapping = {}
@@ -24,7 +21,7 @@ def ingest_fabricated_data() -> dict:
         table_path = f
         table_name = f.partition(f"{DATA_FOLDER}/")[2]
         print(f"Creating nodes from {f}")
-        df = pd.read_csv(f, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\', nrows=1)
+        df = pd.read_csv(f, encoding="utf8", nrows=1)
         for column_pair in itertools.combinations(df.columns, r=2):
             (col1, col2) = column_pair
             merge_nodes_relation(col1, col2, table_name, table_path, SIBLING, 0)
@@ -35,7 +32,7 @@ def ingest_fabricated_data() -> dict:
 
 
 def ingest_connections():
-    files = glob.glob(f"../{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)
+    files = glob.glob(f"{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)
 
     for f in files:
         print(f"Ingesting connections from {f}")
@@ -52,19 +49,19 @@ def ingest_connections():
 
 
 def profile_valentine_all():
-    files = glob.glob(f"../{DATA_FOLDER}/**/*.csv", recursive=True)
+    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
         print(f"Processing the match between:\n\t{tab1}\n\t{tab2}")
-        df1 = pd.read_csv(tab1, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-        df2 = pd.read_csv(tab2, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+        df1 = pd.read_csv(tab1, encoding="utf8")
+        df2 = pd.read_csv(tab2, encoding="utf8")
         matches = valentine_match(df1, df2, Coma(strategy="COMA_OPT"))
 
         for item in matches.items():
             ((_, col_from), (_, col_to)), similarity = item
-            if similarity > threshold:
+            if similarity > VALENTINE_THRESHOLD:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
                 node_id_source = f"{tab1}/{col_from}"

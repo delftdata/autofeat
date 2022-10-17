@@ -1,7 +1,7 @@
 import json
 
 from config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
-from data_preparation.ingest_data import ingest_connections, profile_valentine_all, ingest_fabricated_data
+from data_preparation.ingest_data import profile_valentine_all, ingest_fabricated_data, ingest_connections
 from helpers.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
 
 
@@ -17,14 +17,15 @@ def data_preparation():
         json.dump(all_paths, fp)
 
 
-def _data_ingestion(profile_valentine=False) -> dict:
-    mapping = ingest_fabricated_data()
-    ingest_connections()
+def _data_ingestion(ingest_data: bool = True, profile_valentine: bool = False) -> dict:
+    if ingest_data:
+        mapping = ingest_fabricated_data()
+        ingest_connections()
 
     if profile_valentine:
         profile_valentine_all()
 
-    return mapping
+    return {}
 
 
 def _path_enumeration(graph_name="graph") -> dict:
