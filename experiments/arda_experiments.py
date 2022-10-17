@@ -4,10 +4,10 @@ from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+from algorithms import TRAINING_FUNCTIONS
 from arda.arda import select_arda_features
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
-from experiments.utils import TRAINING_FUNCTIONS
 from experiments.utils import hp_tune_join_all
 
 
@@ -21,20 +21,27 @@ class ArdaExperiment:
         self.depth_values = learning_curve_depth_values
         self.selected_features = None
 
-    def accuracy_results(self):
+    def compute_accuracy_results(self):
         print(f'======== ARDA Pipeline ========')
 
         X, y, join_time, fs_time, selected_features = select_arda_features(self.dataset.base_table_id,
                                                                            self.dataset.target_column,
                                                                            self.dataset.base_table_features)
         self.selected_features = selected_features
-        for model_name, training_fun in TRAINING_FUNCTIONS.items():
-            print(f"==== Model Name: {model_name} ====")
-            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(X, y, training_fun, False)
+        for algorithm in TRAINING_FUNCTIONS:
+            print(f"==== Model Name: {algorithm.LABEL} ====")
+            accuracy, max_depth, feature_importances, train_time, _ = hp_tune_join_all(X, y, algorithm().train, False)
             entry = Result(
-                approach=self.approach, data_path=self.dataset.base_table_id, data_label=self.dataset.base_table_label, algorithm=model_name,
-                depth=max_depth, accuracy=accuracy, feature_importance=feature_importances,
-                train_time=train_time, feature_selection_time=fs_time,  join_time=join_time
+                approach=self.approach,
+                data_path=self.dataset.base_table_id,
+                data_label=self.dataset.base_table_label,
+                algorithm=algorithm.LABEL,
+                depth=max_depth,
+                accuracy=accuracy,
+                feature_importance=feature_importances,
+                train_time=train_time,
+                feature_selection_time=fs_time,
+                join_time=join_time
             )
             self.results.append(entry)
 

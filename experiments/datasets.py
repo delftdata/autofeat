@@ -1,29 +1,29 @@
 from typing import Dict
 
+from config import DATA_FOLDER
 from data_preparation.dataset_base import Dataset
 
 
 class Datasets:
-
     titanic = Dataset(
-        "../other-data/synthetic/titanic/titanic.csv",
-        "titanic.csv",
-        "titanic",
-        "Survived"
+        base_table_id=DATA_FOLDER / "titanic/titanic.csv",
+        base_table_name="titanic.csv",
+        base_table_label="titanic",
+        target_column="Survived"
     )
 
     steel_plate_fault = Dataset(
-        "../other-data/synthetic/steel-plate-fault/steel_plate_fault.csv",
-        "steel_plate_fault.csv",
-        "steel_plate_fault",
-        "Class"
+        base_table_id=DATA_FOLDER / "steel-plate-fault/steel_plate_fault.csv",
+        base_table_name="steel_plate_fault.csv",
+        base_table_label="steel_plate_fault",
+        target_column="Class"
     )
 
     football = Dataset(
-        "../other-data/synthetic/football/football.csv",
-        "football.csv",
-        "football",
-        "win"
+        base_table_id=DATA_FOLDER / "football/football.csv",
+        base_table_name="football.csv",
+        base_table_label="football",
+        target_column="win"
     )
 
     ALL = [titanic, steel_plate_fault, football]
