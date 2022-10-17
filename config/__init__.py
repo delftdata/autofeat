@@ -1,6 +1,7 @@
+import os
 from pathlib import Path
 
-ROOT_FOLDER = Path.cwd().parents[0].resolve()
+ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.parent.resolve()
 
 MAPPING = "mapping.json"
 CONNECTIONS = "connections.csv"

@@ -5,8 +5,8 @@ from data_preparation.ingest_data import profile_valentine_all, ingest_fabricate
 from helpers.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
 
 
-def data_preparation():
-    mapping = _data_ingestion(True)
+def data_preparation(profile_valentine: bool = False):
+    mapping = _data_ingestion(ingest_data=True, profile_valentine=profile_valentine)
 
     with open(MAPPING_FOLDER / MAPPING, 'w') as fp:
         json.dump(mapping, fp)
@@ -18,6 +18,7 @@ def data_preparation():
 
 
 def _data_ingestion(ingest_data: bool = True, profile_valentine: bool = False) -> dict:
+    mapping = {}
     if ingest_data:
         mapping = ingest_fabricated_data()
         ingest_connections()
@@ -25,7 +26,7 @@ def _data_ingestion(ingest_data: bool = True, profile_valentine: bool = False) -
     if profile_valentine:
         profile_valentine_all()
 
-    return {}
+    return mapping
 
 
 def _path_enumeration(graph_name="graph") -> dict:
@@ -44,3 +45,7 @@ def _path_enumeration(graph_name="graph") -> dict:
         all_paths.setdefault(key, []).append(value)
 
     return all_paths
+
+
+if __name__ == "__main__":
+    data_preparation()

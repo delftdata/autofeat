@@ -80,7 +80,6 @@ class AllExperiments:
         dataset_results = {}
         if results_df is None:
             dataset_results = self.__get_results()
-            print(dataset_results)
 
         columns = len(self.datasets)
         fig, axs = plt.subplots(nrows=1, ncols=columns, figsize=(12, 6))

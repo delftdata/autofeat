@@ -3,8 +3,8 @@ from neo4j import GraphDatabase
 from data_preparation import SIBLING
 
 driver = GraphDatabase.driver(
-    f"neo4j://localhost:7687", auth=("neo4j", "pass")
-    # f"neo4j://neo4j:7687", auth=("neo4j", "pass")
+    # f"neo4j://localhost:7687", auth=("neo4j", "pass")
+    f"neo4j://neo4j:7687", auth=("neo4j", "pass")
 )
 
 
@@ -202,7 +202,7 @@ def _set_properties(tx, a_id, b_id, path_name_a, path_name_b, relation_name, **k
 
 
 def _create_virtual_graph(tx, name):
-    result = tx.run("CALL gds.graph.create("
+    result = tx.run("CALL gds.graph.project("
                     "$name, "
                     "'Node', "
                     "{ LINK: "
@@ -268,7 +268,7 @@ def get_node_by_id(node_id):
 
 
 def _get_node_by_id(tx, node_id):
-    result = tx.run("match (n {id: $node_id}) return n as node", node_id=node_id)
+    result = tx.run("match (n {id: $node_id}) return n as node", node_id=str(node_id))
     record = result.single()
     if not record:
         return None
@@ -283,7 +283,7 @@ def get_node_by_source_name(source_name):
 
 
 def _get_node_by_source_name(tx, source_name):
-    tx_result = tx.run("match (n {source_path: $source_name}) return n as node", source_name=source_name)
+    tx_result = tx.run("match (n {source_path: $source_name}) return n as node", source_name=str(source_name))
     result = []
     for record in tx_result:
         result.append(record['node'])
@@ -298,7 +298,7 @@ def get_pk_fk_nodes(source_path):
 
 def _get_pk_fk_nodes(tx, source_path):
     tx_result = tx.run("match (n {source_path: $source_path})-[r:RELATED {weight: 1}]-(m) "
-                       "return n, m", source_path=source_path)
+                       "return n, m", source_path=str(source_path))
 
     values = []
     for record in tx_result:
