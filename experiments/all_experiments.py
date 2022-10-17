@@ -123,25 +123,33 @@ class AllExperiments:
             axs[0].plot(
                 self.learning_curves_depth_values,
                 self.tfd_experiments[dataset].learning_curve_train_tfd,
-                "-o",
-            )
+                "-o")
             axs[0].plot(
                 self.learning_curves_depth_values,
                 self.tfd_experiments[dataset].learning_curve_test_tfd,
-                "-o",
-            )
+                "-o")
 
             axs[1].set_title("All in path Features")
-            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_train_tfd_path,
-                        '-o')
-            axs[1].plot(self.learning_curves_depth_values, self.tfd_experiments[dataset].learning_curve_test_tfd_path,
-                        '-o')
+            axs[1].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_train_tfd_path,
+                '-o')
+            axs[1].plot(
+                self.learning_curves_depth_values,
+                self.tfd_experiments[dataset].learning_curve_test_tfd_path,
+                '-o')
 
             axs[2].set_title("Arda")
-            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_train, '-o',
-                        label='Train')
-            axs[2].plot(self.learning_curves_depth_values, self.arda_experiments[dataset].learning_curve_test, '-o',
-                        label='Test')
+            axs[2].plot(
+                self.learning_curves_depth_values,
+                self.arda_experiments[dataset].learning_curve_train,
+                '-o',
+                label='Train')
+            axs[2].plot(
+                self.learning_curves_depth_values,
+                self.arda_experiments[dataset].learning_curve_test,
+                '-o',
+                label='Test')
 
             fig.legend()
             fig.show()
