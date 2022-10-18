@@ -3,8 +3,8 @@ from neo4j import GraphDatabase
 from data_preparation import SIBLING
 
 driver = GraphDatabase.driver(
-    # f"neo4j://localhost:7687", auth=("neo4j", "pass")
-    f"neo4j://neo4j:7687", auth=("neo4j", "pass")
+    f"neo4j://localhost:7687", auth=("neo4j", "pass")
+    # f"neo4j://neo4j:7687", auth=("neo4j", "pass")
 )
 
 
@@ -217,6 +217,20 @@ def _drop_graph(tx, name):
 def drop_graph(name):
     with driver.session() as session:
         session.write_transaction(_drop_graph, name)
+
+
+def _find_graph(tx, name):
+    tx_result = tx.run("CALL gds.graph.list($name)", name=name)
+    values = []
+    for record in tx_result:
+        values.append(record.values())
+    return values
+
+
+def find_graph(name):
+    with driver.session() as session:
+        result = session.write_transaction(_find_graph, name)
+    return result
 
 
 def init_graph(name):

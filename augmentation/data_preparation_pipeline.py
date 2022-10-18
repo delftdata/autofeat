@@ -2,14 +2,15 @@ import json
 
 from config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
 from data_preparation.ingest_data import profile_valentine_all, ingest_fabricated_data, ingest_connections
-from helpers.neo4j_utils import drop_graph, init_graph, enumerate_all_paths
+from helpers.neo4j_utils import drop_graph, init_graph, enumerate_all_paths, find_graph
 
 
-def data_preparation(profile_valentine: bool = False):
-    mapping = _data_ingestion(ingest_data=True, profile_valentine=profile_valentine)
+def data_preparation(ingest_data: bool = True, profile_valentine: bool = False):
+    if ingest_data or profile_valentine:
+        mapping = _data_ingestion(ingest_data=ingest_data, profile_valentine=profile_valentine)
 
-    with open(MAPPING_FOLDER / MAPPING, 'w') as fp:
-        json.dump(mapping, fp)
+        with open(MAPPING_FOLDER / MAPPING, 'w') as fp:
+            json.dump(mapping, fp)
 
     all_paths = _path_enumeration()
 
@@ -30,10 +31,9 @@ def _data_ingestion(ingest_data: bool = True, profile_valentine: bool = False) -
 
 
 def _path_enumeration(graph_name="graph") -> dict:
-    try:
+    graphs = find_graph(graph_name)
+    if len(graphs) > 0:
         drop_graph(graph_name)
-    except Exception as err:
-        print(err)
 
     init_graph(graph_name)
     result = enumerate_all_paths(graph_name)  # list of lists [from, to, distance]
@@ -48,4 +48,4 @@ def _path_enumeration(graph_name="graph") -> dict:
 
 
 if __name__ == "__main__":
-    data_preparation()
+    data_preparation(ingest_data=False, profile_valentine=False)
