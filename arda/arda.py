@@ -176,7 +176,8 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
 
             final_selected_features = fs_X
         else:
-            columns = joined_tables.columns
+            columns = list(joined_tables.columns)
+
             n = budget_size
 
             # Split columns into batches of budget size n
@@ -184,15 +185,18 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
 
             # Perform calculations for every batch
             for columns in final:
-                joined_tables = joined_tables[columns]
+                if target_column not in columns:
+                    columns.append(target_column)
+
+                joined_tables_batch = joined_tables[columns]
 
                 # Prepare data to use
-                X, y = prepare_data_for_ml(dataframe=joined_tables, target_column=target_column)
+                X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
 
                 T = np.arange(0.0, 1.0, 0.1)
                 indices = wrapper_algo(X, y, T)
                 fs_X = X.iloc[:, indices].columns
 
-                final_selected_features += fs_X
+                final_selected_features.append(fs_X)
 
-    return list(set(final_selected_features))
+    return list(set([item for sublist in final_selected_features for item in sublist]))
