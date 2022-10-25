@@ -1,6 +1,7 @@
 import time
 
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
@@ -11,6 +12,8 @@ from sklearn.model_selection import train_test_split
 # Return: A matrix of generated random features, where each column represents one feature
 from data_preparation.join_data import join_directly_connected
 from data_preparation.utils import prepare_data_for_ml
+from helpers.neo4j_utils import get_pk_fk_nodes
+from helpers.util_functions import transform_node_to_dict
 
 
 def gen_features(A, eta):
@@ -138,3 +141,58 @@ def select_arda_features(base_table_id, target_column, base_table_features):
     X.drop(columns=columns_to_drop, inplace=True)
 
     return X, y, join_time, fs_time, fs_X
+
+
+def select_arda_features_budget_join(base_table_id, target_column, base_table_features, budget_size, sample_size):
+    final_selected_features = []
+
+    nodes = get_pk_fk_nodes(base_table_id)
+    for pk, fk in nodes:
+        pk_node = transform_node_to_dict(pk)
+        fk_node = transform_node_to_dict(fk)
+
+        # Read tables
+        left_table = pd.read_csv(pk_node['source_path'])
+        right_table = pd.read_csv(fk_node['source_path'])
+
+        # Sample rows for each
+        left_table = left_table.sample(sample_size)
+        right_table = right_table.sample(sample_size)
+
+        # Join the tables based on join column
+        joined_tables = pd.merge(left_table, right_table, how="left", left_on=pk_node['name'],
+                                right_on=fk_node['name'], suffixes=("", "_b"))
+
+        columns_to_drop = [c for c in list(joined_tables.columns) if c.endswith("_b")]
+        joined_tables.drop(columns=columns_to_drop, inplace=True)
+
+        # Check if joined table feature size is less than budget size
+        if joined_tables.shape[1] <= budget_size:
+            X, y = prepare_data_for_ml(dataframe=joined_tables, target_column=target_column)
+
+            T = np.arange(0.0, 1.0, 0.1)
+            indices = wrapper_algo(X, y, T)
+            fs_X = X.iloc[:, indices].columns
+
+            final_selected_features = fs_X
+        else:
+            columns = joined_tables.columns
+            n = budget_size
+
+            # Split columns into batches of budget size n
+            final = [columns[i * n:(i + 1) * n] for i in range((len(columns) + n - 1) // n)]
+
+            # Perform calculations for every batch
+            for columns in final:
+                joined_tables = joined_tables[columns]
+
+                # Prepare data to use
+                X, y = prepare_data_for_ml(dataframe=joined_tables, target_column=target_column)
+
+                T = np.arange(0.0, 1.0, 0.1)
+                indices = wrapper_algo(X, y, T)
+                fs_X = X.iloc[:, indices].columns
+
+                final_selected_features += fs_X
+
+    return list(set(final_selected_features))
