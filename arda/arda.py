@@ -171,17 +171,7 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
             c for c in list(joined_tables.columns) if (c not in base_table_features) and (c not in final_selected_features)
         ]
 
-        columns.remove(target_column)
-
-        n = budget_size
-
-        # Split columns into batches of budget size n
-        final = [columns[i * n:(i + 1) * n] for i in range((len(columns) + n - 1) // n)]
-
-        # Perform calculations for every batch
-        for columns in final:
-            columns.append(target_column)
-
+        if len(columns) <= budget_size:
             joined_tables_batch = joined_tables[columns]
 
             # Prepare data to use
@@ -191,6 +181,27 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
             indices = wrapper_algo(X, y, T)
             fs_X = X.iloc[:, indices].columns
 
-            final_selected_features.extend(fs_X)
+            final_selected_features = fs_X
+        else:
+            columns.remove(target_column)
+            n = budget_size
+
+            # Split columns into batches of budget size n
+            final = [columns[i * n:(i + 1) * n] for i in range((len(columns) + n - 1) // n)]
+
+            # Perform calculations for every batch
+            for columns in final:
+                columns.append(target_column)
+
+                joined_tables_batch = joined_tables[columns]
+
+                # Prepare data to use
+                X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
+
+                T = np.arange(0.0, 1.0, 0.1)
+                indices = wrapper_algo(X, y, T)
+                fs_X = X.iloc[:, indices].columns
+
+                final_selected_features.extend(fs_X)
 
     return final_selected_features
