@@ -144,6 +144,7 @@ def select_arda_features(base_table_id, target_column, base_table_features):
 
 
 def select_arda_features_budget_join(base_table_id, target_column, base_table_features, budget_size, sample_size):
+    random_state = 42
     final_selected_features = []
 
     nodes = get_pk_fk_nodes(base_table_id)
@@ -156,8 +157,8 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
         right_table = pd.read_csv(fk_node['source_path'])
 
         # Sample rows for each
-        left_table = left_table.sample(sample_size)
-        right_table = right_table.sample(sample_size)
+        left_table = left_table.sample(sample_size, random_state=random_state)
+        right_table = right_table.sample(sample_size, random_state=random_state)
 
         # Join the tables based on join column
         joined_tables = pd.merge(left_table, right_table, how="left", left_on=pk_node['name'],
@@ -177,6 +178,7 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
             final_selected_features = fs_X
         else:
             columns = list(joined_tables.columns)
+            columns.remove(target_column)
 
             n = budget_size
 
@@ -185,8 +187,7 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
 
             # Perform calculations for every batch
             for columns in final:
-                if target_column not in columns:
-                    columns.append(target_column)
+                columns.append(target_column)
 
                 joined_tables_batch = joined_tables[columns]
 
