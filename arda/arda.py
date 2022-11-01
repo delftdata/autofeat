@@ -167,37 +167,30 @@ def select_arda_features_budget_join(base_table_id, target_column, base_table_fe
         columns_to_drop = [c for c in list(joined_tables.columns) if c.endswith("_b")]
         joined_tables.drop(columns=columns_to_drop, inplace=True)
 
-        # Check if joined table feature size is less than budget size
-        if joined_tables.shape[1] <= budget_size:
-            X, y = prepare_data_for_ml(dataframe=joined_tables, target_column=target_column)
+        columns = [
+            c for c in list(joined_tables.columns) if (c not in base_table_features) and (c not in final_selected_features)
+        ]
+
+        columns.remove(target_column)
+
+        n = budget_size
+
+        # Split columns into batches of budget size n
+        final = [columns[i * n:(i + 1) * n] for i in range((len(columns) + n - 1) // n)]
+
+        # Perform calculations for every batch
+        for columns in final:
+            columns.append(target_column)
+
+            joined_tables_batch = joined_tables[columns]
+
+            # Prepare data to use
+            X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
 
             T = np.arange(0.0, 1.0, 0.1)
             indices = wrapper_algo(X, y, T)
             fs_X = X.iloc[:, indices].columns
 
-            final_selected_features = fs_X
-        else:
-            columns = list(joined_tables.columns)
-            columns.remove(target_column)
+            final_selected_features.extend(fs_X)
 
-            n = budget_size
-
-            # Split columns into batches of budget size n
-            final = [columns[i * n:(i + 1) * n] for i in range((len(columns) + n - 1) // n)]
-
-            # Perform calculations for every batch
-            for columns in final:
-                columns.append(target_column)
-
-                joined_tables_batch = joined_tables[columns]
-
-                # Prepare data to use
-                X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
-
-                T = np.arange(0.0, 1.0, 0.1)
-                indices = wrapper_algo(X, y, T)
-                fs_X = X.iloc[:, indices].columns
-
-                final_selected_features.append(fs_X)
-
-    return list(set([item for sublist in final_selected_features for item in sublist]))
+    return final_selected_features
