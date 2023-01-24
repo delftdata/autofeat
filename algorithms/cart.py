@@ -5,7 +5,7 @@ import numpy as np
 from sklearn import tree
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate
 
-from algorithms.base import BaseAlgorithm
+from algorithms.base_algorithm import BaseAlgorithm
 from algorithms.helpers import feature_selection
 from config import PLOTS_FOLDER
 
