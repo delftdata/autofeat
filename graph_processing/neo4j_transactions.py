@@ -3,7 +3,7 @@ from neo4j import GraphDatabase
 from graph_processing.neo4j_queries import _create_relation, _merge_nodes_relation_tables, _merge_nodes_relation, \
     _drop_graph, \
     _find_graph, _create_virtual_graph, _enumerate_all_paths, _get_relation_properties, _get_node_by_id, \
-    _get_node_by_source_name, _get_pk_fk_nodes, _get_adjacent_nodes
+    _get_node_by_source_name, _get_pk_fk_nodes, _get_adjacent_nodes, _get_relation_properties_node_name
 
 from graph_processing.neo4j_queries import _get_adjacent_nodes_rels
 
@@ -59,6 +59,13 @@ def enumerate_all_paths(name):
 def get_relation_properties(from_id, to_id):
     with driver.session() as session:
         result = session.write_transaction(_get_relation_properties, from_id, to_id)
+
+    return result
+
+
+def get_relation_properties_node_name(from_id, to_id):
+    with driver.session() as session:
+        result = session.write_transaction(_get_relation_properties_node_name, from_id, to_id)
 
     return result
 
