@@ -9,7 +9,7 @@ from valentine.algorithms import Coma
 
 from config import CONNECTIONS, DATA_FOLDER, VALENTINE_THRESHOLD, VALENTINE_CONNECTIONS
 from data_preparation import SIBLING, RELATED
-from helpers.neo4j_utils import merge_nodes_relation, create_relation, merge_nodes_relation_tables
+from graph_processing.neo4j_transactions import merge_nodes_relation, create_relation, merge_nodes_relation_tables
 
 
 def ingest_fabricated_data() -> dict:

@@ -21,6 +21,7 @@ def dfs_traversal(base_node_id: str, discovered: List, join_tree: Dict):
 
         for node in adjacent_nodes:
             if node not in discovered:
+                # Create a tree structure such that we know how to join the tables
                 join_tree[base_node_id].update({node: {}})
             dfs_traversal(node, discovered, join_tree[base_node_id])
 

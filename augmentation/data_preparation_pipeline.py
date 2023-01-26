@@ -3,7 +3,7 @@ import json
 from config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
 from data_preparation.ingest_data import profile_valentine_all, ingest_fabricated_data, ingest_connections, \
     ingest_tables
-from helpers.neo4j_utils import drop_graph, init_graph, enumerate_all_paths, find_graph
+from graph_processing.neo4j_transactions import drop_graph, init_graph, enumerate_all_paths, find_graph
 
 
 def data_preparation(ingest_data: bool = True, profile_valentine: bool = False):
@@ -67,4 +67,4 @@ def data_preparation_tables(ingest=True, enumerate_paths=True):
 
 if __name__ == "__main__":
     # data_preparation(ingest_data=False, profile_valentine=False)
-    data_preparation_tables(ingest=True, enumerate_paths=True)
+    data_preparation_tables(ingest=True, enumerate_paths=False)
