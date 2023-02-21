@@ -1,20 +1,16 @@
-from typing import List
-
 from algorithms import TRAINING_FUNCTIONS
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import prepare_data_for_ml
-from experiments.utils import hp_tune_join_all
+from experiments.base_experiment import BaseExperiment
 from experiments.result_object import Result
+from experiments.utils import hp_tune_join_all
 
 
-class BaseTableExperiment:
-    def __init__(self, data: Dataset):
-        self.dataset = data
-        self.dataset.set_features()
-        self.results: List[Result] = []
-        self.approach = Result.BASE
+class BaseTableExperiment(BaseExperiment):
+    def __init__(self, data: Dataset, learning_curve_depth_values=None):
+        super().__init__(data, approach=Result.BASE, learning_curve_depth_values=learning_curve_depth_values)
 
-    def compute_accuracy_results(self):
+    def compute_results(self):
         print(f'======== NON-AUG Pipeline ========')
 
         if self.dataset.base_table_df is None:

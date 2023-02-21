@@ -26,6 +26,13 @@ class Datasets:
         target_column="win"
     )
 
+    school = Dataset(
+        base_table_id=DATA_FOLDER / "school" / "base.csv",
+        base_table_name="base.csv",
+        base_table_label="school_small",
+        target_column="class"
+    )
+
     ALL = [titanic, steel_plate_fault, football]
 
     titanic_data: Dict[str, str] = {

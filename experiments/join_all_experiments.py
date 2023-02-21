@@ -1,22 +1,21 @@
 import time
-from typing import List
 
 from algorithms import TRAINING_FUNCTIONS, ID3
 from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import join_all
 from data_preparation.utils import prepare_data_for_ml
-from experiments.utils import hp_tune_join_all
+from experiments.base_experiment import BaseExperiment
 from experiments.result_object import Result
+from experiments.utils import hp_tune_join_all
 
 
-class JoinAllExperiment:
-    def __init__(self, data: Dataset, do_feature_selection=False):
-        self.dataset = data
-        self.results: List[Result] = []
-        self.approach = Result.JOIN_ALL_FS if do_feature_selection else Result.JOIN_ALL
-        self.do_feature_selection = do_feature_selection
+class JoinAllExperiment(BaseExperiment):
+    def __init__(self, data: Dataset, learning_curve_depth_values=None, do_feature_selection=False):
+        super().__init__(data, approach=Result.JOIN_ALL_FS if do_feature_selection else Result.JOIN_ALL,
+                         do_feature_selection=do_feature_selection,
+                         learning_curve_depth_values=learning_curve_depth_values)
 
-    def compute_accuracy_results(self):
+    def compute_results(self):
         print(f'======== JOIN-ALL Dataset Pipeline - feature selection - {self.do_feature_selection} ========')
         start = time.time()
         dataset_df = join_all(self.dataset.base_table_id)
@@ -50,3 +49,8 @@ class JoinAllExperiment:
             self.results.append(entry)
 
         print(f"======== Finished dataset ========")
+
+
+class JoinAllFeatureSelectionExperiment(JoinAllExperiment):
+    def __init__(self, dataset: Dataset, learning_curve_depth_values=None):
+        super().__init__(dataset, do_feature_selection=True, learning_curve_depth_values=learning_curve_depth_values)

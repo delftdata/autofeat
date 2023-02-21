@@ -119,7 +119,7 @@ class Ranking:
         # features, score = (features_1, score_1) if score_1 < score_2 else (features_2, score_2)
         path_copy = path.copy()
         path_copy.append(right_node['label'])
-        self.joined_tables["--".join(path_copy)] = (joined_path, selected_features + features)
+        self.joined_tables["--".join(path_copy)] = (str(joined_path), selected_features + features)
 
         print(f"Initiating recursion for {right_node['label']}")
         path = self.ranking_recursion(right_node['source_path'], path, visited)

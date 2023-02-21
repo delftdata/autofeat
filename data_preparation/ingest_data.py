@@ -7,9 +7,9 @@ import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from config import CONNECTIONS, DATA_FOLDER, VALENTINE_THRESHOLD
+from config import CONNECTIONS, DATA_FOLDER, VALENTINE_THRESHOLD, VALENTINE_CONNECTIONS
 from data_preparation import SIBLING, RELATED
-from helpers.neo4j_utils import merge_nodes_relation, create_relation
+from graph_processing.neo4j_transactions import merge_nodes_relation, create_relation, merge_nodes_relation_tables
 
 
 def ingest_fabricated_data() -> dict:
@@ -27,6 +27,21 @@ def ingest_fabricated_data() -> dict:
             merge_nodes_relation(col1, col2, table_name, table_path, SIBLING, 0)
 
         mapping[table_name] = table_path
+
+    return mapping
+
+
+def ingest_tables() -> dict:
+    files = glob.glob(f"{DATA_FOLDER}/**/{VALENTINE_CONNECTIONS}", recursive=True)
+    connections = pd.read_csv(files[0])
+
+    mapping = {}
+    for index, row in connections.iterrows():
+        merge_nodes_relation_tables(a_table_name=row["a_label"], a_table_path=row["a_id"],
+                                    b_table_name=row["b_label"], b_table_path=row["b_id"],
+                                    a_col=row["a_col"], b_col=row["b_col"], weight=row["weight"])
+        mapping[row["a_label"]] = row["a_id"]
+        mapping[row["b_label"]] = row["b_id"]
 
     return mapping
 

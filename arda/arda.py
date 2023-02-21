@@ -58,7 +58,7 @@ def _bin_count_ranking(importances, mask, bin_size):
 # regressor             the regressor to use
 #
 # Returns: An array of indices, corresponding to selected features from A
-def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestClassifier):
+def select_features(A, y, tau=0.1, eta=0.2, k=10, regressor=RandomForestClassifier):
     d = A.shape[1]
     X = np.concatenate((A, gen_features(A, eta)), axis=1)  # This gives us A' from the paper
 
@@ -117,23 +117,27 @@ def wrapper_algo(
 
 
 def select_arda_features(base_table_id, target_column, base_table_features):
+    print("ARDA - Join directly connected tables ... ")
     start = time.time()
     dataset_df = join_directly_connected(base_table_id)
     end = time.time()
     join_time = end - start
 
+    print("ARDA - Prepare data for ML ... ")
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
     print(X.shape)
     if X.shape[0] > 10000:
         _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
     print(X.shape)
 
+    print("ARDA Feature selection - Started ... ")
     start = time.time()
     T = np.arange(0.0, 1.0, 0.1)
     indices = wrapper_algo(X, y, T)
     fs_X = X.iloc[:, indices].columns
     end = time.time()
     fs_time = end - start
+    print("ARDA Feature selection - Ended ... ")
 
     columns_to_drop = [
         c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)

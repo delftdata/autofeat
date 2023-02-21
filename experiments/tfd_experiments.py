@@ -12,18 +12,17 @@ from augmentation.ranking import Ranking, Rank
 from config import JOIN_RESULT_FOLDER, PLOTS_FOLDER
 from data_preparation.dataset_base import Dataset
 from data_preparation.utils import get_join_path, prepare_data_for_ml
+from experiments.base_experiment import BaseExperiment
 from experiments.result_object import Result
 from experiments.utils import hp_tune_join_all, map_features_scores
 from helpers.util_functions import objects_to_dict
 
 
-class TFDExperiment:
+class TFDExperiment(BaseExperiment):
     def __init__(self, data: Dataset, learning_curve_depth_values):
-        self.dataset = data
+        super().__init__(data, approach=Result.TFD, learning_curve_depth_values=learning_curve_depth_values)
         self.ranked_paths = None
-        self.results: List[Result] = []
         self.sensitivity_results: List[Result] = []
-        self.depth_values = learning_curve_depth_values
         self.learning_curve_train_tfd = []
         self.learning_curve_test_tfd = []
         self.learning_curve_train_tfd_path = []
@@ -189,7 +188,7 @@ class TFDExperiment:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
         print(f"All in path features: {X.columns}")
 
-        for i in self.depth_values:
+        for i in self.learning_curve_depth_values:
             decision_tree = tree.DecisionTreeClassifier(max_depth=i)
             decision_tree.fit(X_train, y_train)
             # evaluate on train
@@ -206,7 +205,7 @@ class TFDExperiment:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
         print(f"Best ranked features: {X.columns}")
 
-        for i in self.depth_values:
+        for i in self.learning_curve_depth_values:
             decision_tree = tree.DecisionTreeClassifier(max_depth=i)
             decision_tree.fit(X_train, y_train)
             # evaluate on train
