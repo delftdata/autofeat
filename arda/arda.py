@@ -55,7 +55,7 @@ def _bin_count_ranking(importances, mask, bin_size):
 # regressor             the regressor to use
 #
 # Returns: An array of indices, corresponding to selected features from A
-def select_features(A, y, tau=0.1, eta=0.5, k=20, regressor=RandomForestClassifier):
+def select_features(A, y, tau=0.1, eta=0.2, k=10, regressor=RandomForestClassifier):
     d = A.shape[1]
     X = np.concatenate((A, gen_features(A, eta)), axis=1)  # This gives us A' from the paper
 
