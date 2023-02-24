@@ -2,7 +2,6 @@ from collections import Counter
 from typing import List, Dict
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
 from config import JOIN_RESULT_FOLDER, ROOT_FOLDER
 from graph_processing.neo4j_transactions import get_relation_properties, get_pk_fk_nodes, \
@@ -313,20 +312,6 @@ def join_directly_connected(base_table_id: str):
         partial_join.drop(columns=columns_to_drop, inplace=True)
 
     return partial_join
-
-
-# TODO: Remove
-def budget_join(base_table_id: str, sample_size: int):
-    if sample_size < 1:
-        base_table_df = pd.read_csv(base_table_id, header=0, engine="python", encoding="utf8", quotechar='"',
-                                    escapechar='\\')
-        _, coreset, _, _ = train_test_split(base_table_df, test_size=sample_size)
-    elif sample_size >= 1:
-        coreset = pd.read_csv(base_table_id, header=0, engine="python", encoding="utf8", quotechar='"',
-                              escapechar='\\', nrows=sample_size)
-
-    budget = coreset.shape[1]
-
 
 
 def _compute_partial_join_filename(prop: List, partial_join_name=None) -> str:

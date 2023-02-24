@@ -95,8 +95,8 @@ def _get_relation_properties(tx, from_id, to_id):
 
 def _get_relation_properties_node_name(tx, from_id, to_id):
     tx_result = tx.run("match (n {id: $from_id})-[r:RELATED]-(m {id: $to_id}) "
-                       "return properties(r) as props, n.label as from_label, m.label as to_label",
-                       from_id=from_id, to_id=to_id)
+                       "return properties(r) as props, n.label as from_label, m.label as to_label "
+                       "order by r.weight desc", from_id=from_id, to_id=to_id)
     values = []
     for record in tx_result:
         values.append(record.values())
@@ -120,7 +120,7 @@ def _get_node_by_source_name(tx, source_name):
 
 
 def _get_pk_fk_nodes(tx, source_path):
-    tx_result = tx.run("match (n {source_path: $source_path})-[r:RELATED {weight: 1}]-(m) "
+    tx_result = tx.run("match (n {id: $source_path})-[r:RELATED {weight: 1}]-(m) "
                        "return n, m", source_path=str(source_path))
 
     values = []
