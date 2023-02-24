@@ -186,25 +186,22 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         # Join every table according to the budget
         while feature_count <= budget_size and len(nodes) > 0:
             node_id = nodes.pop()
-            # TODO: Remove
-            if node_id in ["/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/math.csv",
-                           "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/esl.csv",
-                           "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/gender.csv",
-                           "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/2013_NYC_School_Survey.csv"]:
-                continue
             print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
-
-            # Read right table, prepend node label to every column for easy identification
-            right_table = pd.read_csv(node_id, header=0, engine="python", encoding="utf8", quotechar='"',
-                                      escapechar='\\')
-            right_node = get_node_by_id(node_id)
-            right_table = right_table.add_prefix(f"{right_node.get('label')}.")
 
             # Get the keys between the base node and connected node
             join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node_id)[0:2]
-            # Keep the key which matches the outgoing label
+            # Keep the key which matches the outgoing node
             join_prop, from_table, to_table = [k for k in join_keys if k[0]['from_label'] == k[1]][0]
             print(f"Join properties: {join_prop}")
+
+            # Read right table, aggregate on the join key (reduce to 1:1 or M:1 join) by random sampling
+            right_table = pd.read_csv(node_id, header=0, engine="python", encoding="utf8", quotechar='"',
+                                      escapechar='\\')
+            right_table = right_table.groupby(join_prop['to_column']).sample(n=1, random_state=random_state)
+
+            # Prepend node label to every column for easy identification
+            right_node = get_node_by_id(node_id)
+            right_table = right_table.add_prefix(f"{right_node.get('label')}.")
 
             # Join tables, drop the right key as we don't need it anymore
             left_table = pd.merge(left_table, right_table, how="left",
