@@ -3,7 +3,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
 from algorithms import TRAINING_FUNCTIONS
-from arda.arda import select_arda_features
+from arda.arda import select_arda_features_budget_join
 from data_preparation.dataset_base import Dataset
 from experiments.base_experiment import BaseExperiment
 from experiments.result_object import Result
@@ -11,18 +11,20 @@ from experiments.utils import hp_tune_join_all
 
 
 class ArdaExperiment(BaseExperiment):
-    def __init__(self, data: Dataset, learning_curve_depth_values):
+    def __init__(self, data: Dataset, learning_curve_depth_values, sample_size=1000):
         super().__init__(data, approach=Result.ARDA, learning_curve_depth_values=learning_curve_depth_values)
         self.learning_curve_train = []
         self.learning_curve_test = []
         self.selected_features = None
+        self.sample_size = sample_size
 
     def compute_results(self):
         print(f'======== ARDA Pipeline ========')
 
-        X, y, join_time, fs_time, selected_features = select_arda_features(self.dataset.base_table_id,
-                                                                           self.dataset.target_column,
-                                                                           self.dataset.base_table_features)
+        X, y, selected_features, join_time, fs_time = select_arda_features_budget_join(self.dataset.base_table_id,
+                                                                                       self.dataset.target_column,
+                                                                                       self.dataset.base_table_features,
+                                                                                       self.sample_size)
         self.selected_features = selected_features
         for algorithm in TRAINING_FUNCTIONS:
             print(f"==== Model Name: {algorithm.LABEL} ====")
