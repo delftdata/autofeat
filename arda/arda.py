@@ -167,6 +167,8 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
     random_state = 42
     final_selected_features = []
     all_columns = []
+    join_time = 0
+    fs_time = 0
 
     # Read base table, uniform sample, set budget size
     left_table = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
@@ -184,6 +186,7 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         feature_count = 0
 
         # Join every table according to the budget
+        start = time.time()
         while feature_count <= budget_size and len(nodes) > 0:
             node_id = nodes.pop()
             print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
@@ -212,6 +215,7 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
             feature_count += right_table.shape[1] - 1
             print(f"Feature count: {feature_count}")
 
+        join_time += time.time() - start
         # Compute the columns of the batch and create the batch dataset
         columns = [c for c in list(left_table.columns) if
                    (c not in base_table_features) and (c not in all_columns)]
@@ -228,12 +232,14 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
+        start = time.time()
         T = np.arange(0.0, 1.0, 0.1)
         indices = wrapper_algo(X, y, T)
         fs_X = X.iloc[:, indices].columns
+        fs_time += time.time() - start
         print(f"Selected columns: {fs_X}")
 
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)
 
-    return left_table, left_table[target_column], final_selected_features
+    return left_table, left_table[target_column], final_selected_features, join_time, fs_time
