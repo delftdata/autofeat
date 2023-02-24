@@ -2,6 +2,7 @@ import math
 import time
 from typing import List
 
+import deprecation as deprecation
 import numpy as np
 import pandas as pd
 import tqdm as tqdm
@@ -131,6 +132,7 @@ def wrapper_algo(A: pd.DataFrame, y: pd.Series, T: List[float], eta=0.2, k=10, e
     return last_indices
 
 
+@deprecation.deprecated(details="Use select_arda_features_budget_join instead")
 def select_arda_features(base_table_id, target_column, base_table_features):
     print("ARDA - Join directly connected tables ... ")
     start = time.time()
