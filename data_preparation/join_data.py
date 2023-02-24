@@ -2,10 +2,11 @@ from collections import Counter
 from typing import List, Dict
 
 import pandas as pd
+import tqdm as tqdm
 
 from config import JOIN_RESULT_FOLDER, ROOT_FOLDER
 from graph_processing.neo4j_transactions import get_relation_properties, get_pk_fk_nodes, \
-    get_relation_properties_node_name
+    get_relation_properties_node_name, get_node_by_id
 from helpers.util_functions import transform_node_to_dict
 
 
@@ -326,36 +327,47 @@ def _compute_partial_join_filename(prop: List, partial_join_name=None) -> str:
 
 def _join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column: str, right_column: str,
                    join_name: str) -> pd.DataFrame:
-    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column, right_on=right_column,
-                            suffixes=("", "_b"))
-    # If both tables have the same column, drop one of them
-    duplicate_col = [col for col in partial_join.columns if col.endswith('_b')]
-    partial_join.drop(columns=duplicate_col, inplace=True)
+    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column, right_on=right_column)
     # Save join result
     partial_join.to_csv(JOIN_RESULT_FOLDER / join_name, index=False)
     return partial_join
 
 
-def join_tables(base_node_id: str, join_path_list: List, join_tree: Dict, partial_join_name=None, partial_join=None):
+def join_tables(base_node_id: str, target_column, join_path_list: List, join_tree: Dict, partial_join_name=None,
+                partial_join=None):
     print(f"New iteration with {base_node_id}")
     if partial_join_name is None or partial_join is None:
+        base_node = get_node_by_id(base_node_id)
         left_df = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+        left_df = left_df.set_index([target_column]).add_prefix(f"{base_node.get('label')}.").reset_index()
     else:
         left_df = partial_join
 
     if len(join_tree[base_node_id].keys()) == 0:
         print(f"End node: {base_node_id}")
 
-    for node in join_tree[base_node_id].keys():
-        print(f"\tJoining with {node}")
-        right_df = pd.read_csv(node, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+    for node in tqdm.tqdm(join_tree[base_node_id].keys()):
+        print(f"\n\tJoining with {node}")
         join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
 
-        for prop in join_keys:
+        right_node = get_node_by_id(node)
+        right_df = pd.read_csv(node, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+        right_df = right_df.add_prefix(f"{right_node.get('label')}.")
+        print(f"\tRight table shape: {right_df.shape}")
+
+        for prop in tqdm.tqdm(join_keys):
             join_prop, from_table, to_table = prop
             if join_prop['from_label'] != from_table:
                 continue
+            print(f"\n\tJoin properties: {join_prop}")
+            # Transform to 1:1 or M:1
+            right_df = right_df.groupby(f"{right_node.get('label')}.{join_prop['to_column']}").sample(n=1,
+                                                                                                      random_state=42)
             join_name = _compute_partial_join_filename(prop, partial_join_name)
-            print(f"\t{join_name}")
-            join_df = _join_and_save(left_df, right_df, prop[0]['from_column'], prop[0]['to_column'], join_name)
-            join_tables(node, join_path_list, join_tree[base_node_id], join_name, join_df)
+            print(f"\tJoin name: {join_name}")
+
+            left_key = f"{from_table}.{join_prop['from_column']}"
+            right_key = f"{to_table}.{join_prop['to_column']}"
+
+            join_df = _join_and_save(left_df, right_df, left_key, right_key, join_name)
+            join_tables(node, target_column, join_path_list, join_tree[base_node_id], join_name, join_df)
