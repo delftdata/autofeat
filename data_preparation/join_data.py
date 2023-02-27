@@ -7,7 +7,7 @@ import tqdm as tqdm
 from config import JOIN_RESULT_FOLDER, ROOT_FOLDER
 from graph_processing.neo4j_transactions import get_relation_properties, get_pk_fk_nodes, \
     get_relation_properties_node_name, get_node_by_id
-from helpers.util_functions import transform_node_to_dict
+from helpers.util_functions import transform_node_to_dict, get_df_with_prefix
 
 
 def join_tables_recursive(all_paths: dict, mapping, current_table, target_column, path, allp, join_result_path,
@@ -337,9 +337,7 @@ def join_tables(base_node_id: str, target_column, join_path_list: List, join_tre
                 partial_join=None):
     print(f"New iteration with {base_node_id}")
     if partial_join_name is None or partial_join is None:
-        base_node = get_node_by_id(base_node_id)
-        left_df = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-        left_df = left_df.set_index([target_column]).add_prefix(f"{base_node.get('label')}.").reset_index()
+        left_df, _ = get_df_with_prefix(base_node_id, target_column)
     else:
         left_df = partial_join
 
@@ -350,9 +348,7 @@ def join_tables(base_node_id: str, target_column, join_path_list: List, join_tre
         print(f"\n\tJoining with {node}")
         join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
 
-        right_node = get_node_by_id(node)
-        right_df = pd.read_csv(node, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-        right_df = right_df.add_prefix(f"{right_node.get('label')}.")
+        right_df, right_label = get_df_with_prefix(node)
         print(f"\tRight table shape: {right_df.shape}")
 
         for prop in tqdm.tqdm(join_keys):
@@ -361,8 +357,7 @@ def join_tables(base_node_id: str, target_column, join_path_list: List, join_tre
                 continue
             print(f"\n\tJoin properties: {join_prop}")
             # Transform to 1:1 or M:1
-            right_df = right_df.groupby(f"{right_node.get('label')}.{join_prop['to_column']}").sample(n=1,
-                                                                                                      random_state=42)
+            right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1, random_state=42)
             join_name = _compute_partial_join_filename(prop, partial_join_name)
             print(f"\tJoin name: {join_name}")
 
