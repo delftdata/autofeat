@@ -35,10 +35,11 @@ def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dic
     # Trace the recursion
     if len(join_tree[base_node_id].keys()) == 0:
         print(f"End node: {base_node_id}")
+        return partial_join, partial_join_name
 
     # Traverse
     for node in tqdm.tqdm(join_tree[base_node_id].keys()):
-        print(f"\n\tJoining with {node}")
+        print(f"\n\t{base_node_id} Joining with {node}")
         join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
 
         right_df, right_label = get_df_with_prefix(node)
@@ -93,7 +94,18 @@ def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dic
                 train_results.append(result)
 
             # Continue traversal
-            traverse_join_pipeline(node, target_column, join_tree[base_node_id], train_results, join_name, joined_df)
+            joined_df, join_name = traverse_join_pipeline(node, target_column, join_tree[base_node_id], train_results,
+                                                          join_name, joined_df)
+            print(f"\tEnd join properties iteration for {node}")
+
+        partial_join_name = join_name
+        partial_join = joined_df
+        print(f"End depth iteration for {node}")
+
+    partial_join_name = join_name
+    partial_join = joined_df
+
+    return partial_join, partial_join_name
 
 
 def _train_test_cart(dataframe: pd.DataFrame, target_column: str, join_name: str, approach: str) -> Result:

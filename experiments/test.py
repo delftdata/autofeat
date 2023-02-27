@@ -1,6 +1,3 @@
-import pandas as pd
-
-from algorithms import CART
 from augmentation.trial_error import traverse_join_pipeline
 from graph_processing.traverse_graph import dfs_traversal
 
@@ -25,7 +22,6 @@ def test_pipeline():
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
     traverse_join_pipeline(base_node_id=node_id, target_column=target,
                            join_tree=join_path_tree, train_results=train_results)
-    pd.DataFrame(train_results).to_csv("results.csv", index=False)
 
 
-test_arda()
+test_pipeline()
