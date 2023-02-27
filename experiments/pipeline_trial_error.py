@@ -11,7 +11,7 @@ def pipeline():
     visited = []
     join_path_tree = {}
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
-    join_tables(base_node_id=node_id, target_column=target, join_path_list=visited, join_tree=join_path_tree)
+    join_tables(base_node_id=node_id, target_column=target, join_tree=join_path_tree)
 
 
 

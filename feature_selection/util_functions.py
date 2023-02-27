@@ -63,6 +63,14 @@ def select_dependent_features(X, y) -> dict:
 
 
 def compute_correlation(left_table_features: list, joined_df: pd.DataFrame, target_column: str) -> dict:
+    """
+    Apply Symmetrical Uncertainty algorithm to compute the correlations of the new features with the target column.
+    :param left_table_features: The existing features in the base table.
+            They are used to determine the new features which were added from join.
+    :param joined_df: The join result.
+    :param target_column: The target/label column containing the class labels.
+    :return: A dictionary of {feature: score} pairs in descending order by scores.
+    """
     print(f"Selecting dependent features on column: {target_column}...")
     # Remove the features from the base table
     joined_table_no_base = joined_df.drop(columns=left_table_features)
@@ -77,7 +85,7 @@ def compute_correlation(left_table_features: list, joined_df: pd.DataFrame, targ
 
 
 def compute_relevance_redundancy(left_table_features, features_to_compare, joined_df, target_column,
-                                 redundancy_threshold):
+                                 redundancy_threshold=20):
     print(f"Selecting un-correlated features...")
     all_columns = list(joined_df.columns)
     all_columns.remove(target_column)

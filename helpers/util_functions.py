@@ -10,11 +10,17 @@ def get_top_k_from_dict(join_paths: dict, k: int):
     return {key: join_paths[key] for i, key in enumerate(join_paths) if i < k}
 
 
-def get_elements_less_than_value(dictionary: dict, value: float):
+def get_elements_less_than_value(dictionary: dict, value: float) -> dict:
     return {k: v for k, v in dictionary.items() if abs(v) < value}
 
 
-def get_elements_higher_than_value(dictionary: dict, value: float):
+def get_elements_higher_than_value(dictionary: dict, value: float) -> dict:
+    """
+    Get elements high then than a threshold from a dictionary.
+    :param dictionary: Dictionary to filter
+    :param value: Threshold value
+    :return: A dictionary containing only the elements higher than the threshold
+    """
     return {k: v for k, v in dictionary.items() if v > value}
 
 
@@ -45,7 +51,14 @@ def objects_to_dict(objects: List) -> List:
     return [vars(obj) for obj in objects]
 
 
-def get_df_with_prefix(node_id: str, target_column=None):
+def get_df_with_prefix(node_id: str, target_column=None) -> tuple:
+    """
+    Get the node from the database, read the file identified by node_id and prefix the column names with the node label.
+    :param node_id: ID of the node - used to retrieve the corresponding node from the database
+    :param target_column: Optional parameter. The name of the label/target column containing the classes,
+            only needed when the dataset to read contains the class.
+    :return: 0: A pandas dataframe whose columns are prefixed with the node label, 1: the node label
+    """
     node = get_node_by_id(node_id)
     node_label = node.get('label')
     dataframe = pd.read_csv(node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
@@ -55,4 +68,3 @@ def get_df_with_prefix(node_id: str, target_column=None):
         dataframe = dataframe.add_prefix(f"{node_label}.")
 
     return dataframe, node_label
-
