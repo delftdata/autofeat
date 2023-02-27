@@ -13,8 +13,8 @@ class Result:
 
     approach: str
     data_path: str
-    data_label: str
     algorithm: str
+    data_label: str = None
     join_time: Optional[float] = None
     total_time: float = 0.0
     feature_selection_time: Optional[float] = None

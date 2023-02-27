@@ -6,7 +6,7 @@ from data_preparation.dataset_base import Dataset
 from data_preparation.join_data import prune_or_join_2
 from data_preparation.utils import get_paths, get_path_length
 from feature_selection.util_functions import compute_correlation, compute_relevance_redundancy
-from helpers.neo4j_utils import get_node_by_source_name, get_node_by_id
+from graph_processing.neo4j_transactions import get_node_by_source_name, get_node_by_id
 from helpers.util_functions import get_elements_higher_than_value, transform_node_to_dict, \
     objects_to_dict
 
