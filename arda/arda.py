@@ -244,4 +244,4 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)
 
-    return left_table, left_table[target_column], final_selected_features, join_time, fs_time
+    return left_table, base_node.get('label'), final_selected_features, join_time, fs_time

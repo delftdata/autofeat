@@ -12,7 +12,7 @@ from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_
 
 
 def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
-                           partial_join_name=None, partial_join=None):
+                           join_name_mapping: dict, partial_join_name=None, partial_join=None):
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
     apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
@@ -20,6 +20,7 @@ def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dic
     :param target_column: Target column containing the class labels for training.
     :param join_tree: The result of the DFS traversal.
     :param train_results: List used to store the results of training CART.
+    :param join_name_mapping:
     :param partial_join_name: The name of the partial join use to compute the name for the next iterations.
     :param partial_join: The partial join used for the next iterations.
     :return: None
@@ -54,14 +55,20 @@ def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dic
             # Transform to 1:1 or M:1
             right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1, random_state=42)
 
-            # Join
+            # Compute the name of the join
             join_name = compute_partial_join_filename(prop=prop, partial_join_name=partial_join_name)
+
+            # File naming convention as the filename can be gigantic
+            join_filename = f"join{len(join_name_mapping) + 1}.csv"
+            join_name_mapping[join_filename] = join_name
             print(f"\tJoin name: {join_name}")
+
+            # Join
             joined_df = join_and_save(left_df=left_df,
                                       right_df=right_df,
                                       left_column=f"{from_table}.{join_prop['from_column']}",
                                       right_column=f"{to_table}.{join_prop['to_column']}",
-                                      join_name=join_name)
+                                      join_name=join_filename)
 
             # Select features
             left_table_features = [feat for feat in list(joined_df.columns) if
@@ -95,7 +102,7 @@ def traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dic
 
             # Continue traversal
             joined_df, join_name = traverse_join_pipeline(node, target_column, join_tree[base_node_id], train_results,
-                                                          join_name, joined_df)
+                                                          join_name_mapping, join_name, joined_df)
             print(f"\tEnd join properties iteration for {node}")
 
         partial_join_name = join_name
