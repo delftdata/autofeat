@@ -10,7 +10,7 @@ services:
     restart: always
 
   neo4j:
-    image: neo4j:4.3.19
+    image: neo4j:5.1.0-enterprise
     ports:
       - "7474:7474"
       - "7687:7687"
