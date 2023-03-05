@@ -1,6 +1,8 @@
+import pandas as pd
+
 import data_preparation.utils
-from augmentation.trial_error import traverse_join_pipeline
-from graph_processing.traverse_graph import dfs_traversal
+from augmentation.trial_error import dfs_traverse_join_pipeline, bfs_traverse_join_pipeline
+from graph_processing.traverse_graph import dfs_traversal, bfs_traversal
 
 node_id = "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/base.csv"
 target = "class"
@@ -27,23 +29,20 @@ def test_arda():
     print(f"\tAccuracy: {acc_decision_tree}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
 
-def test_pipeline():
-    import pandas as pd
-
+def test_dfs_pipeline():
     visited = []
     join_path_tree = {}
     join_name_mapping = {}
     train_results = []
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
-    traverse_join_pipeline(base_node_id=node_id, target_column=target, join_name_mapping=join_name_mapping,
-                           join_tree=join_path_tree, train_results=train_results)
+    dfs_traverse_join_pipeline(base_node_id=node_id, target_column=target, join_tree=join_path_tree,
+                               train_results=train_results, join_name_mapping=join_name_mapping)
     pd.DataFrame(train_results).to_csv("results_short_name.csv", index=False)
     pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping.csv')
 
 
 def test_base_accuracy():
     import algorithms
-    import pandas as pd
 
     dataframe = pd.read_csv(node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
     X, y = data_preparation.utils.prepare_data_for_ml(dataframe, target)
@@ -52,6 +51,21 @@ def test_base_accuracy():
     print(f"\tAccuracy: {acc_decision_tree}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
 
-test_pipeline()
+def test_bfs_pipeline():
+    results = []
+    join_tree = {}
+    join_name_mapping = {}
+    queue = {node_id}
+    bfs_traversal(queue, join_tree)
+
+    queue = {node_id}
+    bfs_traverse_join_pipeline(queue=queue, target_column=target, join_tree=join_tree, train_results=results,
+                               join_name_mapping=join_name_mapping)
+    pd.DataFrame(results).to_csv("results_bfs.csv", index=False)
+    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping_bfs.csv')
+
+
+test_bfs_pipeline()
+# test_dfs_pipeline()
 # test_base_accuracy()
 # test_arda()

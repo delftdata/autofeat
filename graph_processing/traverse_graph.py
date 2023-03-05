@@ -26,18 +26,21 @@ def dfs_traversal(base_node_id: str, discovered: List, join_tree: Dict):
             dfs_traversal(node, discovered, join_tree[base_node_id])
 
 
-def bfs_traversal(queue: set, discovered: set, join_tree: Dict):
+def bfs_traversal(queue: set, join_tree: Dict, discovered=None):
     """
     The method traverses the graph in breadth first search manner and populates a join tree.
 
     :param queue: Queue (set) containing the starting node for the BFS traversal.
-    :param discovered: Empty list. The list will be populated with the visited nodes.
+    :param discovered: Empty dictionary. The list will be populated with the visited nodes. #TODO: update
     :param join_tree: Empty dictionary. The dictionary will be populated with the nodes which create a join tree.
     The join tree shows how to join the tables (key - left part of the join, value - right part of the join).
     """
 
     if len(queue) == 0:
         return
+
+    if discovered is None:
+        discovered = set()
 
     base_node_id = queue.pop()
     discovered.add(base_node_id)
@@ -59,7 +62,7 @@ def bfs_traversal(queue: set, discovered: set, join_tree: Dict):
             discovered.add(node)
             queue.add(node)
 
-    bfs_traversal(queue, discovered, join_tree[base_node_id])
+    bfs_traversal(queue, join_tree[base_node_id], discovered)
 
 
 def test_dfs():
@@ -83,4 +86,5 @@ def test_bfs():
     print(join_path_tree)
 
 
-test_bfs()
+if __name__ == "__main__":
+    test_bfs()
