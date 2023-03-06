@@ -32,12 +32,13 @@ class CART(BaseAlgorithm):
 
         print("\tFinding best tree params")
 
-        parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, X_train.shape[1] + 1)}
+        # parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, X_train.shape[1] + 1)}
+        parameters = {"criterion": ["entropy", "gini"]}
 
         print(parameters)
 
         decision_tree = tree.DecisionTreeClassifier()
-        grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=15)
+        grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=self.num_cv)
         grids.fit(X_train, y_train)
         params = grids.best_params_
         self.max_depth = grids.best_params_["max_depth"]

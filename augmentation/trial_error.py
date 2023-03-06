@@ -12,19 +12,18 @@ from graph_processing.neo4j_transactions import get_relation_properties_node_nam
 from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_value
 
 
-def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict,
-                               train_results: List,
+def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, train_results: List,
                                join_name_mapping: dict, previous_queue=None):
     """
-    Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
-    apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
-    :param base_node_id: Starting point of the traversal.
+    Recursive function - the pipeline to: 1) traverse the graph given a base node_id, 2) join with the adjacent nodes,
+    3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
+
+    :param queue: Queue with one node, which is the starting point of the traversal.
     :param target_column: Target column containing the class labels for training.
-    :param join_tree: The result of the DFS traversal.
+    :param join_tree: The result of the BFS traversal.
     :param train_results: List used to store the results of training CART.
-    :param join_name_mapping:
-    :param partial_join_name: The name of the partial join use to compute the name for the next iterations.
-    :param partial_join: The partial join used for the next iterations.
+    :param join_name_mapping: Mapping with the name of the join and the corresponding name of the file containing the join result.
+    :param previous_queue: Initially empty or None, the queue is used to store the partial join names between the iterations.
     :return: None
     """
 
