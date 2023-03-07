@@ -4,6 +4,7 @@ import pandas as pd
 
 import data_preparation.utils
 from augmentation.trial_error import dfs_traverse_join_pipeline, bfs_traverse_join_pipeline
+from config import RESULTS_FOLDER
 from graph_processing.traverse_graph import dfs_traversal, bfs_traversal
 
 node_id = "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/base.csv"
@@ -36,7 +37,7 @@ def test_dfs_pipeline():
     join_path_tree = {}
     join_name_mapping = {}
     train_results = []
-    value_ratio = 0.15
+    value_ratio = 0.05
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
 
     with open('join_tree_dfs.json', 'w') as f:
@@ -46,10 +47,12 @@ def test_dfs_pipeline():
                                            train_results=train_results, join_name_mapping=join_name_mapping,
                                            value_ratio=value_ratio)
     print(f"FINISHED DFS")
-    pd.Series(list(all_paths), name="filename").to_csv("paths_dfs_15.csv", index=False)
-    pd.DataFrame(train_results).to_csv("results_dfs_pruning_15.csv", index=False)
-    pd.DataFrame.from_dict(join_name_mapping, orient='index',
-                           columns=["join_name"]).to_csv('join_mapping_dfs_pruning_15.csv')
+    pd.Series(list(all_paths), name="filename").to_csv(
+        RESULTS_FOLDER / f"paths_dfs_{value_ratio * 100}.csv", index=False)
+    pd.DataFrame(train_results).to_csv(
+        RESULTS_FOLDER / f"results_dfs_pruning_{value_ratio * 100}.csv", index=False)
+    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv(
+        RESULTS_FOLDER / f'join_mapping_dfs_pruning_{value_ratio * 100.}.csv')
 
 
 def test_base_accuracy():
@@ -77,11 +80,13 @@ def test_bfs_pipeline():
     bfs_traverse_join_pipeline(queue=queue, target_column=target, join_tree=join_tree, train_results=results,
                                join_name_mapping=join_name_mapping, value_ratio=value_ratio)
     print("FINISHED BFS")
-    pd.DataFrame(results).to_csv("results_bfs_65.csv", index=False)
-    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping_bfs_65.csv')
+    pd.DataFrame(results).to_csv(
+        RESULTS_FOLDER / f"results_bfs_{value_ratio * 100}.csv", index=False)
+    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv(
+        RESULTS_FOLDER / f'join_mapping_bfs_{value_ratio * 100}.csv')
 
 
-test_bfs_pipeline()
-# test_dfs_pipeline()
+# test_bfs_pipeline()
+test_dfs_pipeline()
 # test_base_accuracy()
 # test_arda()

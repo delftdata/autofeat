@@ -111,7 +111,7 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
 
 
 def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
-                               join_name_mapping: dict, value_ratio=0.5, previous_paths=None):
+                               join_name_mapping: dict, value_ratio=0.5, previous_paths=None) -> set:
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
     apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
@@ -121,8 +121,9 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
     :param join_tree: The result of the DFS traversal.
     :param train_results: List used to store the results of training CART.
     :param join_name_mapping:
-    :param previous_paths:
-    :return: None
+    :param value_ratio: Pruning threshold. It represents the ration between the number of non-null values in a column and the total number of values.
+    :param previous_paths: The join paths used in previous iteration, which are used to create a join tree of paths.
+    :return: Set of paths
     """
     print(f"New iteration with {base_node_id}")
 
@@ -137,7 +138,7 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
         left_df, left_label = get_df_with_prefix(base_node_id, target_column)
         previous_paths = {left_label}
 
-    all_paths = previous_paths
+    all_paths = previous_paths.copy()
 
     # Traverse
     for node in tqdm.tqdm(join_tree[base_node_id].keys()):
