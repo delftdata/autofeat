@@ -13,7 +13,7 @@ from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_
 
 
 def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, train_results: List,
-                               join_name_mapping: dict, previous_queue=None):
+                               join_name_mapping: dict, value_ratio: float, previous_queue=None):
     """
     Recursive function - the pipeline to: 1) traverse the graph given a base node_id, 2) join with the adjacent nodes,
     3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
@@ -23,6 +23,7 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
     :param join_tree: The result of the BFS traversal.
     :param train_results: List used to store the results of training CART.
     :param join_name_mapping: Mapping with the name of the join and the corresponding name of the file containing the join result.
+    :param value_ratio: Pruning threshold. It represents the ration between the number of non-null values in a column and the total number of values.
     :param previous_queue: Initially empty or None, the queue is used to store the partial join names between the iterations.
     :return: None
     """
@@ -41,6 +42,8 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
 
     if previous_queue is None:
         previous_queue = {node_label}
+
+    initial_queue = previous_queue.copy()
 
     for node in adjacent_nodes:
         print(f"Adjacent node: {node}")
@@ -84,43 +87,27 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
                                           right_column=f"{to_table}.{join_prop['to_column']}",
                                           join_name=join_filename)
 
-                # Select features
-                left_table_features = [feat for feat in list(joined_df.columns) if
-                                       feat not in list(right_df.columns) and (feat != target_column)]
-                correlated_features = compute_correlation(left_table_features=left_table_features,
-                                                          joined_df=joined_df,
-                                                          target_column=target_column)
-                # TODO: adjust value
-                selected_features = get_elements_higher_than_value(dictionary=correlated_features, value=0.4)
-                selected_features_df = None
-                if len(selected_features) > 0:
-                    features_with_selected = left_table_features
-                    features_with_selected.extend(selected_features.keys())
-                    features_with_selected.append(target_column)
-                    selected_features_df = joined_df[features_with_selected]
+                if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
+                    print(f"\t\tRight column value ration below {value_ratio}.\nSKIPPED Join")
+                    continue
 
                 # Train, test - Without feature selection
                 print(f"TRAIN WITHOUT feature selection")
                 result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
                 train_results.append(result)
 
-                # Train, test - With feature selection
-                print(f"TRAIN WITH feature selection")
-                if selected_features_df is None:
-                    print(f"\tNo selected features. Skipping ...")
-                elif selected_features_df.shape == joined_df.shape:
-                    print(f"\tAll features were selected. Skipping ... ")
-                else:
-                    result = _train_test_cart(selected_features_df, target_column, join_name, Result.TFD)
-                    train_results.append(result)
+                # Select features and train
+                print("Feature selection step")
+                results = _select_features_train(joined_df, right_df, target_column, join_name)
+                train_results.extend(results)
 
                 current_queue.add(join_name)
 
-        previous_queue = current_queue
+        previous_queue = current_queue.copy() if len(current_queue) > 0 else initial_queue.copy()
         queue.add(node)
 
     bfs_traverse_join_pipeline(queue, target_column, join_tree[current_node_id], train_results,
-                               join_name_mapping, previous_queue)
+                               join_name_mapping, value_ratio, previous_queue)
 
 
 def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
