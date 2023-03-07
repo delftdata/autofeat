@@ -41,7 +41,7 @@ class CART(BaseAlgorithm):
         grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=self.num_cv)
         grids.fit(X_train, y_train)
         params = grids.best_params_
-        self.max_depth = grids.best_params_["max_depth"]
+        # self.max_depth = grids.best_params_["max_depth"]
 
         # TODO Store all the accuracies and the trees and see how the trees look
         print(f"Hyper-params: {params} for best score: {grids.best_score_}")
