@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 
 import data_preparation.utils
@@ -35,8 +37,13 @@ def test_dfs_pipeline():
     join_name_mapping = {}
     train_results = []
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
-    dfs_traverse_join_pipeline(base_node_id=node_id, target_column=target, join_tree=join_path_tree,
-                               train_results=train_results, join_name_mapping=join_name_mapping)
+
+    with open('join_tree_dfs.json', 'w') as f:
+        json.dump(join_path_tree, f)
+
+    all_paths = dfs_traverse_join_pipeline(base_node_id=node_id, target_column=target, join_tree=join_path_tree,
+                                           train_results=train_results, join_name_mapping=join_name_mapping)
+    print(f"FINISHED DFS")
     pd.DataFrame(train_results).to_csv("results_short_name.csv", index=False)
     pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping.csv')
 
@@ -58,14 +65,18 @@ def test_bfs_pipeline():
     queue = {node_id}
     bfs_traversal(queue, join_tree)
 
+    with open('join_tree_bfs.json', 'w') as f:
+        json.dump(join_tree, f)
+
     queue = {node_id}
     bfs_traverse_join_pipeline(queue=queue, target_column=target, join_tree=join_tree, train_results=results,
                                join_name_mapping=join_name_mapping)
+    print("FINISHED BFS")
     pd.DataFrame(results).to_csv("results_bfs.csv", index=False)
     pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping_bfs.csv')
 
 
-test_bfs_pipeline()
-# test_dfs_pipeline()
+# test_bfs_pipeline()
+test_dfs_pipeline()
 # test_base_accuracy()
 # test_arda()
