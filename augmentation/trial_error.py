@@ -124,31 +124,33 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
 
 
 def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
-                               join_name_mapping: dict, partial_join_name=None, partial_join=None):
+                               join_name_mapping: dict, previous_paths=None):
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
     apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
+
     :param base_node_id: Starting point of the traversal.
     :param target_column: Target column containing the class labels for training.
     :param join_tree: The result of the DFS traversal.
     :param train_results: List used to store the results of training CART.
     :param join_name_mapping:
-    :param partial_join_name: The name of the partial join use to compute the name for the next iterations.
-    :param partial_join: The partial join used for the next iterations.
+    :param previous_paths:
     :return: None
     """
     print(f"New iteration with {base_node_id}")
 
-    # Get current dataframe
-    if partial_join_name is None or partial_join is None:
-        left_df, _ = get_df_with_prefix(base_node_id, target_column)
-    else:
-        left_df = partial_join
-
     # Trace the recursion
     if len(join_tree[base_node_id].keys()) == 0:
         print(f"End node: {base_node_id}")
-        return partial_join, partial_join_name
+        return previous_paths
+
+    # Get current dataframe
+    left_df = None
+    if previous_paths is None:
+        left_df, left_label = get_df_with_prefix(base_node_id, target_column)
+        previous_paths = {left_label}
+
+    all_paths = previous_paths
 
     # Traverse
     for node in tqdm.tqdm(join_tree[base_node_id].keys()):
@@ -158,73 +160,96 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
         right_df, right_label = get_df_with_prefix(node)
         print(f"\tRight table shape: {right_df.shape}")
 
+        next_paths = set()
         for prop in tqdm.tqdm(join_keys):
             join_prop, from_table, to_table = prop
             if join_prop['from_label'] != from_table:
                 continue
-            print(f"\n\tJoin properties: {join_prop}")
+            print(f"\n\t\tJoin properties: {join_prop}")
 
-            # Transform to 1:1 or M:1
+            # Transform to 1:1 or M:1 based on the join property
             right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1, random_state=42)
 
-            # Compute the name of the join
-            join_name = compute_partial_join_filename(prop=prop, partial_join_name=partial_join_name)
+            current_paths = all_paths.copy()
+            while len(current_paths) > 0:
+                join_name, partial_join = _read_join_compute_name(current_paths, prop)
+                next_paths.add(join_name)
 
-            # File naming convention as the filename can be gigantic
-            join_filename = f"join{len(join_name_mapping) + 1}.csv"
-            join_name_mapping[join_filename] = join_name
-            print(f"\tJoin name: {join_name}")
+                left_df = partial_join if left_df is None else left_df
 
-            # Join
-            joined_df = join_and_save(left_df=left_df,
-                                      right_df=right_df,
-                                      left_column=f"{from_table}.{join_prop['from_column']}",
-                                      right_column=f"{to_table}.{join_prop['to_column']}",
-                                      join_name=join_filename)
+                # File naming convention as the filename can be gigantic
+                join_filename = f"join{len(join_name_mapping) + 1}.csv"
+                join_name_mapping[join_filename] = join_name
 
-            # Select features
-            left_table_features = [feat for feat in list(joined_df.columns) if
-                                   feat not in list(right_df.columns) and (feat != target_column)]
-            correlated_features = compute_correlation(left_table_features=left_table_features,
-                                                      joined_df=joined_df,
-                                                      target_column=target_column)
-            # TODO: adjust value
-            selected_features = get_elements_higher_than_value(dictionary=correlated_features, value=0.4)
-            selected_features_df = None
-            if len(selected_features) > 0:
-                features_with_selected = left_table_features
-                features_with_selected.extend(selected_features.keys())
-                features_with_selected.append(target_column)
-                selected_features_df = joined_df[features_with_selected]
+                # Join
+                joined_df = join_and_save(left_df, right_df,
+                                          left_column=f"{from_table}.{join_prop['from_column']}",
+                                          right_column=f"{to_table}.{join_prop['to_column']}",
+                                          join_name=join_filename)
 
-            # Train, test - Without feature selection
-            print(f"TRAIN WITHOUT feature selection")
-            result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
-            train_results.append(result)
-
-            # Train, test - With feature selection
-            print(f"TRAIN WITH feature selection")
-            if selected_features_df is None:
-                print(f"\tNo selected features. Skipping ...")
-            elif selected_features_df.shape == joined_df.shape:
-                print(f"\tAll features were selected. Skipping ... ")
-            else:
-                result = _train_test_cart(selected_features_df, target_column, join_name, Result.TFD)
+                # Train, test - Without feature selection
+                print(f"TRAIN WITHOUT feature selection")
+                result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
                 train_results.append(result)
 
-            # Continue traversal
-            joined_df, join_name = dfs_traverse_join_pipeline(node, target_column, join_tree[base_node_id],
-                                                              train_results, join_name_mapping, join_name, joined_df)
+                # Select features and train
+                print("Feature selection step")
+                results = _select_features_train(joined_df, right_df, target_column, join_name)
+                train_results.extend(results)
+
             print(f"\tEnd join properties iteration for {node}")
 
-        partial_join_name = join_name
-        partial_join = joined_df
+        # Continue traversal
+        current_paths = dfs_traverse_join_pipeline(node, target_column, join_tree[base_node_id],
+                                                   train_results, join_name_mapping, next_paths)
+        all_paths.update(current_paths)
         print(f"End depth iteration for {node}")
 
-    partial_join_name = join_name
-    partial_join = joined_df
+    return all_paths
 
-    return partial_join, partial_join_name
+
+def _read_join_compute_name(current_paths, prop, left_df=None):
+    current_join_path = current_paths.pop()
+    print(f"\t\t\tCurrent join path: {current_join_path}")
+
+    left_df = pd.read_csv(JOIN_RESULT_FOLDER / current_join_path, header=0,
+                          engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+
+    # Compute the name of the join
+    join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
+    print(f"\t\t\tJoin name: {join_name}")
+
+    return join_name, left_df
+
+
+def _select_features_train(joined_df, right_df, target_column, join_name):
+    results = []
+    # Select features
+    left_table_features = [feat for feat in list(joined_df.columns) if
+                           feat not in list(right_df.columns) and (feat != target_column)]
+    correlated_features = compute_correlation(left_table_features=left_table_features,
+                                              joined_df=joined_df,
+                                              target_column=target_column)
+    # TODO: adjust value
+    selected_features = get_elements_higher_than_value(dictionary=correlated_features, value=0.4)
+    selected_features_df = None
+    if len(selected_features) > 0:
+        features_with_selected = left_table_features
+        features_with_selected.extend(selected_features.keys())
+        features_with_selected.append(target_column)
+        selected_features_df = joined_df[features_with_selected]
+
+    # Train, test - With feature selection
+    print(f"TRAIN WITH feature selection")
+    if selected_features_df is None:
+        print(f"\tNo selected features. Skipping ...")
+    elif selected_features_df.shape == joined_df.shape:
+        print(f"\tAll features were selected. Skipping ... ")
+    else:
+        result = _train_test_cart(selected_features_df, target_column, join_name, Result.TFD)
+        results.append(result)
+
+    return results
 
 
 def _train_test_cart(dataframe: pd.DataFrame, target_column: str, join_name: str, approach: str) -> Result:
@@ -245,7 +270,6 @@ def _train_test_cart(dataframe: pd.DataFrame, target_column: str, join_name: str
         approach=approach,
         data_path=join_name,
         algorithm=CART.LABEL,
-        depth=params['max_depth'],
         accuracy=acc_decision_tree,
         feature_importance=features_scores,
         train_time=train_time
