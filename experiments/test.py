@@ -36,16 +36,20 @@ def test_dfs_pipeline():
     join_path_tree = {}
     join_name_mapping = {}
     train_results = []
+    value_ratio = 0.15
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
 
     with open('join_tree_dfs.json', 'w') as f:
         json.dump(join_path_tree, f)
 
     all_paths = dfs_traverse_join_pipeline(base_node_id=node_id, target_column=target, join_tree=join_path_tree,
-                                           train_results=train_results, join_name_mapping=join_name_mapping)
+                                           train_results=train_results, join_name_mapping=join_name_mapping,
+                                           value_ratio=value_ratio)
     print(f"FINISHED DFS")
-    pd.DataFrame(train_results).to_csv("results_short_name.csv", index=False)
-    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv('join_mapping.csv')
+    pd.Series(list(all_paths), name="filename").to_csv("paths_dfs_15.csv", index=False)
+    pd.DataFrame(train_results).to_csv("results_dfs_pruning_15.csv", index=False)
+    pd.DataFrame.from_dict(join_name_mapping, orient='index',
+                           columns=["join_name"]).to_csv('join_mapping_dfs_pruning_15.csv')
 
 
 def test_base_accuracy():

@@ -124,7 +124,7 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, join_tree: Dict, 
 
 
 def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
-                               join_name_mapping: dict, previous_paths=None):
+                               join_name_mapping: dict, value_ratio=0.5, previous_paths=None):
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
     apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
@@ -172,20 +172,30 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
 
             current_paths = all_paths.copy()
             while len(current_paths) > 0:
-                join_name, partial_join = _read_join_compute_name(current_paths, prop)
-                next_paths.add(join_name)
+                current_join_path = current_paths.pop()
+                print(f"\t\t\tCurrent join path: {current_join_path}")
 
-                left_df = partial_join if left_df is None else left_df
+                if left_df is None:
+                    left_df = pd.read_csv(JOIN_RESULT_FOLDER / join_name_mapping[current_join_path], header=0,
+                                          engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+
+                # Compute the name of the join
+                join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
+                print(f"\t\t\tJoin name: {join_name}")
 
                 # File naming convention as the filename can be gigantic
                 join_filename = f"join{len(join_name_mapping) + 1}.csv"
-                join_name_mapping[join_filename] = join_name
+                join_name_mapping[join_name] = join_filename
 
                 # Join
                 joined_df = join_and_save(left_df, right_df,
                                           left_column=f"{from_table}.{join_prop['from_column']}",
                                           right_column=f"{to_table}.{join_prop['to_column']}",
                                           join_name=join_filename)
+
+                if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
+                    print("\t\tRight column value ration below 0.5.\nSKIPPED Join")
+                    continue
 
                 # Train, test - Without feature selection
                 print(f"TRAIN WITHOUT feature selection")
@@ -197,29 +207,17 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
                 results = _select_features_train(joined_df, right_df, target_column, join_name)
                 train_results.extend(results)
 
+                next_paths.add(join_name)
+
             print(f"\tEnd join properties iteration for {node}")
 
         # Continue traversal
         current_paths = dfs_traverse_join_pipeline(node, target_column, join_tree[base_node_id],
-                                                   train_results, join_name_mapping, next_paths)
+                                                   train_results, join_name_mapping, value_ratio, next_paths)
         all_paths.update(current_paths)
         print(f"End depth iteration for {node}")
 
     return all_paths
-
-
-def _read_join_compute_name(current_paths, prop, left_df=None):
-    current_join_path = current_paths.pop()
-    print(f"\t\t\tCurrent join path: {current_join_path}")
-
-    left_df = pd.read_csv(JOIN_RESULT_FOLDER / current_join_path, header=0,
-                          engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-
-    # Compute the name of the join
-    join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
-    print(f"\t\t\tJoin name: {join_name}")
-
-    return join_name, left_df
 
 
 def _select_features_train(joined_df, right_df, target_column, join_name):
