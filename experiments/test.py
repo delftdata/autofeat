@@ -5,7 +5,7 @@ import pandas as pd
 import data_preparation.utils
 from augmentation.trial_error import dfs_traverse_join_pipeline, bfs_traverse_join_pipeline
 from config import RESULTS_FOLDER
-from graph_processing.traverse_graph import dfs_traversal, bfs_traversal
+from graph_processing.traverse_graph import dfs_traversal
 
 # node_id = "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/base.csv"
 # target = "class"
@@ -14,17 +14,19 @@ from graph_processing.traverse_graph import dfs_traversal, bfs_traversal
 
 node_id = "/Users/andra/Developer/auto-data-augmentation/data/cs/target_churn.csv"
 target = "target_churn"
-base_table_features = ["ACC_KEY", "date_horizon", "target_churn"]
+base_table_features = ["ACC_KEY", "date_horizon"]
 
 
 def test_arda():
     from arda.arda import select_arda_features_budget_join
     import algorithms
 
+    sample_size = 1000
+
     dataframe, dataframe_label, selected_features, join_time, _ = select_arda_features_budget_join(node_id,
                                                                                                    target,
                                                                                                    base_table_features,
-                                                                                                   sample_size=1000)
+                                                                                                   sample_size=sample_size)
     print(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
     features = [f"{dataframe_label}.{feat}" for feat in base_table_features]
@@ -89,4 +91,4 @@ def test_bfs_pipeline():
 # test_bfs_pipeline()
 # test_dfs_pipeline()
 # test_base_accuracy()
-# test_arda()
+test_arda()

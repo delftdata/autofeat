@@ -174,7 +174,8 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
 
     # Read base table, uniform sample, set budget size
     left_table = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-    left_table = left_table.sample(sample_size, random_state=random_state)
+    if sample_size < left_table.shape[0]:
+        left_table = left_table.sample(sample_size, random_state=random_state)
     budget_size = left_table.shape[0]
 
     # Get node, prepend the node label to columns and base table features for easy identification
