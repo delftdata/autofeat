@@ -42,27 +42,27 @@ def bfs_traversal(queue: set, join_tree: Dict, discovered=None):
     if discovered is None:
         discovered = set()
 
-    base_node_id = queue.pop()
-    discovered.add(base_node_id)
-    print(f"Base node: {base_node_id}")
+    while len(queue) > 0:
+        base_node_id = queue.pop()
+        discovered.add(base_node_id)
+        print(f"Base node: {base_node_id}")
 
-    adjacent_nodes = get_adjacent_nodes(base_node_id)
-    neighbours = set(adjacent_nodes) - set(discovered)
-    if len(neighbours) == 0:
-        return
+        adjacent_nodes = get_adjacent_nodes(base_node_id)
+        neighbours = set(adjacent_nodes) - set(discovered)
+        if len(neighbours) == 0:
+            continue
 
-    if base_node_id not in join_tree.keys():
-        join_tree[base_node_id] = {}
+        if base_node_id not in join_tree.keys():
+            join_tree[base_node_id] = {}
 
-    for node in neighbours:
-        if node not in discovered:
-            print(f"\tNode: {node}")
-            # Create a tree structure such that we know how to join the tables
-            join_tree[base_node_id].update({node: {}})
-            discovered.add(node)
-            queue.add(node)
+        for node in neighbours:
+            if node not in discovered:
+                print(f"\tNode: {node}")
+                # Create a tree structure such that we know how to join the tables
+                join_tree[base_node_id].update({node: {}})
+                discovered.add(node)
 
-    bfs_traversal(queue, join_tree[base_node_id], discovered)
+        bfs_traversal(neighbours, join_tree[base_node_id], discovered)
 
 
 def test_dfs():

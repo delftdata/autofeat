@@ -21,7 +21,7 @@ DATA_FOLDER = ROOT_FOLDER / 'data' / 'cs'
 # DATA_FOLDER = ROOT_FOLDER / 'data' / 'ARDA'
 # DATA_FOLDER = ROOT_FOLDER / 'other-data' / 'synthetic'
 PLOTS_FOLDER = ROOT_FOLDER / "plots"
-RESULTS_FOLDER = ROOT_FOLDER / "results"
+RESULTS_FOLDER = ROOT_FOLDER / "results" / "cs"
 
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
 
