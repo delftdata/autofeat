@@ -31,6 +31,29 @@ def ingest_fabricated_data() -> dict:
     return mapping
 
 
+def ingest_unprocessed_data():
+    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+    # Filter out connections.csv file
+    files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
+    mapping = {}
+
+    for f in files:
+        table_path = f
+        table_name = f.partition(f"{DATA_FOLDER}/")[2]
+
+        mapping[table_name] = table_path
+
+    connection_filename = glob.glob(f"{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)[0]
+    connections = pd.read_csv(connection_filename)
+
+    for index, row in connections.iterrows():
+        merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
+                                    b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
+                                    a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
+
+    return mapping
+
+
 def ingest_tables() -> dict:
     files = glob.glob(f"{DATA_FOLDER}/**/{VALENTINE_CONNECTIONS}", recursive=True)
     connections = pd.read_csv(files[0])

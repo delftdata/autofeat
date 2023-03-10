@@ -3,7 +3,8 @@ from pathlib import Path
 
 ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.parent.resolve()
 
-MAPPING = "mapping.json"
+# MAPPING = "mapping.json"
+MAPPING = "mapping-cs.json"
 CONNECTIONS = "connections.csv"
 VALENTINE_CONNECTIONS = "valentine-connections.csv"
 ENUMERATED_PATHS = "enumerated-paths.json"
@@ -16,7 +17,8 @@ ALL_PATHS = 'all_paths'
 MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024' / "tables"
 JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df' / '2024' / "tables"
 # DATA_FOLDER = ROOT_FOLDER / Path("..") / 'data' / 'nyc'
-DATA_FOLDER = ROOT_FOLDER / 'data' / 'ARDA'
+DATA_FOLDER = ROOT_FOLDER / 'data' / 'cs'
+# DATA_FOLDER = ROOT_FOLDER / 'data' / 'ARDA'
 # DATA_FOLDER = ROOT_FOLDER / 'other-data' / 'synthetic'
 PLOTS_FOLDER = ROOT_FOLDER / "plots"
 RESULTS_FOLDER = ROOT_FOLDER / "results"
