@@ -7,10 +7,14 @@ from augmentation.trial_error import dfs_traverse_join_pipeline, bfs_traverse_jo
 from config import RESULTS_FOLDER
 from graph_processing.traverse_graph import dfs_traversal, bfs_traversal
 
-node_id = "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/base.csv"
-target = "class"
-base_table_features = ["DBN", "School Name", "School Type", "Total Parent Response Rate (%)",
-                       "Total Teacher Response Rate (%)", "Total Student Response Rate (%)"]
+# node_id = "/Users/andra/Developer/auto-data-augmentation/data/ARDA/school/base.csv"
+# target = "class"
+# base_table_features = ["DBN", "School Name", "School Type", "Total Parent Response Rate (%)",
+#                        "Total Teacher Response Rate (%)", "Total Student Response Rate (%)"]
+
+node_id = "/Users/andra/Developer/auto-data-augmentation/data/cs/target_churn.csv"
+target = "target_churn"
+base_table_features = ["ACC_KEY", "date_horizon", "target_churn"]
 
 
 def test_arda():
@@ -37,7 +41,7 @@ def test_dfs_pipeline():
     join_path_tree = {}
     join_name_mapping = {}
     train_results = []
-    value_ratio = 0.05
+    value_ratio = 0.35
     dfs_traversal(base_node_id=node_id, discovered=visited, join_tree=join_path_tree)
 
     with open('join_tree_dfs.json', 'w') as f:
@@ -67,19 +71,15 @@ def test_base_accuracy():
 
 def test_bfs_pipeline():
     results = []
-    join_tree = {}
     join_name_mapping = {}
     queue = {node_id}
-    value_ratio = 0.65
-    bfs_traversal(queue, join_tree)
+    value_ratio = 0.35
 
-    with open('join_tree_bfs.json', 'w') as f:
-        json.dump(join_tree, f)
-
-    queue = {node_id}
-    bfs_traverse_join_pipeline(queue=queue, target_column=target, join_tree=join_tree, train_results=results,
+    bfs_traverse_join_pipeline(queue=queue, target_column=target, train_results=results,
                                join_name_mapping=join_name_mapping, value_ratio=value_ratio)
     print("FINISHED BFS")
+
+    # Save results
     pd.DataFrame(results).to_csv(
         RESULTS_FOLDER / f"results_bfs_{value_ratio * 100}.csv", index=False)
     pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv(
@@ -87,6 +87,6 @@ def test_bfs_pipeline():
 
 
 # test_bfs_pipeline()
-test_dfs_pipeline()
+# test_dfs_pipeline()
 # test_base_accuracy()
 # test_arda()
