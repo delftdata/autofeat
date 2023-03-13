@@ -16,6 +16,10 @@ node_id = "/Users/andra/Developer/auto-data-augmentation/data/cs/target_churn.cs
 target = "target_churn"
 base_table_features = ["ACC_KEY", "date_horizon"]
 
+# node_id = "/Users/andra/Developer/auto-data-augmentation/data/air/temp.csv"
+# target = "Temperature"
+# base_table_features = ["Day", "f0_", "f1_", "f2_", "f3_", "f4_", "f5_", "f6_"]
+
 
 def test_arda():
     from arda.arda import select_arda_features_budget_join
@@ -33,7 +37,7 @@ def test_arda():
     features.extend(selected_features)
     features.append(target)
     X, y = data_preparation.utils.prepare_data_for_ml(dataframe[features], target)
-    acc_decision_tree, params, feature_importance, train_time, _ = algorithms.CART().train(X, y)
+    acc_decision_tree, params, feature_importance, train_time, _ = algorithms.CART().train(X, y, regression=True)
     features_scores = dict(zip(feature_importance, X.columns))
     print(f"\tAccuracy: {acc_decision_tree}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
@@ -73,12 +77,13 @@ def test_base_accuracy():
 
 def test_bfs_pipeline():
     results = []
+    all_paths = {}
     join_name_mapping = {}
     queue = {node_id}
     value_ratio = 0.35
 
     bfs_traverse_join_pipeline(queue=queue, target_column=target, train_results=results,
-                               join_name_mapping=join_name_mapping, value_ratio=value_ratio)
+                               join_name_mapping=join_name_mapping, value_ratio=value_ratio, all_paths=all_paths)
     print("FINISHED BFS")
 
     # Save results
@@ -87,8 +92,11 @@ def test_bfs_pipeline():
     pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv(
         RESULTS_FOLDER / f'join_mapping_bfs_{value_ratio * 100}.csv')
 
+    with open(RESULTS_FOLDER / f"all_paths_{value_ratio * 100}.json", "w") as f:
+        json.dump(all_paths, f)
 
-# test_bfs_pipeline()
+
+test_bfs_pipeline()
 # test_dfs_pipeline()
 # test_base_accuracy()
-test_arda()
+# test_arda()

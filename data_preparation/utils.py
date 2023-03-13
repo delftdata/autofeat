@@ -25,10 +25,10 @@ def prepare_data_for_ml(dataframe: pd.DataFrame, target_column: str):
     normalized_X = pd.DataFrame(scaled_X, columns=X.columns)
     # print(normalized_X)
 
-    y = df[target_column].astype(int)
+    y = df[target_column].astype(float)
 
-    le = LabelEncoder()
-    y = pd.Series(le.fit_transform(y), name=target_column)
+    # le = LabelEncoder()
+    # y = pd.Series(le.fit_transform(y), name=target_column)
 
     return normalized_X, y
 

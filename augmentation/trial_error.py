@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 import tqdm
 
@@ -7,13 +8,14 @@ from algorithms import CART
 from config import JOIN_RESULT_FOLDER
 from data_preparation.utils import compute_partial_join_filename, join_and_save, prepare_data_for_ml
 from experiments.result_object import Result
+from feature_selection.gini import gini_index, feature_ranking
 from feature_selection.util_functions import compute_correlation
 from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
 from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_value
 
 
 def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: List, join_name_mapping: dict,
-                               value_ratio: float, previous_queue=None, discovered=None):
+                               value_ratio: float, all_paths: Dict, previous_queue=None, discovered=None, smallest_gini_score = None):
     """
     Recursive function - the pipeline to: 1) traverse the graph given a base node_id, 2) join with the adjacent nodes,
     3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
@@ -74,6 +76,9 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                 partial_join_name = previous_queue.pop()
                 if partial_join_name == base_node_id and len(join_name_mapping) == 0:
                     partial_join, partial_join_name = get_df_with_prefix(base_node_id, target_column)
+                    X, y = prepare_data_for_ml(partial_join, target_column)
+                    scores = gini_index(X.to_numpy(), y)
+                    smallest_gini_score = min(scores)
                 else:
                     partial_join = pd.read_csv(JOIN_RESULT_FOLDER / join_name_mapping[partial_join_name], header=0,
                                                engine="python", encoding="utf8", quotechar='"', escapechar='\\')
@@ -111,8 +116,17 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                                               right_column=f"{to_table}.{join_prop['to_column']}",
                                               join_name=join_filename)
 
+                    # Prune the joins with high null values ratio
                     if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
                         print(f"\t\tRight column value ration below {value_ratio}.\nSKIPPED Join")
+                        continue
+
+                    X, y = prepare_data_for_ml(joined_df, target_column)
+                    scores = gini_index(X.to_numpy(), y)
+                    indices = feature_ranking(scores)
+
+                    if not np.any(scores < smallest_gini_score):
+                        print(f"\t\tNo feature with gini index smallest than {smallest_gini_score}.\nSKIPPED Join")
                         continue
 
                     # Train, test - Without feature selection
@@ -120,21 +134,23 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                     result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
                     train_results.append(result)
 
-                    # Select features and train
-                    print("Feature selection step")
-                    results = _select_features_train(joined_df, right_df, target_column, join_name)
-                    train_results.extend(results)
+                    # # Select features and train
+                    # print("Feature selection step")
+                    # results = _select_features_train(joined_df, right_df, target_column, join_name)
+                    # train_results.extend(results)
 
                     # Save the join name to be used as the partial join in the next iterations
                     current_queue.add(join_name)
+                    # Sum the first 2 smallest scores and use them for ranking
+                    all_paths[join_name] = scores[indices[0]] + scores[indices[1]]
 
             # Repopulate with the old paths (initial_queue) and the new paths (current_queue)
             previous_queue.update(initial_queue)
             previous_queue.update(current_queue)
 
         # Remove the paths from the initial queue when we go 1 level deeper
-        bfs_traverse_join_pipeline(neighbours, target_column, train_results, join_name_mapping, value_ratio,
-                                   previous_queue - initial_queue, discovered)
+        bfs_traverse_join_pipeline(neighbours, target_column, train_results, join_name_mapping, value_ratio, all_paths,
+                                   previous_queue - initial_queue, discovered, smallest_gini_score)
 
 
 def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
