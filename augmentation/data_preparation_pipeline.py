@@ -65,13 +65,16 @@ def data_preparation_tables(ingest=True, enumerate_paths=True):
             json.dump(all_paths, fp)
 
 
-def ingest_data_with_connections():
+def ingest_data_with_connections(profile_valentine=False):
     mapping = ingest_unprocessed_data()
     with open(MAPPING_FOLDER / MAPPING, 'w') as fp:
         json.dump(mapping, fp)
+
+    if profile_valentine:
+        profile_valentine_all()
 
 
 if __name__ == "__main__":
     # data_preparation(ingest_data=False, profile_valentine=False)
     # data_preparation_tables(ingest=True, enumerate_paths=False)
-    ingest_data_with_connections()
+    ingest_data_with_connections(profile_valentine=True)

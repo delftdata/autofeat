@@ -102,7 +102,10 @@ def profile_valentine_all():
             if similarity > VALENTINE_THRESHOLD:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
-                node_id_source = f"{tab1}/{col_from}"
-                node_id_target = f"{tab2}/{col_to}"
-
-                create_relation(node_id_source, node_id_target, RELATED, similarity)
+                merge_nodes_relation_tables(a_table_name=tab1.partition(f"{DATA_FOLDER}/")[2],
+                                            b_table_name=tab2.partition(f"{DATA_FOLDER}/")[2],
+                                            a_table_path=tab1,
+                                            b_table_path=tab2,
+                                            a_col=col_from,
+                                            b_col=col_to,
+                                            weight=similarity)

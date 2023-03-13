@@ -195,9 +195,12 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
             print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
 
             # Get the keys between the base node and connected node
-            join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node_id)[0:2]
+            join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node_id)
             # Keep the key which matches the outgoing node
-            join_prop, from_table, to_table = [k for k in join_keys if k[0]['from_label'] == k[1]][0]
+            result = [k for k in join_keys if k[0]['from_label'] == k[1]]
+            if len(result) == 0:
+                continue
+            join_prop, from_table, to_table = result[0]
             print(f"Join properties: {join_prop}")
 
             # Read right table, aggregate on the join key (reduce to 1:1 or M:1 join) by random sampling
