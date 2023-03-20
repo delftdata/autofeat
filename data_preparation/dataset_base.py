@@ -1,13 +1,22 @@
+from typing import List, Optional
+
 import pandas as pd
 
 
+class DatasetType:
+    CLASSIFICATION = "classification"
+    REGRESSION = "regression"
+
+
 class Dataset:
-    def __init__(self, base_table_id, base_table_name, base_table_label, target_column):
+    def __init__(self, base_table_id: str, base_table_name: str, base_table_label: str, target_column: str,
+                 dataset_type: DatasetType, base_table_features: Optional[List] = None):
         self.base_table_id = base_table_id
         self.target_column = target_column
         self.base_table_name = base_table_name
         self.base_table_label = base_table_label
-        self.base_table_features = None
+        self.base_table_features = base_table_features
+        self.dataset_type = dataset_type
         self.base_table_df = None
 
     def set_features(self):

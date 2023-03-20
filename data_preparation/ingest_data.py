@@ -31,19 +31,21 @@ def ingest_fabricated_data() -> dict:
     return mapping
 
 
-def ingest_unprocessed_data():
-    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+def ingest_unprocessed_data(dataset_name: str):
+    print("Process the tables ...")
+    files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     # Filter out connections.csv file
     files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
     mapping = {}
 
     for f in files:
         table_path = f
-        table_name = f.partition(f"{DATA_FOLDER}/")[2]
+        table_name = f.partition(f"{DATA_FOLDER / dataset_name}/")[2]
 
         mapping[table_name] = table_path
 
-    connection_filename = glob.glob(f"{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)[0]
+    print("Add the ground-truth ... ")
+    connection_filename = glob.glob(f"{DATA_FOLDER / dataset_name}/**/{CONNECTIONS}", recursive=True)[0]
     connections = pd.read_csv(connection_filename)
 
     for index, row in connections.iterrows():
@@ -86,8 +88,8 @@ def ingest_connections():
             create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all():
-    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+def profile_valentine_all(dataset_name: str):
+    files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
     for table_pair in itertools.combinations(files, r=2):
@@ -102,8 +104,8 @@ def profile_valentine_all():
             if similarity > VALENTINE_THRESHOLD:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
-                merge_nodes_relation_tables(a_table_name=tab1.partition(f"{DATA_FOLDER}/")[2],
-                                            b_table_name=tab2.partition(f"{DATA_FOLDER}/")[2],
+                merge_nodes_relation_tables(a_table_name=tab1.partition(f"{DATA_FOLDER / dataset_name}/")[2],
+                                            b_table_name=tab2.partition(f"{DATA_FOLDER / dataset_name}/")[2],
                                             a_table_path=tab1,
                                             b_table_path=tab2,
                                             a_col=col_from,
