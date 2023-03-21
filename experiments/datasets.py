@@ -1,7 +1,7 @@
 from typing import Dict
 
 from config import DATA_FOLDER
-from data_preparation.dataset_base import Dataset
+from data_preparation.dataset_base import Dataset, DatasetType
 
 
 class Datasets:
@@ -9,28 +9,32 @@ class Datasets:
         base_table_id=DATA_FOLDER / "titanic/titanic.csv",
         base_table_name="titanic.csv",
         base_table_label="titanic",
-        target_column="Survived"
+        target_column="Survived",
+        dataset_type=DatasetType.CLASSIFICATION
     )
 
     steel_plate_fault = Dataset(
         base_table_id=DATA_FOLDER / "steel-plate-fault/steel_plate_fault.csv",
         base_table_name="steel_plate_fault.csv",
         base_table_label="steel_plate_fault",
-        target_column="Class"
+        target_column="Class",
+        dataset_type=DatasetType.CLASSIFICATION
     )
 
     football = Dataset(
         base_table_id=DATA_FOLDER / "football/football.csv",
         base_table_name="football.csv",
         base_table_label="football",
-        target_column="win"
+        target_column="win",
+        dataset_type=DatasetType.CLASSIFICATION
     )
 
     school = Dataset(
         base_table_id=DATA_FOLDER / "school" / "base.csv",
         base_table_name="base.csv",
         base_table_label="school_small",
-        target_column="class"
+        target_column="class",
+        dataset_type=DatasetType.CLASSIFICATION
     )
 
     ALL = [titanic, steel_plate_fault, football]

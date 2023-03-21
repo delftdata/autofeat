@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 from data_preparation.join_data import join_directly_connected
-from data_preparation.utils import prepare_data_for_ml
+from data_preparation.utils import prepare_data_for_ml, compute_partial_join_filename
 from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
 
 
@@ -174,7 +174,7 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
 
     # Read base table, uniform sample, set budget size
     left_table = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
-    if sample_size < left_table.shape[0]:
+    if sample_size and sample_size < left_table.shape[0]:
         left_table = left_table.sample(sample_size, random_state=random_state)
     budget_size = left_table.shape[0]
 
@@ -182,6 +182,8 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
     base_node = get_node_by_id(base_node_id)
     left_table = left_table.set_index([target_column]).add_prefix(f"{base_node.get('label')}.").reset_index()
     base_table_features = [f"{base_node.get('label')}.{feat}" for feat in base_table_features]
+
+    join_name = base_node.get('label')
 
     # Get directly connected nodes
     nodes = get_adjacent_nodes(base_node_id)
@@ -217,6 +219,11 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
                                   left_on=f"{from_table}.{join_prop['from_column']}",
                                   right_on=f"{to_table}.{join_prop['to_column']}")
             left_table.drop(columns=[f"{to_table}.{join_prop['to_column']}"], inplace=True)
+
+            # Compute the join name
+            join_name = compute_partial_join_filename(prop=result[0], partial_join_name=join_name)
+            print(f"\t\t\tJoin name: {join_name}")
+
             # Update feature count (subtract 1 for the deleted right key)
             feature_count += right_table.shape[1] - 1
             print(f"Feature count: {feature_count}")
@@ -248,4 +255,4 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)
 
-    return left_table, base_node.get('label'), final_selected_features, join_time, fs_time
+    return left_table, base_node.get('label'), final_selected_features, join_name, join_time, fs_time

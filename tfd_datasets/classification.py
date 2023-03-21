@@ -2,6 +2,7 @@ from config import ROOT_FOLDER, DATA
 from data_preparation.dataset_base import Dataset, DatasetType
 
 
+# classification
 school_small = Dataset(
     base_table_id=ROOT_FOLDER / DATA / "ARDA/school/base.csv",
     base_table_name="base.csv",
@@ -28,10 +29,10 @@ nyc = Dataset(
     target_column="Reporting Construction Type",
     dataset_type=DatasetType.CLASSIFICATION,
     base_table_features=["Project ID", "Project Name", "Project Start Date", "Address", "Borough", "Postcode",
-                         "Community Board", "NTA - Neighborhood Tabulation Area", "Reporting Construction Type",
-                         "Prevailing Wage Status"]
+                         "Community Board", "NTA - Neighborhood Tabulation Area", "Prevailing Wage Status"]
 )
 
+# Not ingested yet
 la_data = Dataset(
     base_table_id=ROOT_FOLDER / DATA / "nydata/housing.csv",
     base_table_name="housing.csv",
@@ -43,6 +44,7 @@ la_data = Dataset(
                          "Prevailing Wage Status"]
 )
 
+# Regression datasets
 air = Dataset(
     base_table_id=ROOT_FOLDER / DATA / "air/temp.csv",
     base_table_name="temp.csv",

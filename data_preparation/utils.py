@@ -15,7 +15,7 @@ def get_paths():
     return all_paths
 
 
-def prepare_data_for_ml(dataframe: pd.DataFrame, target_column: str):
+def prepare_data_for_ml(dataframe: pd.DataFrame, target_column: str) -> tuple:
     df = dataframe.fillna(0)
     df = df.apply(lambda x: pd.factorize(x)[0] if x.dtype == object else x)
     X = df.drop(columns=[target_column])
@@ -61,12 +61,12 @@ def compute_partial_join_filename(prop: tuple, partial_join_name=None) -> str:
         joined_path = f"{join_prop['from_column'].replace(' ', '')}--{from_table.replace('/', '--')}" \
                       f"--{join_prop['to_column'].replace(' ', '')}--{to_table.replace('/', '--')}"
     else:
-        joined_path = f"{partial_join_name}--{join_prop['to_column'].replace(' ', '')}--{to_table.replace('/', '--')}"
+        joined_path = f"{partial_join_name}--{join_prop['to_column'].replace(' ', '')}-{to_table.replace('/', '--')}"
     return joined_path
 
 
 def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column: str, right_column: str,
-                  join_name: str) -> pd.DataFrame:
+                  label: str, join_name: str) -> pd.DataFrame:
     """
     Join two dataframes and save the result on disk.
     :param left_df: Left side of the join
@@ -78,5 +78,5 @@ def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column: st
     """
     partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column, right_on=right_column)
     # Save join result
-    partial_join.to_csv(JOIN_RESULT_FOLDER / join_name, index=False)
+    partial_join.to_csv(JOIN_RESULT_FOLDER / label / join_name, index=False)
     return partial_join

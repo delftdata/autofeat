@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -14,8 +14,9 @@ from graph_processing.neo4j_transactions import get_relation_properties_node_nam
 from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_value
 
 
-def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: List, join_name_mapping: dict,
-                               value_ratio: float, all_paths: Dict, previous_queue=None, discovered=None, smallest_gini_score = None):
+def bfs_traverse_join_pipeline(queue: set, target_column: str, base_table_label: str, join_name_mapping: dict,
+                               all_paths: Dict, value_ratio: float, gini: bool,
+                               previous_queue=None, discovered=None, smallest_gini_score=None):
     """
     Recursive function - the pipeline to: 1) traverse the graph given a base node_id, 2) join with the adjacent nodes,
     3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
@@ -74,14 +75,15 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
             while len(previous_queue) > 0:
                 # Determine partial join
                 partial_join_name = previous_queue.pop()
-                if partial_join_name == base_node_id and len(join_name_mapping) == 0:
+                if partial_join_name == base_node_id:
                     partial_join, partial_join_name = get_df_with_prefix(base_node_id, target_column)
                     X, y = prepare_data_for_ml(partial_join, target_column)
                     scores = gini_index(X.to_numpy(), y)
                     smallest_gini_score = min(scores)
                 else:
-                    partial_join = pd.read_csv(JOIN_RESULT_FOLDER / join_name_mapping[partial_join_name], header=0,
-                                               engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+                    partial_join = pd.read_csv(
+                        JOIN_RESULT_FOLDER / base_table_label / join_name_mapping[partial_join_name], header=0,
+                        engine="python", encoding="utf8", quotechar='"', escapechar='\\')
                 print(f"\tPartial join name: {partial_join_name}")
 
                 # The current node can only be joined through the base node.
@@ -105,8 +107,7 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                     join_name = compute_partial_join_filename(prop=prop, partial_join_name=partial_join_name)
 
                     # File naming convention as the filename can be gigantic
-                    join_filename = f"join{len(join_name_mapping) + 1}.csv"
-                    join_name_mapping[join_name] = join_filename
+                    join_filename = f"join_BFS_{value_ratio}_{len(join_name_mapping) + 1}.csv"
                     print(f"\tJoin name: {join_name}")
 
                     # Join
@@ -114,6 +115,7 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                                               right_df=right_df,
                                               left_column=f"{from_table}.{join_prop['from_column']}",
                                               right_column=f"{to_table}.{join_prop['to_column']}",
+                                              label=base_table_label,
                                               join_name=join_filename)
 
                     # Prune the joins with high null values ratio
@@ -121,40 +123,34 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, train_results: Li
                         print(f"\t\tRight column value ration below {value_ratio}.\nSKIPPED Join")
                         continue
 
-                    X, y = prepare_data_for_ml(joined_df, target_column)
-                    scores = gini_index(X.to_numpy(), y)
-                    indices = feature_ranking(scores)
+                    if gini:
+                        print("\tGini index computation ... ")
+                        X, y = prepare_data_for_ml(joined_df, target_column)
+                        scores = gini_index(X.to_numpy(), y)
+                        indices = feature_ranking(scores)
 
-                    if not np.any(scores < smallest_gini_score):
-                        print(f"\t\tNo feature with gini index smallest than {smallest_gini_score}.\nSKIPPED Join")
-                        continue
-
-                    # Train, test - Without feature selection
-                    print(f"TRAIN WITHOUT feature selection")
-                    result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
-                    train_results.append(result)
-
-                    # # Select features and train
-                    # print("Feature selection step")
-                    # results = _select_features_train(joined_df, right_df, target_column, join_name)
-                    # train_results.extend(results)
+                        if not np.any(scores <= smallest_gini_score):
+                            print(f"\t\tNo feature with gini index smallest than {smallest_gini_score}.\nSKIPPED Join")
+                            continue
+                        # Sum the first 2 smallest scores and use them for ranking
+                        all_paths[join_name] = scores[indices[0]] + scores[indices[1]]
 
                     # Save the join name to be used as the partial join in the next iterations
                     current_queue.add(join_name)
-                    # Sum the first 2 smallest scores and use them for ranking
-                    all_paths[join_name] = scores[indices[0]] + scores[indices[1]]
+                    join_name_mapping[join_name] = join_filename
 
             # Repopulate with the old paths (initial_queue) and the new paths (current_queue)
             previous_queue.update(initial_queue)
             previous_queue.update(current_queue)
 
         # Remove the paths from the initial queue when we go 1 level deeper
-        bfs_traverse_join_pipeline(neighbours, target_column, train_results, join_name_mapping, value_ratio, all_paths,
-                                   previous_queue - initial_queue, discovered, smallest_gini_score)
+        bfs_traverse_join_pipeline(neighbours, target_column, base_table_label, join_name_mapping, all_paths,
+                                   value_ratio, gini, previous_queue - initial_queue, discovered, smallest_gini_score)
 
 
-def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree: Dict, train_results: List,
-                               join_name_mapping: dict, value_ratio=0.5, previous_paths=None) -> set:
+def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table_label: str, join_tree: Dict,
+                               join_name_mapping: dict, value_ratio: float, paths_score: Dict, gini: bool,
+                               smallest_gini_score=None, previous_paths=None) -> set:
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
     apply feature selection algorithm and check the algorithm effectiveness by training CART decision tree model.
@@ -179,6 +175,8 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
     left_df = None
     if previous_paths is None:
         left_df, left_label = get_df_with_prefix(base_node_id, target_column)
+        X, y = prepare_data_for_ml(left_df, target_column)
+        smallest_gini_score = min(gini_index(X.to_numpy(), y))
         previous_paths = {left_label}
 
     all_paths = previous_paths.copy()
@@ -207,44 +205,48 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, join_tree:
                 print(f"\t\t\tCurrent join path: {current_join_path}")
 
                 if left_df is None:
-                    left_df = pd.read_csv(JOIN_RESULT_FOLDER / join_name_mapping[current_join_path], header=0,
-                                          engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+                    left_df = pd.read_csv(JOIN_RESULT_FOLDER / base_table_label / join_name_mapping[current_join_path],
+                                          header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
 
                 # Compute the name of the join
                 join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
                 print(f"\t\t\tJoin name: {join_name}")
 
                 # File naming convention as the filename can be gigantic
-                join_filename = f"join{len(join_name_mapping) + 1}.csv"
-                join_name_mapping[join_name] = join_filename
+                join_filename = f"join_DFS_{value_ratio}_{len(join_name_mapping) + 1}.csv"
 
                 # Join
                 joined_df = join_and_save(left_df, right_df,
                                           left_column=f"{from_table}.{join_prop['from_column']}",
                                           right_column=f"{to_table}.{join_prop['to_column']}",
+                                          label=base_table_label,
                                           join_name=join_filename)
 
                 if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
                     print("\t\tRight column value ration below 0.5.\nSKIPPED Join")
                     continue
 
-                # Train, test - Without feature selection
-                print(f"TRAIN WITHOUT feature selection")
-                result = _train_test_cart(joined_df, target_column, join_name, Result.JOIN_ALL)
-                train_results.append(result)
+                if gini:
+                    print("\tGini index computation ... ")
+                    X, y = prepare_data_for_ml(joined_df, target_column)
+                    scores = gini_index(X.to_numpy(), y)
+                    indices = feature_ranking(scores)
 
-                # Select features and train
-                print("Feature selection step")
-                results = _select_features_train(joined_df, right_df, target_column, join_name)
-                train_results.extend(results)
+                    if not np.any(scores < smallest_gini_score):
+                        print(f"\t\tNo feature with gini index smallest than {smallest_gini_score}.\nSKIPPED Join")
+                        continue
+
+                    paths_score[join_name] = scores[indices[0]] + scores[indices[1]]
 
                 next_paths.add(join_name)
+                join_name_mapping[join_name] = join_filename
 
             print(f"\tEnd join properties iteration for {node}")
 
         # Continue traversal
-        current_paths = dfs_traverse_join_pipeline(node, target_column, join_tree[base_node_id],
-                                                   train_results, join_name_mapping, value_ratio, next_paths)
+        current_paths = dfs_traverse_join_pipeline(node, target_column, base_table_label, join_tree[base_node_id],
+                                                   join_name_mapping, value_ratio, paths_score, gini,
+                                                   smallest_gini_score, next_paths)
         all_paths.update(current_paths)
         print(f"End depth iteration for {node}")
 
@@ -275,15 +277,17 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
     elif selected_features_df.shape == joined_df.shape:
         print(f"\tAll features were selected. Skipping ... ")
     else:
-        result = _train_test_cart(selected_features_df, target_column, join_name, Result.TFD)
+        result = train_test_cart(selected_features_df, target_column, join_name, join_name, Result.TFD)
         results.append(result)
 
     return results
 
 
-def _train_test_cart(dataframe: pd.DataFrame, target_column: str, join_name: str, approach: str) -> Result:
+def train_test_cart(dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
+                    approach: str) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
+
     :param dataframe: DataFrame for training
     :param target_column: Target/label column with the class labels
     :param join_name: The name of the join (for saving purposes)
@@ -301,6 +305,7 @@ def _train_test_cart(dataframe: pd.DataFrame, target_column: str, join_name: str
         algorithm=CART.LABEL,
         accuracy=acc_decision_tree,
         feature_importance=features_scores,
-        train_time=train_time
+        train_time=train_time,
+        data_label=data_label
     )
     return entry
