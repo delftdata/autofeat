@@ -6,7 +6,7 @@ import deprecation as deprecation
 import numpy as np
 import pandas as pd
 import tqdm as tqdm
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
 from data_preparation.join_data import join_directly_connected
@@ -60,20 +60,29 @@ def _bin_count_ranking(feature_importance_scores: np.ndarray, mask: np.ndarray, 
     return bins
 
 
-def select_features(A: pd.DataFrame, y: pd.Series, tau=0.1, eta=0.2, k=10, regressor=RandomForestClassifier) -> List:
+def select_features(normalised_matrix: pd.DataFrame, y: pd.Series, tau=0.1, eta=0.2, k=10,
+                    regression: bool = False) -> List:
     """
     Algorithm 1 from "ARDA: Automatic Relational Data Augmentation for Machine Learning"
-    :param A: The (normalized) data matrix
+
+    :param normalised_matrix: The (normalized) data matrix
     :param y: The label/target column
     :param tau: Threshold for the fraction of how many times a feature appeared in front of synthesized features in ranking
     :param eta: Fraction of random features to inject (fraction of amount of features in A)
     :param k: Number of times ranking and counting is performed
-    :param regressor: The sklearn regressor to use
+    :param regression: bool - if True: Random Forest Regressor is used, if False: Random Forest Classifier is used
     :return: A set of indices selected by thresholding the normalized frequencies by 'tau'
     """
-    d = A.shape[1]
+
+    if regression:
+        estimator = RandomForestRegressor()
+    else:
+        estimator = RandomForestClassifier()
+
+    d = normalised_matrix.shape[1]
     print("\tARDA: Generate features")
-    X = np.concatenate((A, gen_features(A, eta)), axis=1)  # This gives us A' from the paper
+    X = np.concatenate((normalised_matrix, gen_features(normalised_matrix, eta)),
+                       axis=1)  # This gives us A' from the paper
 
     mask = np.zeros(X.shape[1], dtype=bool)
     mask[d:] = True  # We mark the columns that were generated
@@ -82,36 +91,40 @@ def select_features(A: pd.DataFrame, y: pd.Series, tau=0.1, eta=0.2, k=10, regre
     # Repeat process 'k' times, as in the algorithm
     print("\tARDA: Decide feature importance")
     for i in range(k):
-        reg = regressor()
-        reg.fit(X, y)
-        counts += _bin_count_ranking(reg.feature_importances_, mask, d)
+        estimator.fit(X, y)
+        counts += _bin_count_ranking(estimator.feature_importances_, mask, d)
     return np.arange(d)[counts / k > tau]
 
 
-def wrapper_algo(A: pd.DataFrame, y: pd.Series, T: List[float], eta=0.2, k=10, estimator=RandomForestClassifier,
-                 regressor=RandomForestClassifier) -> List:
+def wrapper_algo(normalised_matrix: pd.DataFrame, y: pd.Series, T: List[float], eta=0.2, k=10,
+                 regression: bool = False) -> List:
     """
     Algorithm 3 from "ARDA: Automatic Relational Data Augmentation for Machine Learning"
-    :param A: The (normalized) data matrix
+
+    :param normalised_matrix: The (normalized) data matrix
     :param y: The label/target column
     :param T: A list with thresholds (see tau in algo 2) to use
     :param eta: Fraction of random features to inject
     :param k: The number of times ranking and counting is performed
-    :param estimator: An sklearn estimator to use (e.g. a classifier)
-    :param regressor: An sklearn  regressor to use for ranking in algo 2
+    :param regression: bool - if True: Random Forest Regressor is used, if False: Random Forest Classifier is used
     :return: An array of indices, corresponding to selected features from A
     """
 
-    if A.shape[0] != y.shape[0]:
+    if normalised_matrix.shape[0] != y.shape[0]:
         raise ValueError("Criterion/feature 'y' should have the same amount of rows as 'A'")
+
+    if regression:
+        estimator = RandomForestRegressor()
+    else:
+        estimator = RandomForestClassifier()
 
     last_accuracy = 0
     last_indices = []
 
     for t in sorted(T):
-        X_train, X_test, y_train, y_test = train_test_split(A, y, test_size=0.2)
+        X_train, X_test, y_train, y_test = train_test_split(normalised_matrix, y, test_size=0.2)
         print("\nARDA: Select features")
-        indices = select_features(X_train, y_train, tau=t, eta=eta, k=k, regressor=regressor)
+        indices = select_features(X_train, y_train, tau=t, eta=eta, k=k, regression=regression)
 
         # If this happens, the thresholds might have been too strict
         if len(indices) == 0:
@@ -121,9 +134,8 @@ def wrapper_algo(A: pd.DataFrame, y: pd.Series, T: List[float], eta=0.2, k=10, e
             return last_indices
 
         print("ARDA: Train and score")
-        model = estimator()
-        model.fit(X_train.iloc[:, indices], y_train)
-        accuracy = model.score(X_test.iloc[:, indices], y_test)
+        estimator.fit(X_train.iloc[:, indices], y_train)
+        accuracy = estimator.score(X_test.iloc[:, indices], y_test)
         if accuracy < last_accuracy:
             break
         else:
@@ -165,12 +177,10 @@ def select_arda_features(base_table_id, target_column, base_table_features):
 
 
 def select_arda_features_budget_join(base_node_id: str, target_column: str, base_table_features: List,
-                                     sample_size: int):
+                                     sample_size: int, regression: bool = False):
     random_state = 42
     final_selected_features = []
     all_columns = []
-    join_time = 0
-    fs_time = 0
 
     # Read base table, uniform sample, set budget size
     left_table = pd.read_csv(base_node_id, header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
@@ -191,7 +201,6 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         feature_count = 0
 
         # Join every table according to the budget
-        start = time.time()
         while feature_count <= budget_size and len(nodes) > 0:
             node_id = nodes.pop()
             print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
@@ -228,7 +237,6 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
             feature_count += right_table.shape[1] - 1
             print(f"Feature count: {feature_count}")
 
-        join_time += time.time() - start
         # Compute the columns of the batch and create the batch dataset
         columns = [c for c in list(left_table.columns) if
                    (c not in base_table_features) and (c not in all_columns)]
@@ -245,14 +253,12 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
         X, y = prepare_data_for_ml(dataframe=joined_tables_batch, target_column=target_column)
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
-        start = time.time()
         T = np.arange(0.0, 1.0, 0.1)
-        indices = wrapper_algo(X, y, T)
+        indices = wrapper_algo(X, y, T, regression=regression)
         fs_X = X.iloc[:, indices].columns
-        fs_time += time.time() - start
         print(f"Selected columns: {fs_X}")
 
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)
 
-    return left_table, base_node.get('label'), final_selected_features, join_name, join_time, fs_time
+    return left_table, base_node.get('label'), final_selected_features, join_name

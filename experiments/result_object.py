@@ -11,9 +11,9 @@ class Result:
     JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
     BASE = "BASE"
 
-    approach: str
-    data_path: str
     algorithm: str
+    data_path: str = None
+    approach: str = None
     data_label: str = None
     join_time: Optional[float] = None
     total_time: float = 0.0

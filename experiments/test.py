@@ -9,7 +9,7 @@ from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS
+from tfd_datasets import CLASSIFICATION_DATASETS, REGRESSION_DATASETS
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -18,9 +18,11 @@ def test_base_accuracy(dataset: Dataset):
                             escapechar='\\')
     entry = train_test_cart(dataframe=dataframe,
                             target_column=dataset.target_column,
-                            join_name=dataset.base_table_label,
-                            approach=Result.BASE,
-                            data_label=dataset.base_table_label)
+                            regression=dataset.dataset_type)
+    entry.approach = Result.BASE
+    entry.data_label = dataset.base_table_label
+    entry.data_path = dataset.base_table_label
+
     return [entry]
 
 
@@ -30,11 +32,12 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
     print(f"ARDA result on table {dataset.base_table_id}")
 
     start = time.time()
-    dataframe, dataframe_label, selected_features, join_name, join_time, _ = select_arda_features_budget_join(
+    dataframe, dataframe_label, selected_features, join_name = select_arda_features_budget_join(
         base_node_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
         base_table_features=dataset.base_table_features,
-        sample_size=sample_size)
+        sample_size=sample_size,
+        regression=dataset.dataset_type)
     end = time.time()
     print(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
@@ -44,10 +47,11 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
 
     entry = train_test_cart(dataframe=dataframe[features],
                             target_column=dataset.target_column,
-                            join_name=join_name,
-                            approach=Result.ARDA,
-                            data_label=dataset.base_table_label)
+                            regression=dataset.dataset_type)
     entry.feature_selection_time = end - start
+    entry.approach = Result.ARDA
+    entry.data_label = dataset.base_table_label
+    entry.data_path = join_name
 
     return [entry]
 
@@ -76,10 +80,11 @@ def test_dfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         result = train_test_cart(dataframe=joined_df,
                                  target_column=dataset.target_column,
-                                 data_label=dataset.base_table_label,
-                                 join_name=join_name,
-                                 approach="TFD_DFS")
+                                 regression=dataset.dataset_type)
         result.feature_selection_time = end - start
+        result.approach = "TFD_DFS"
+        result.data_label = dataset.base_table_label
+        result.data_path = join_name
         train_results.append(result)
 
     # Save results
@@ -114,14 +119,16 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
     # Train, test each path
     print(f"TRAIN WITHOUT feature selection")
     for join_name in join_name_mapping.keys():
-        joined_df = pd.read_csv(JOIN_RESULT_FOLDER / dataset.base_table_label / join_name_mapping[join_name], header=0, engine="python",
+        joined_df = pd.read_csv(JOIN_RESULT_FOLDER / dataset.base_table_label / join_name_mapping[join_name], header=0,
+                                engine="python",
                                 encoding="utf8", quotechar='"', escapechar='\\')
         result = train_test_cart(dataframe=joined_df,
                                  target_column=dataset.target_column,
-                                 data_label=dataset.base_table_label,
-                                 join_name=join_name,
-                                 approach="TFD_BFS")
+                                 regression=dataset.dataset_type)
         result.feature_selection_time = end - start
+        result.approach = "TFD_BFS"
+        result.data_label = dataset.base_table_label
+        result.data_path = join_name
         results.append(result)
 
     # Save results
@@ -138,22 +145,23 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def aggregate_results():
     all_results = []
 
-    for dataset in CLASSIFICATION_DATASETS:
+    # for dataset in CLASSIFICATION_DATASETS:
+    for dataset in REGRESSION_DATASETS:
         result_base = test_base_accuracy(dataset)
         all_results.extend(result_base)
-        result_arda = test_arda(dataset, sample_size=None)
+        result_arda = test_arda(dataset, sample_size=5000)
         all_results.extend(result_arda)
-        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
-        all_results.extend(result_bfs)
+        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        # all_results.extend(result_bfs)
         result_dfs = test_dfs_pipeline(dataset, value_ratio=0.45)
         all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_reg.csv", index=False)
 
 
-# test_bfs_pipeline()
+# test_bfs_pipeline(REGRESSION_DATASETS[0], value_ratio=0.45)
 # test_dfs_pipeline()
-# test_base_accuracy()
+# test_base_accuracy(REGRESSION_DATASETS[0])
 # test_arda()
 
 aggregate_results()

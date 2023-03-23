@@ -1,3 +1,4 @@
+import time
 from typing import Dict
 
 import numpy as np
@@ -77,9 +78,11 @@ def bfs_traverse_join_pipeline(queue: set, target_column: str, base_table_label:
                 partial_join_name = previous_queue.pop()
                 if partial_join_name == base_node_id:
                     partial_join, partial_join_name = get_df_with_prefix(base_node_id, target_column)
-                    X, y = prepare_data_for_ml(partial_join, target_column)
-                    scores = gini_index(X.to_numpy(), y)
-                    smallest_gini_score = min(scores)
+
+                    if gini:
+                        X, y = prepare_data_for_ml(partial_join, target_column)
+                        scores = gini_index(X.to_numpy(), y)
+                        smallest_gini_score = min(scores)
                 else:
                     partial_join = pd.read_csv(
                         JOIN_RESULT_FOLDER / base_table_label / join_name_mapping[partial_join_name], header=0,
@@ -175,9 +178,10 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table
     left_df = None
     if previous_paths is None:
         left_df, left_label = get_df_with_prefix(base_node_id, target_column)
-        X, y = prepare_data_for_ml(left_df, target_column)
-        smallest_gini_score = min(gini_index(X.to_numpy(), y))
         previous_paths = {left_label}
+        if gini:
+            X, y = prepare_data_for_ml(left_df, target_column)
+            smallest_gini_score = min(gini_index(X.to_numpy(), y))
 
     all_paths = previous_paths.copy()
 
@@ -277,35 +281,39 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
     elif selected_features_df.shape == joined_df.shape:
         print(f"\tAll features were selected. Skipping ... ")
     else:
-        result = train_test_cart(selected_features_df, target_column, join_name, join_name, Result.TFD)
+        result = train_test_cart(selected_features_df, target_column)
+        result.data_path = join_name
+        result.approach = Result.TFD
+        result.data_label = join_name
         results.append(result)
 
     return results
 
 
-def train_test_cart(dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
-                    approach: str) -> Result:
+def train_test_cart(dataframe: pd.DataFrame, target_column: str, regression: bool = False) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
 
     :param dataframe: DataFrame for training
     :param target_column: Target/label column with the class labels
-    :param join_name: The name of the join (for saving purposes)
-    :param approach: The approach used to get the dataframe (string value under the Result class)
+    :param regression: Bool - if True: a regressor is employed, if False: a classifier is employed
     :return: A Result object with the configuration and results of training
     """
+
+    start = time.time()
     X, y = prepare_data_for_ml(dataframe, target_column)
-    acc_decision_tree, params, feature_importance, train_time, _ = CART().train(X, y)
+    acc_decision_tree, _, feature_importance, _ = CART().train(train_data=X,
+                                                               target_data=y,
+                                                               regression=regression)
     features_scores = dict(zip(feature_importance, X.columns))
-    print(f"\tAccuracy: {acc_decision_tree}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
+    end = time.time()
+    train_time = end - start
+    print(f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
     entry = Result(
-        approach=approach,
-        data_path=join_name,
         algorithm=CART.LABEL,
-        accuracy=acc_decision_tree,
+        accuracy=abs(acc_decision_tree),
         feature_importance=features_scores,
-        train_time=train_time,
-        data_label=data_label
+        train_time=train_time
     )
     return entry
