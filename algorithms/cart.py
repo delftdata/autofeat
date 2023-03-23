@@ -2,8 +2,10 @@ import time
 from subprocess import check_call
 
 import numpy as np
-from sklearn import tree
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate
+import pandas as pd
+from sklearn import tree, base
+from sklearn.experimental import enable_halving_search_cv
+from sklearn.model_selection import train_test_split, cross_validate, HalvingGridSearchCV
 
 from algorithms.base_algorithm import BaseAlgorithm
 from algorithms.helpers import feature_selection
@@ -18,57 +20,77 @@ class CART(BaseAlgorithm):
         self.num_cv: int = num_cv
         self.max_depth = None
 
-    def train(self, X, y, do_sfs: bool = False):
-        sfs_time = None
+    def train(self, train_data: pd.DataFrame, target_data: pd.Series, do_sfs: bool = False, regression: bool = False):
+        print("Starting CART training ... ")
 
+        # TODO: Fix feature selection
+        sfs_time = None
         if do_sfs:
             decision_tree = tree.DecisionTreeClassifier()
-            X, sfs_time = feature_selection(X, y, decision_tree)
+            train_data, sfs_time = feature_selection(train_data, target_data, decision_tree)
 
-        print("Split data")
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
-        print(f"X train {X_train.shape}, X_test {X_test.shape}")
-        print(f"Y uniqueness: {len(y_train.dropna()) / len(y_train)}")
+        print("\t 1. Spliting data ... ")
+        X_train, X_test, y_train, y_test = train_test_split(train_data, target_data, test_size=0.2, random_state=10)
+        print(f"\t\tX train {X_train.shape}, X_test {X_test.shape}")
 
-        print("\tFinding best tree params")
+        print("\t 2. Hyper-parameter tuning ...")
+        if regression:
+            params = self._hyper_para_tuning_regression(X_train, y_train)
+            scoring = "neg_root_mean_squared_error"
+        else:
+            params = self._hyper_para_tuning_classification(X_train, y_train)
+            scoring = "accuracy"
 
-        parameters = {"criterion": ["entropy", "gini"], "max_depth": range(1, X_train.shape[1] + 1)}
-
-        print(parameters)
-
-        decision_tree = tree.DecisionTreeClassifier()
-        grids = GridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy", cv=15)
-        grids.fit(X_train, y_train)
-        params = grids.best_params_
-        self.max_depth = grids.best_params_["max_depth"]
-
-        # TODO Store all the accuracies and the trees and see how the trees look
-        print(f"Hyper-params: {params} for best score: {grids.best_score_}")
-
-        print(f"\t Training ... ")
-
-        self.algorithm = grids.best_estimator_
-        start = time.time()
+        print(f"\t 3. Training ... ")
         cv_output = cross_validate(
             estimator=self.algorithm,
-            X=X,
-            y=y,
-            scoring="accuracy",
+            X=X_train,
+            y=y_train,
+            scoring=scoring,
             return_estimator=True,
             cv=self.num_cv,
             verbose=10,
             n_jobs=1,
         )
-        end = time.time()
-        train_time = end - start
+
         feature_importances = [estimator.feature_importances_ for estimator in cv_output["estimator"]]
-
-        acc_decision_tree = np.mean(cv_output["test_score"])
         feature_importance = np.around(np.median(feature_importances, axis=0), 3)
+        acc_decision_tree = np.mean(cv_output["test_score"])
 
-        print(f"\t\tAccuracy CART: {acc_decision_tree}")
+        return acc_decision_tree, params, feature_importance, sfs_time
 
-        return acc_decision_tree, params, feature_importance, train_time, sfs_time
+    def _hyper_para_tuning_classification(self, train_data, train_labels):
+        parameters = {"criterion": ["entropy", "gini"],
+                      "max_depth": range(1, int(train_data.shape[1] / 2 + 1))
+                      }
+        # parameters = {"criterion": ["entropy", "gini"]}
+
+        decision_tree = tree.DecisionTreeClassifier()
+        grids = HalvingGridSearchCV(decision_tree, parameters, n_jobs=1, scoring="accuracy")
+        grids.fit(train_data, train_labels)
+        params = grids.best_params_
+        self.algorithm = grids.best_estimator_
+        self.max_depth = grids.best_params_["max_depth"]
+        print(f"\t\tHyper-params: {params} for best score: {grids.best_score_}")
+
+        return params
+
+    def _hyper_para_tuning_regression(self, train_data, train_labels):
+        parameters = {"criterion": ["squared_error", "friedman_mse"],
+                      "max_depth": range(1, int(train_data.shape[1] / 2 + 1))
+                      }
+        # parameters = {"criterion": ["entropy", "gini"]}
+
+        decision_tree = tree.DecisionTreeRegressor()
+        grids = HalvingGridSearchCV(decision_tree, parameters, n_jobs=1, scoring="neg_root_mean_squared_error")
+        grids.fit(train_data, train_labels)
+        params = grids.best_params_
+        self.algorithm = grids.best_estimator_
+        self.max_depth = grids.best_params_["max_depth"]
+        print(f"\t\tHyper-params: {params} for best score: {grids.best_score_}")
+
+        return params
+
 
     def print_tree(self, X_train, y_train):
         with open(PLOTS_FOLDER / tree.dot, "w") as f:

@@ -31,6 +31,31 @@ def ingest_fabricated_data() -> dict:
     return mapping
 
 
+def ingest_unprocessed_data(dataset_name: str):
+    print("Process the tables ...")
+    files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
+    # Filter out connections.csv file
+    files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
+    mapping = {}
+
+    for f in files:
+        table_path = f
+        table_name = f.partition(f"{DATA_FOLDER / dataset_name}/")[2]
+
+        mapping[table_name] = table_path
+
+    print("Add the ground-truth ... ")
+    connection_filename = glob.glob(f"{DATA_FOLDER / dataset_name}/**/{CONNECTIONS}", recursive=True)[0]
+    connections = pd.read_csv(connection_filename)
+
+    for index, row in connections.iterrows():
+        merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
+                                    b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
+                                    a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
+
+    return mapping
+
+
 def ingest_tables() -> dict:
     files = glob.glob(f"{DATA_FOLDER}/**/{VALENTINE_CONNECTIONS}", recursive=True)
     connections = pd.read_csv(files[0])
@@ -63,8 +88,8 @@ def ingest_connections():
             create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all():
-    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+def profile_valentine_all(dataset_name: str):
+    files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
     for table_pair in itertools.combinations(files, r=2):
@@ -79,7 +104,10 @@ def profile_valentine_all():
             if similarity > VALENTINE_THRESHOLD:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
-                node_id_source = f"{tab1}/{col_from}"
-                node_id_target = f"{tab2}/{col_to}"
-
-                create_relation(node_id_source, node_id_target, RELATED, similarity)
+                merge_nodes_relation_tables(a_table_name=tab1.partition(f"{DATA_FOLDER / dataset_name}/")[2],
+                                            b_table_name=tab2.partition(f"{DATA_FOLDER / dataset_name}/")[2],
+                                            a_table_path=tab1,
+                                            b_table_path=tab2,
+                                            a_col=col_from,
+                                            b_col=col_to,
+                                            weight=similarity)

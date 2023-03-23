@@ -1,8 +1,10 @@
 import json
 
-from config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
+from config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER, JSON
+from data_preparation.dataset_base import Dataset
 from data_preparation.ingest_data import profile_valentine_all, ingest_fabricated_data, ingest_connections, \
-    ingest_tables
+    ingest_tables, ingest_unprocessed_data
+from datasets.datasets import nyc
 from graph_processing.neo4j_transactions import drop_graph, init_graph, enumerate_all_paths, find_graph
 
 
@@ -65,6 +67,16 @@ def data_preparation_tables(ingest=True, enumerate_paths=True):
             json.dump(all_paths, fp)
 
 
+def ingest_data_with_connections(dataset: Dataset, profile_valentine=False):
+    mapping = ingest_unprocessed_data(dataset.base_table_label)
+    with open(MAPPING_FOLDER / f"{MAPPING + dataset.base_table_label + JSON}", 'w') as fp:
+        json.dump(mapping, fp)
+
+    if profile_valentine:
+        profile_valentine_all(dataset.base_table_label)
+
+
 if __name__ == "__main__":
     # data_preparation(ingest_data=False, profile_valentine=False)
-    data_preparation_tables(ingest=True, enumerate_paths=False)
+    # data_preparation_tables(ingest=True, enumerate_paths=False)
+    ingest_data_with_connections(dataset=nyc, profile_valentine=True)
