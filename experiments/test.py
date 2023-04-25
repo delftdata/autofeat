@@ -9,7 +9,7 @@ from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS, REGRESSION_DATASETS
+from tfd_datasets import CLASSIFICATION_DATASETS, REGRESSION_DATASETS, CLASSIFICATION_DATASETS_NEW
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -145,18 +145,18 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def aggregate_results():
     all_results = []
 
-    # for dataset in CLASSIFICATION_DATASETS:
-    for dataset in REGRESSION_DATASETS:
+    for dataset in CLASSIFICATION_DATASETS_NEW:
+    # for dataset in REGRESSION_DATASETS:
         result_base = test_base_accuracy(dataset)
         all_results.extend(result_base)
-        result_arda = test_arda(dataset, sample_size=5000)
-        all_results.extend(result_arda)
-        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
-        # all_results.extend(result_bfs)
-        result_dfs = test_dfs_pipeline(dataset, value_ratio=0.45)
+        # result_arda = test_arda(dataset, sample_size=3000)
+        # all_results.extend(result_arda)
+        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.5)
+        all_results.extend(result_bfs)
+        result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
         all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_reg.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_cls_new.csv", index=False)
 
 
 # test_bfs_pipeline(REGRESSION_DATASETS[0], value_ratio=0.45)
