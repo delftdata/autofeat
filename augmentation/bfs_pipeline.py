@@ -1,4 +1,4 @@
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Tuple
 
 import pandas as pd
 
@@ -14,12 +14,22 @@ from helpers.util_functions import get_df_with_prefix
 class BfsAugmentation:
 
     def __init__(self, base_table_label: str, target_column: str, value_ratio: float):
+        """
+
+        :param base_table_label: The name (label) of the base table to be used for saving data.
+        :param target_column: Target column containing the class labels for training.
+        :param value_ratio: Pruning threshold. It represents the ration between the number of non-null values in a column and the total number of values.
+        """
         self.base_table_label: str = base_table_label
         self.target_column: str = target_column
         self.value_ratio: float = value_ratio
+        # Store the accuracy from CART for each join path
         self.ranked_paths: Dict[str, float] = {}
+        # Mapping with the name of the join and the corresponding name of the file containing the join result.
         self.join_name_mapping: Dict[str, str] = {}
+        # Set used to track the visited nodes.
         self.discovered: Set[str] = set()
+        # Save the selected features of the previous join path (used for conditional redundancy)
         self.partial_join_selected_features: Dict[str, List] = {}
 
     def bfs_traverse_join_pipeline(self, queue: set, previous_queue=None):
@@ -28,12 +38,7 @@ class BfsAugmentation:
         3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
 
         :param queue: Queue with one node, which is the starting point of the traversal.
-        :param target_column: Target column containing the class labels for training.
-        :param train_results: List used to store the results of training CART.
-        :param join_name_mapping: Mapping with the name of the join and the corresponding name of the file containing the join result.
-        :param value_ratio: Pruning threshold. It represents the ration between the number of non-null values in a column and the total number of values.
         :param previous_queue: Initially empty or None, the queue is used to store the partial join names between the iterations.
-        :param discovered: Set used to track the visited nodes.
         :return: None
         """
 
@@ -122,20 +127,6 @@ class BfsAugmentation:
                         # Step - Rank path
                         self.step_rank_path(joined_df, current_selected_features, join_name)
 
-                        # if self.gini:
-                        #     print("\tGini index computation ... ")
-                        #     X, y = prepare_data_for_ml(joined_df, self.target_column)
-                        #     scores = gini_index(X.to_numpy(), y)
-                        #     indices = feature_ranking(scores)
-                        #
-                        #     if not np.any(scores <= smallest_gini_score):
-                        #         print(
-                        #             f"\t\tNo feature with gini index smallest than "
-                        #             f"{smallest_gini_score}.\nSKIPPED Join")
-                        #         continue
-                        #     # Sum the first 2 smallest scores and use them for ranking
-                        #     all_paths[join_name] = scores[indices[0]] + scores[indices[1]]
-
                         # Save the join name to be used as the partial join in the next iterations
                         current_queue.add(join_name)
                         self.join_name_mapping[join_name] = join_filename
@@ -148,7 +139,8 @@ class BfsAugmentation:
             # Remove the paths from the initial queue when we go 1 level deeper
             self.bfs_traverse_join_pipeline(neighbours, previous_queue - initial_queue)
 
-    def step_join(self, prop: tuple, partial_join_name: str, partial_join: pd.DataFrame, right_df: pd.DataFrame):
+    def step_join(self, prop: tuple, partial_join_name: str, partial_join: pd.DataFrame,
+                  right_df: pd.DataFrame) -> Tuple[pd.DataFrame, str, str]:
         join_prop, from_table, to_table = prop
 
         # Compute the name of the join
@@ -168,7 +160,7 @@ class BfsAugmentation:
 
         return joined_df, join_name, join_filename
 
-    def step_data_quality(self, prop: tuple, joined_df: pd.DataFrame):
+    def step_data_quality(self, prop: tuple, joined_df: pd.DataFrame) -> bool:
         join_prop, from_table, to_table = prop
 
         # Data Quality check - Prune the joins with high null values ratio
@@ -179,7 +171,7 @@ class BfsAugmentation:
         return True
 
     def step_feature_selection(self, joined_df: pd.DataFrame, right_df: pd.DataFrame, partial_join_name: str,
-                               current_join_name: str):
+                               current_join_name: str) -> List[str] or None:
         print("\t\tFeature selection step ... ")
         current_selected_features = self.partial_join_selected_features[partial_join_name]
 
@@ -236,7 +228,7 @@ class BfsAugmentation:
         result = train_test_cart(dataframe=joined_df[columns], target_column=self.target_column)
         self.ranked_paths[join_name] = result.accuracy
 
-    def determine_partial_join(self, partial_join_name: str, base_node_id: str):
+    def determine_partial_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
         if partial_join_name == base_node_id:
             partial_join, partial_join_name = get_df_with_prefix(base_node_id, self.target_column)
             self.partial_join_selected_features[partial_join_name] = self.get_relevant_features(partial_join)
@@ -246,7 +238,7 @@ class BfsAugmentation:
                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         return partial_join, partial_join_name
 
-    def get_relevant_features(self, partial_join: pd.DataFrame):
+    def get_relevant_features(self, partial_join: pd.DataFrame) -> List[str]:
         X, y = prepare_data_for_ml(partial_join, self.target_column)
         feature_score, selected_features = measure_relevance(partial_join, X.columns, y)
         return selected_features
