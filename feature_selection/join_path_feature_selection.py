@@ -35,6 +35,8 @@ def measure_conditional_redundancy(dataframe: pd.DataFrame, selected_features: L
     scores = CMIM(np.array(selected_features_int), np.array(new_features_int), np.array(dataframe),
                   np.array(target_column))
 
+    if np.all(np.array(scores) == 0):
+        return None, []
     # normalise
     normalised_scores = (scores - np.min(scores)) / (np.max(scores) - np.min(scores))
     feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
@@ -45,6 +47,9 @@ def measure_conditional_redundancy(dataframe: pd.DataFrame, selected_features: L
 
 
 def measure_redundancy(dataframe, feature_group: List[str], target_column):
+    if len(feature_group) == 1:
+        return None, feature_group
+
     scores = np.vectorize(lambda feature:
                           np.mean(np.apply_along_axis(lambda x, y, z: conditional_mutual_information(y, z, x), 0,
                                                      np.array(dataframe[
@@ -67,6 +72,12 @@ def measure_joint_mutual_information(dataframe: pd.DataFrame, selected_features:
 
     scores = JMI(np.array(selected_features_int), np.array(new_features_int), np.array(dataframe),
                  np.array(target_column))
+
+    if np.all(np.array(scores) == 0):
+        return None, []
+
+    if np.max(scores) == np.min(scores):
+        return scores[0], new_features
 
     # normalise
     normalised_scores = (scores - np.min(scores)) / (np.max(scores) - np.min(scores))

@@ -5,6 +5,7 @@ import pandas as pd
 from augmentation.trial_error import train_test_cart
 from config import JOIN_RESULT_FOLDER
 from data_preparation.utils import compute_partial_join_filename, join_and_save, prepare_data_for_ml
+from experiments.result_object import Result
 from feature_selection.join_path_feature_selection import measure_relevance, measure_conditional_redundancy, \
     measure_joint_mutual_information, measure_redundancy
 from graph_processing.neo4j_transactions import get_node_by_id, get_adjacent_nodes, get_relation_properties_node_name
@@ -24,7 +25,7 @@ class BfsAugmentation:
         self.target_column: str = target_column
         self.value_ratio: float = value_ratio
         # Store the accuracy from CART for each join path
-        self.ranked_paths: Dict[str, float] = {}
+        self.ranked_paths: Dict[str, Result] = {}
         # Mapping with the name of the join and the corresponding name of the file containing the join result.
         self.join_name_mapping: Dict[str, str] = {}
         # Set used to track the visited nodes.
@@ -101,7 +102,7 @@ class BfsAugmentation:
                     # Join the same partial join result with the new table on every join column possible
                     for prop in join_keys:
                         join_prop, from_table, to_table = prop
-                        if join_prop['from_label'] != from_table:
+                        if join_prop['from_label'] != from_table and join_prop['weight'] < 1:
                             continue
                         print(f"\t\tJoin properties: {join_prop}")
 
@@ -185,6 +186,7 @@ class BfsAugmentation:
         print("\t\tMeasure relevance ... ")
         feature_score_rel, relevant_features = measure_relevance(joined_df, right_features, y)
         if len(relevant_features) == 0:
+            print("\t\tNo relevant features. SKIPPED JOIN...")
             return None
         print(f"\t\tRelevant features:\n{relevant_features}")
 
@@ -194,8 +196,6 @@ class BfsAugmentation:
                                                                              selected_features=current_selected_features,
                                                                              new_features=relevant_features,
                                                                              target_column=y)
-        if len(non_cond_red_feat) == 0:
-            return None
         print(f"\t\tNon conditional redundant features:\n{non_cond_red_feat}")
 
         # 3. Measure join mutual information
@@ -204,8 +204,15 @@ class BfsAugmentation:
                                                                              selected_features=current_selected_features,
                                                                              new_features=relevant_features,
                                                                              target_column=y)
-        print(f"\t\tJoin relevant features:\n{joint_rel_feat}")
-        selected_features = set(non_cond_red_feat).intersection(set(joint_rel_feat))
+        print(f"\t\tJoint relevant features:\n{joint_rel_feat}")
+        if len(non_cond_red_feat) == 0:
+            if len(joint_rel_feat) == 0:
+                print("\t\tAll relevant features are redundant. SKIPPED JOIN...")
+                return None
+            else:
+                selected_features = set(joint_rel_feat)
+        else:
+            selected_features = set(non_cond_red_feat).intersection(set(joint_rel_feat))
 
         # 4. Measure redundancy in the dataset
         print("\t\tMeasure redundancy in the dataset ... ")
@@ -213,6 +220,7 @@ class BfsAugmentation:
                                                                     feature_group=list(selected_features),
                                                                     target_column=y)
         if len(non_red_feat) == 0:
+            print("\t\tAll relevant features are redundant. SKIPPED JOIN...")
             return None
         print(f"\t\tNon redundant features:\n{non_red_feat}")
 
@@ -226,7 +234,7 @@ class BfsAugmentation:
         columns = features.copy()
         columns.append(self.target_column)
         result = train_test_cart(dataframe=joined_df[columns], target_column=self.target_column)
-        self.ranked_paths[join_name] = result.accuracy
+        self.ranked_paths[join_name] = result
 
     def determine_partial_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
         if partial_join_name == base_node_id:
