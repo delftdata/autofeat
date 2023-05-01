@@ -1,20 +1,26 @@
+from typing import List, Dict, Set
+
 import pandas as pd
 
+from augmentation.trial_error import train_test_cart
 from config import JOIN_RESULT_FOLDER
-from data_preparation.utils import compute_partial_join_filename, join_and_save
+from data_preparation.utils import compute_partial_join_filename, join_and_save, prepare_data_for_ml
+from feature_selection.join_path_feature_selection import measure_relevance, measure_conditional_redundancy, \
+    measure_joint_mutual_information, measure_redundancy
 from graph_processing.neo4j_transactions import get_node_by_id, get_adjacent_nodes, get_relation_properties_node_name
 from helpers.util_functions import get_df_with_prefix
 
 
-class BFS_Augmentation:
+class BfsAugmentation:
 
-    def __init__(self, base_table_label, target_column, value_ratio):
-        self.base_table_label = base_table_label
-        self.target_column = target_column
-        self.value_ratio = value_ratio
-        self.all_paths = {}
-        self.join_name_mapping = {}
-        self.discovered = set()
+    def __init__(self, base_table_label: str, target_column: str, value_ratio: float):
+        self.base_table_label: str = base_table_label
+        self.target_column: str = target_column
+        self.value_ratio: float = value_ratio
+        self.ranked_paths: Dict[str, float] = {}
+        self.join_name_mapping: Dict[str, str] = {}
+        self.discovered: Set[str] = set()
+        self.partial_join_selected_features: Dict[str, List] = {}
 
     def bfs_traverse_join_pipeline(self, queue: set, previous_queue=None):
         """
@@ -107,6 +113,15 @@ class BFS_Augmentation:
                         if not data_quality:
                             continue
 
+                        # Step - Feature selection
+                        current_selected_features = self.step_feature_selection(joined_df, right_df, partial_join_name,
+                                                                                join_name)
+                        if current_selected_features is None:
+                            continue
+
+                        # Step - Rank path
+                        self.step_rank_path(joined_df, current_selected_features, join_name)
+
                         # if self.gini:
                         #     print("\tGini index computation ... ")
                         #     X, y = prepare_data_for_ml(joined_df, self.target_column)
@@ -133,7 +148,7 @@ class BFS_Augmentation:
             # Remove the paths from the initial queue when we go 1 level deeper
             self.bfs_traverse_join_pipeline(neighbours, previous_queue - initial_queue)
 
-    def step_join(self, prop, partial_join_name, partial_join, right_df):
+    def step_join(self, prop: tuple, partial_join_name: str, partial_join: pd.DataFrame, right_df: pd.DataFrame):
         join_prop, from_table, to_table = prop
 
         # Compute the name of the join
@@ -153,7 +168,7 @@ class BFS_Augmentation:
 
         return joined_df, join_name, join_filename
 
-    def step_data_quality(self, prop, joined_df):
+    def step_data_quality(self, prop: tuple, joined_df: pd.DataFrame):
         join_prop, from_table, to_table = prop
 
         # Data Quality check - Prune the joins with high null values ratio
@@ -163,11 +178,75 @@ class BFS_Augmentation:
 
         return True
 
-    def determine_partial_join(self, partial_join_name, base_node_id):
+    def step_feature_selection(self, joined_df: pd.DataFrame, right_df: pd.DataFrame, partial_join_name: str,
+                               current_join_name: str):
+        print("\t\tFeature selection step ... ")
+        current_selected_features = self.partial_join_selected_features[partial_join_name]
+
+        right_features = list(right_df.columns)
+        if self.target_column in right_features:
+            right_features.remove(self.target_column)
+
+        X, y = prepare_data_for_ml(joined_df, self.target_column)
+
+        # 1. Measure relevance of the new features (right_features) to the target column (y)
+        print("\t\tMeasure relevance ... ")
+        feature_score_rel, relevant_features = measure_relevance(joined_df, right_features, y)
+        if len(relevant_features) == 0:
+            return None
+        print(f"\t\tRelevant features:\n{relevant_features}")
+
+        # 2. Measure conditional redundancy
+        print("\t\tMeasure conditional redundancy ...")
+        feature_score_cr, non_cond_red_feat = measure_conditional_redundancy(dataframe=X,
+                                                                             selected_features=current_selected_features,
+                                                                             new_features=relevant_features,
+                                                                             target_column=y)
+        if len(non_cond_red_feat) == 0:
+            return None
+        print(f"\t\tNon conditional redundant features:\n{non_cond_red_feat}")
+
+        # 3. Measure join mutual information
+        print("\t\tMeasure joint mutual information")
+        feature_score_jmi, joint_rel_feat = measure_joint_mutual_information(dataframe=X,
+                                                                             selected_features=current_selected_features,
+                                                                             new_features=relevant_features,
+                                                                             target_column=y)
+        print(f"\t\tJoin relevant features:\n{joint_rel_feat}")
+        selected_features = set(non_cond_red_feat).intersection(set(joint_rel_feat))
+
+        # 4. Measure redundancy in the dataset
+        print("\t\tMeasure redundancy in the dataset ... ")
+        feature_score_redundancy, non_red_feat = measure_redundancy(dataframe=X,
+                                                                    feature_group=list(selected_features),
+                                                                    target_column=y)
+        if len(non_red_feat) == 0:
+            return None
+        print(f"\t\tNon redundant features:\n{non_red_feat}")
+
+        selected_features = non_red_feat.copy()
+        selected_features.extend(current_selected_features)
+        self.partial_join_selected_features[current_join_name] = selected_features
+
+        return selected_features
+
+    def step_rank_path(self, joined_df: pd.DataFrame, features: List[str], join_name: str):
+        columns = features.copy()
+        columns.append(self.target_column)
+        result = train_test_cart(dataframe=joined_df[columns], target_column=self.target_column)
+        self.ranked_paths[join_name] = result.accuracy
+
+    def determine_partial_join(self, partial_join_name: str, base_node_id: str):
         if partial_join_name == base_node_id:
             partial_join, partial_join_name = get_df_with_prefix(base_node_id, self.target_column)
+            self.partial_join_selected_features[partial_join_name] = self.get_relevant_features(partial_join)
         else:
             partial_join = pd.read_csv(
                 JOIN_RESULT_FOLDER / self.base_table_label / self.join_name_mapping[partial_join_name], header=0,
                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         return partial_join, partial_join_name
+
+    def get_relevant_features(self, partial_join: pd.DataFrame):
+        X, y = prepare_data_for_ml(partial_join, self.target_column)
+        feature_score, selected_features = measure_relevance(partial_join, X.columns, y)
+        return selected_features

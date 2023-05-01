@@ -4,7 +4,7 @@ from typing import List
 
 import pandas as pd
 
-from augmentation.bfs_pipeline import BFS_Augmentation
+from augmentation.bfs_pipeline import BfsAugmentation
 from augmentation.trial_error import dfs_traverse_join_pipeline, train_test_cart
 from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
@@ -107,7 +107,7 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
     print(f"BFS result with table {dataset.base_table_id}")
 
     start = time.time()
-    bfs_traversal = BFS_Augmentation(base_table_label=dataset.base_table_label,
+    bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
                                      target_column=dataset.target_column,
                                      value_ratio=value_ratio)
     bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
