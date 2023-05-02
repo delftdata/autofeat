@@ -115,8 +115,8 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 
     print("FINISHED BFS")
 
-    results = []
     # Aggregate results
+    results = []
     for join_name in bfs_traversal.join_name_mapping.keys():
         result = bfs_traversal.ranked_paths[join_name]
         result.total_time = end - start
@@ -131,8 +131,6 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
         RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
         RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}.csv')
-    # with open(RESULTS_FOLDER / f"all_paths_{dataset.base_table_label}_bfs_{value_ratio}.json", "w") as f:
-    #     json.dump(all_paths, f)
 
     return results
 
@@ -140,23 +138,23 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def aggregate_results():
     all_results = []
 
-    for dataset in CLASSIFICATION_DATASETS:
+    for dataset in CLASSIFICATION_DATASETS_NEW:
         # for dataset in REGRESSION_DATASETS:
-        # result_base = test_base_accuracy(dataset)
-        # all_results.extend(result_base)
+        result_base = test_base_accuracy(dataset)
+        all_results.extend(result_base)
         result_arda = test_arda(dataset, sample_size=3000)
         all_results.extend(result_arda)
-        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
-        # all_results.extend(result_bfs)
+        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        all_results.extend(result_bfs)
         # result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
         # all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_arda_solo.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_2.csv", index=False)
 
 
 # test_bfs_pipeline(credit, value_ratio=0.45)
 # test_dfs_pipeline()
 # test_base_accuracy(REGRESSION_DATASETS[0])
-# test_arda()
-
+# test_arda(steel, sample_size=3000)
+#
 aggregate_results()
