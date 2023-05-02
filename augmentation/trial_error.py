@@ -169,7 +169,7 @@ def train_test_cart(dataframe: pd.DataFrame, target_column: str, regression: boo
     acc_decision_tree, _, feature_importance, _ = CART().train(train_data=X,
                                                                target_data=y,
                                                                regression=regression)
-    features_scores = dict(zip(feature_importance, X.columns))
+    features_scores = dict(zip(X.columns, feature_importance))
     end = time.time()
     train_time = end - start
     print(f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")

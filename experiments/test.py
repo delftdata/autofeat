@@ -10,7 +10,7 @@ from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS_NEW, school_small, CLASSIFICATION_DATASETS, steel, credit
+from tfd_datasets import CLASSIFICATION_DATASETS_NEW, school_small, CLASSIFICATION_DATASETS, steel, credit, accounting
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -50,9 +50,11 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
                             target_column=dataset.target_column,
                             regression=dataset.dataset_type)
     entry.feature_selection_time = end - start
+    entry.total_time += entry.feature_selection_time
     entry.approach = Result.ARDA
     entry.data_label = dataset.base_table_label
     entry.data_path = join_name
+    entry.join_path_features = selected_features
 
     return [entry]
 
@@ -128,9 +130,9 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}.csv", index=False)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_2.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}.csv')
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_2.csv')
 
     return results
 
@@ -138,23 +140,23 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def aggregate_results():
     all_results = []
 
-    for dataset in CLASSIFICATION_DATASETS_NEW:
+    for dataset in CLASSIFICATION_DATASETS:
         # for dataset in REGRESSION_DATASETS:
+        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        all_results.extend(result_bfs)
         result_base = test_base_accuracy(dataset)
         all_results.extend(result_base)
         result_arda = test_arda(dataset, sample_size=3000)
         all_results.extend(result_arda)
-        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
-        all_results.extend(result_bfs)
         # result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
         # all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_2.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_all_clsf_2.csv", index=False)
 
 
-# test_bfs_pipeline(credit, value_ratio=0.45)
+test_bfs_pipeline(accounting, value_ratio=0.25)
 # test_dfs_pipeline()
-# test_base_accuracy(REGRESSION_DATASETS[0])
+# test_base_accuracy(accounting)
 # test_arda(steel, sample_size=3000)
 #
-aggregate_results()
+# aggregate_results()
