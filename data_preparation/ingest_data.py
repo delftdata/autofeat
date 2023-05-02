@@ -52,6 +52,9 @@ def ingest_unprocessed_data(dataset_name: str):
         merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
                                     b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
                                     a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
+        merge_nodes_relation_tables(a_table_name=row["pk_table"], a_table_path=mapping[row["pk_table"]],
+                                    b_table_name=row["fk_table"], b_table_path=mapping[row["fk_table"]],
+                                    a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
 
     return mapping
 

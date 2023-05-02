@@ -5,7 +5,7 @@ from data_preparation.dataset_base import Dataset, CLASSIFICATION
 school_small = Dataset(
     base_table_id=ROOT_FOLDER / DATA / "ARDA/school/base.csv",
     base_table_name="base.csv",
-    base_table_label="ARDA",
+    base_table_label="school",
     target_column="class",
     dataset_type=CLASSIFICATION,
     base_table_features=["DBN", "School Name", "School Type", "Total Parent Response Rate (%)",
@@ -13,9 +13,9 @@ school_small = Dataset(
 )
 
 accounting = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "cs/target_churn.csv",
+    base_table_id=ROOT_FOLDER / DATA / "accounting/target_churn.csv",
     base_table_name="target_churn.csv",
-    base_table_label="cs",
+    base_table_label="accounting",
     target_column="target_churn",
     dataset_type=CLASSIFICATION,
     base_table_features=["ACC_KEY", "date_horizon"]
@@ -24,7 +24,7 @@ accounting = Dataset(
 nyc = Dataset(
     base_table_id=ROOT_FOLDER / DATA / "nydata/housing.csv",
     base_table_name="housing.csv",
-    base_table_label="nydata",
+    base_table_label="nyc",
     target_column="Reporting Construction Type",
     dataset_type=CLASSIFICATION,
     base_table_features=["Project ID", "Project Name", "Project Start Date", "Address", "Borough", "Postcode",

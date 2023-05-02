@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 
 @dataclass
@@ -22,6 +22,7 @@ class Result:
     accuracy: Optional[float] = None
     train_time: Optional[float] = None
     feature_importance: Optional[Dict[str, float]] = None
+    join_path_features: List[str] = None
     cutoff_threshold: Optional[float] = None
     redundancy_threshold: Optional[float] = None
     rank: Optional[int] = None

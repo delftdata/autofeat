@@ -242,6 +242,23 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
                    (c not in base_table_features) and (c not in all_columns)]
         print(f"{len(columns)} columns to select")
 
+        # If the algorithm failed
+        if len(columns) == 0:
+            print("No selected column")
+            continue
+
+        # If the algorithm doesn't find any new feature
+        if len(columns) == 1 and target_column in columns:
+            print("No selected column")
+            continue
+
+        # If the algorithm only selects one feature
+        if len(columns) == 2 and target_column in columns:
+            columns.remove(target_column)
+            final_selected_features.extend(columns)
+            print(f"Selected columns: {columns}")
+            continue
+
         joined_tables_batch = left_table[columns]
         print(f"shape: {joined_tables_batch.shape}")
 

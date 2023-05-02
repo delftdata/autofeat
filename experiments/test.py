@@ -4,12 +4,13 @@ from typing import List
 
 import pandas as pd
 
-from augmentation.trial_error import dfs_traverse_join_pipeline, bfs_traverse_join_pipeline, train_test_cart
+from augmentation.bfs_pipeline import BfsAugmentation
+from augmentation.trial_error import dfs_traverse_join_pipeline, train_test_cart
 from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS, REGRESSION_DATASETS, CLASSIFICATION_DATASETS_NEW
+from tfd_datasets import CLASSIFICATION_DATASETS_NEW, school_small, CLASSIFICATION_DATASETS, steel, credit, accounting
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -49,9 +50,11 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
                             target_column=dataset.target_column,
                             regression=dataset.dataset_type)
     entry.feature_selection_time = end - start
+    entry.total_time += entry.feature_selection_time
     entry.approach = Result.ARDA
     entry.data_label = dataset.base_table_label
     entry.data_path = join_name
+    entry.join_path_features = selected_features
 
     return [entry]
 
@@ -105,39 +108,31 @@ def test_dfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = False) -> List:
     print(f"BFS result with table {dataset.base_table_id}")
 
-    results = []
-    all_paths = {}
-    join_name_mapping = {}
     start = time.time()
-    bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)}, target_column=dataset.target_column,
-                               base_table_label=dataset.base_table_label,
-                               join_name_mapping=join_name_mapping, all_paths=all_paths,
-                               value_ratio=value_ratio, gini=gini)
+    bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                    target_column=dataset.target_column,
+                                    value_ratio=value_ratio)
+    bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
     end = time.time()
+
     print("FINISHED BFS")
 
-    # Train, test each path
-    print(f"TRAIN WITHOUT feature selection")
-    for join_name in join_name_mapping.keys():
-        joined_df = pd.read_csv(JOIN_RESULT_FOLDER / dataset.base_table_label / join_name_mapping[join_name], header=0,
-                                engine="python",
-                                encoding="utf8", quotechar='"', escapechar='\\')
-        result = train_test_cart(dataframe=joined_df,
-                                 target_column=dataset.target_column,
-                                 regression=dataset.dataset_type)
-        result.feature_selection_time = end - start
+    # Aggregate results
+    results = []
+    for join_name in bfs_traversal.join_name_mapping.keys():
+        result = bfs_traversal.ranked_paths[join_name]
+        result.total_time = end - start
         result.approach = "TFD_BFS"
         result.data_label = dataset.base_table_label
         result.data_path = join_name
+        result.join_path_features = bfs_traversal.partial_join_selected_features[join_name]
         results.append(result)
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}.csv", index=False)
-    pd.DataFrame.from_dict(join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}.csv')
-    with open(RESULTS_FOLDER / f"all_paths_{dataset.base_table_label}_bfs_{value_ratio}.json", "w") as f:
-        json.dump(all_paths, f)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_2.csv", index=False)
+    pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_2.csv')
 
     return results
 
@@ -145,23 +140,23 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 def aggregate_results():
     all_results = []
 
-    for dataset in CLASSIFICATION_DATASETS_NEW:
-    # for dataset in REGRESSION_DATASETS:
+    for dataset in CLASSIFICATION_DATASETS:
+        # for dataset in REGRESSION_DATASETS:
+        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        all_results.extend(result_bfs)
         result_base = test_base_accuracy(dataset)
         all_results.extend(result_base)
-        # result_arda = test_arda(dataset, sample_size=3000)
-        # all_results.extend(result_arda)
-        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.5)
-        all_results.extend(result_bfs)
-        result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
-        all_results.extend(result_dfs)
+        result_arda = test_arda(dataset, sample_size=3000)
+        all_results.extend(result_arda)
+        # result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
+        # all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_cls_new.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_all_clsf_2.csv", index=False)
 
 
-# test_bfs_pipeline(REGRESSION_DATASETS[0], value_ratio=0.45)
+test_bfs_pipeline(accounting, value_ratio=0.25)
 # test_dfs_pipeline()
-# test_base_accuracy(REGRESSION_DATASETS[0])
-# test_arda()
-
-aggregate_results()
+# test_base_accuracy(accounting)
+# test_arda(steel, sample_size=3000)
+#
+# aggregate_results()
