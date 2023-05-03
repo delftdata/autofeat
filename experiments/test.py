@@ -130,9 +130,9 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_2.csv", index=False)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_3.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_2.csv')
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_3.csv')
 
     return results
 
@@ -154,7 +154,7 @@ def aggregate_results():
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_all_clsf_2.csv", index=False)
 
 
-test_bfs_pipeline(accounting, value_ratio=0.25)
+test_bfs_pipeline(school_small, value_ratio=0.45)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(steel, sample_size=3000)
