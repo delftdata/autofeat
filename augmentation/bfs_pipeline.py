@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict, Set, Tuple
 
 import pandas as pd
@@ -36,12 +37,14 @@ class BfsAugmentation:
         self.base_node_label = None
 
         # Ablation study parameters
+        self.total_paths = []
+        self.enumerate_paths = False
+        self.join_step = True
+        self.sample_data_step = True
         self.data_quality_step = True
         self.feature_selection_step = True
         self.ranking_jk_step = True
         self.ranking_path_step = True
-        self.join_step = True
-        self.sample_data_step = True
 
     def bfs_traverse_join_pipeline(self, queue: set, previous_queue=None):
         """
@@ -100,7 +103,10 @@ class BfsAugmentation:
                 while len(previous_queue) > 0:
                     # Determine partial join
                     partial_join_name = previous_queue.pop()
-                    partial_join, partial_join_name = self.determine_partial_join(partial_join_name, base_node_id)
+
+                    partial_join = None
+                    if not self.enumerate_paths:
+                        partial_join, partial_join_name = self.determine_partial_join(partial_join_name, base_node_id)
                     print(f"\tPartial join name: {partial_join_name}")
 
                     # The current node can only be joined through the base node.
@@ -145,8 +151,8 @@ class BfsAugmentation:
                             if current_selected_features is None:
                                 continue
                         else:
-                            current_selected_features = list(right_df.columns).extend(
-                                    self.partial_join_selected_features[partial_join_name])
+                            current_selected_features = list(right_df.columns)
+                            current_selected_features.extend(self.partial_join_selected_features[partial_join_name])
 
                         # Step - Train and Rank path
                         if self.ranking_jk_step:
@@ -165,6 +171,7 @@ class BfsAugmentation:
                                 max_parameters = (ranking, join_name)
 
                         current_queue.add(join_name)
+                        self.total_paths.append(join_name)
                         self.join_name_mapping[join_name] = join_filename
                         self.partial_join_selected_features[join_name] = current_selected_features
 
@@ -181,7 +188,6 @@ class BfsAugmentation:
                                 self.join_name_mapping.pop(join_name)
                             if join_name in current_queue:
                                 current_queue.remove(join_name)
-                            continue
 
                 # Repopulate with the old paths (initial_queue) and the new paths (current_queue)
                 previous_queue.update(initial_queue)
@@ -190,6 +196,53 @@ class BfsAugmentation:
             # When all the neighbours are visited (breadth), go 1 level deeper in the tree traversal
             # Remove the paths from the initial queue when we go 1 level deeper
             self.bfs_traverse_join_pipeline(neighbours, previous_queue - initial_queue)
+
+    def enumerate_all_paths(self, queue: set) -> float:
+        start = time.time()
+        self.enumerate_paths = True
+        self.join_step = False
+        self.sample_data_step = False
+        self.data_quality_step = False
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def enumerate_and_join(self, queue: set) -> float:
+        start = time.time()
+        self.data_quality_step = False
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def prune_paths(self, queue: set) -> float:
+        start = time.time()
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def apply_feature_selection(self, queue: set) -> float:
+        start = time.time()
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def prune_join_key_level(self, queue: set) -> float:
+        start = time.time()
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
 
     def step_join(self, join_key_properties: tuple, partial_join: pd.DataFrame, right_df: pd.DataFrame,
                   right_label: str) -> Tuple[pd.DataFrame, str]:
