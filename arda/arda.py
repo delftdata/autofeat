@@ -176,8 +176,7 @@ def select_arda_features(base_table_id, target_column, base_table_features):
     return X, y, join_time, fs_time, fs_X
 
 
-def select_arda_features_budget_join(base_node_id: str, target_column: str, base_table_features: List,
-                                     sample_size: int, regression: bool = False):
+def select_arda_features_budget_join(base_node_id: str, target_column: str, sample_size: int, regression: bool = False):
     random_state = 42
     final_selected_features = []
     all_columns = []
@@ -191,7 +190,6 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
     # Get node, prepend the node label to columns and base table features for easy identification
     base_node = get_node_by_id(base_node_id)
     left_table = left_table.set_index([target_column]).add_prefix(f"{base_node.get('label')}.").reset_index()
-    base_table_features = [f"{base_node.get('label')}.{feat}" for feat in base_table_features]
 
     join_name = base_node.get('label')
 
@@ -238,8 +236,7 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, base
             print(f"Feature count: {feature_count}")
 
         # Compute the columns of the batch and create the batch dataset
-        columns = [c for c in list(left_table.columns) if
-                   (c not in base_table_features) and (c not in all_columns)]
+        columns = [c for c in list(left_table.columns) if c not in all_columns]
         print(f"{len(columns)} columns to select")
 
         # If the algorithm failed
