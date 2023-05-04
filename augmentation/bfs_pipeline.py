@@ -33,7 +33,9 @@ class BfsAugmentation:
         self.discovered: Set[str] = set()
         # Save the selected features of the previous join path (used for conditional redundancy)
         self.partial_join_selected_features: Dict[str, List] = {}
+        # Count the joins and use it in the file naming convention
         self.counter = 0
+        # Track the base table accuracy in the final step
         self.base_node_label = None
 
         # Ablation study parameters
@@ -135,6 +137,7 @@ class BfsAugmentation:
                                                                       right_label=right_label)
                         else:
                             current_queue.add(join_name)
+                            self.total_paths.append(join_name)
                             continue
 
                         # Step - Data quality
