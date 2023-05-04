@@ -2,6 +2,7 @@ import json
 import time
 from typing import List
 
+import numpy as np
 import pandas as pd
 
 from augmentation.bfs_pipeline import BfsAugmentation
@@ -10,7 +11,7 @@ from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS_NEW, school_small, CLASSIFICATION_DATASETS, steel, credit, accounting
+from tfd_datasets import CLASSIFICATION_DATASETS
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -36,14 +37,27 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
     dataframe, dataframe_label, selected_features, join_name = select_arda_features_budget_join(
         base_node_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
-        base_table_features=dataset.base_table_features,
         sample_size=sample_size,
         regression=dataset.dataset_type)
     end = time.time()
     print(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
-    features = [f"{dataframe_label}.{feat}" for feat in dataset.base_table_features]
-    features.extend(selected_features)
+    if len(selected_features) == 0:
+        from algorithms import CART
+        entry = Result(
+            algorithm=CART.LABEL,
+            accuracy=-1,
+            feature_importance={},
+            feature_selection_time=end - start,
+            approach=Result.ARDA,
+            data_label=dataset.base_table_label,
+            data_path=join_name,
+            join_path_features=selected_features
+        )
+        entry.total_time += entry.feature_selection_time
+        return [entry]
+
+    features = selected_features.copy()
     features.append(dataset.target_column)
 
     entry = train_test_cart(dataframe=dataframe[features],
@@ -121,20 +135,115 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
     results = []
     for join_name in bfs_traversal.join_name_mapping.keys():
         result = bfs_traversal.ranked_paths[join_name]
-        result.total_time = end - start
+        result.feature_selection_time = end - start
         result.approach = "TFD_BFS"
         result.data_label = dataset.base_table_label
         result.data_path = join_name
         result.join_path_features = bfs_traversal.partial_join_selected_features[join_name]
+        result.cutoff_threshold = value_ratio
+        result.total_time += result.feature_selection_time
         results.append(result)
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_2.csv", index=False)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_4_tuning.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_2.csv')
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_4_tuning.csv')
 
     return results
+
+
+def ablation_study_enumerate_paths(datasets: List[Dataset], value_ratio: float):
+    results = {"study": "enumerate"}
+    for dataset in datasets:
+        bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                        target_column=dataset.target_column,
+                                        value_ratio=value_ratio)
+        total_time = bfs_traversal.enumerate_all_paths(queue={str(dataset.base_table_id)})
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_runtime"] = total_time
+
+    return results
+
+
+def ablation_study_prune_paths(datasets: List[Dataset], value_ratio: float):
+    results = {"study": "enumerate_prune"}
+    for dataset in datasets:
+        bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                        target_column=dataset.target_column,
+                                        value_ratio=value_ratio)
+        total_time = bfs_traversal.prune_paths(queue={str(dataset.base_table_id)})
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_runtime"] = total_time
+
+    return results
+
+
+def ablation_study_enumerate_and_join(datasets: List[Dataset], value_ratio: float):
+    results = {"study": "enumerate_join"}
+    for dataset in datasets:
+        bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                        target_column=dataset.target_column,
+                                        value_ratio=value_ratio)
+        total_time = bfs_traversal.enumerate_and_join(queue={str(dataset.base_table_id)})
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_runtime"] = total_time
+    return results
+
+
+def ablation_study_feature_selection(datasets: List[Dataset], value_ratio: float):
+    results = {"study": "enumerate_join_prune_fs"}
+    for dataset in datasets:
+        bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                        target_column=dataset.target_column,
+                                        value_ratio=value_ratio)
+        total_time = bfs_traversal.apply_feature_selection(queue={str(dataset.base_table_id)})
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_runtime"] = total_time
+    return results
+
+
+def ablation_study_prune_join_key_level(datasets: List[Dataset], value_ratio: float):
+    results = {"study": "enumerate_join_prune_fs_rank_jk"}
+    for dataset in datasets:
+        bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
+                                        target_column=dataset.target_column,
+                                        value_ratio=value_ratio)
+        total_time = bfs_traversal.prune_join_key_level(queue={str(dataset.base_table_id)})
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_runtime"] = total_time
+    return results
+
+
+def all_ablation(datasets: List[Dataset], value_ratio: float):
+    all_results = []
+
+    result = ablation_study_enumerate_paths(datasets, value_ratio=value_ratio)
+    all_results.append(result)
+
+    result = ablation_study_enumerate_and_join(datasets, value_ratio=value_ratio)
+    all_results.append(result)
+
+    result = ablation_study_prune_paths(datasets, value_ratio=value_ratio)
+    all_results.append(result)
+
+    result = ablation_study_feature_selection(datasets, value_ratio=value_ratio)
+    all_results.append(result)
+
+    result = ablation_study_prune_join_key_level(datasets, value_ratio=value_ratio)
+    all_results.append(result)
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f'ablation_study_{value_ratio}.csv', index=False)
+
+
+def tune_value_ratio_threshold(datasets: List[Dataset]):
+    all_results = []
+    value_ratio_threshold = np.arange(0.15, 1.05, 0.05)
+    for threshold in value_ratio_threshold:
+        for dataset in datasets:
+            result_bfs = test_bfs_pipeline(dataset, value_ratio=threshold)
+            all_results.extend(result_bfs)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_value_ratio_tuning_2.csv", index=False)
 
 
 def aggregate_results():
@@ -142,21 +251,46 @@ def aggregate_results():
 
     for dataset in CLASSIFICATION_DATASETS:
         # for dataset in REGRESSION_DATASETS:
-        result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
-        all_results.extend(result_bfs)
-        result_base = test_base_accuracy(dataset)
-        all_results.extend(result_base)
+        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        # all_results.extend(result_bfs)
+        # result_base = test_base_accuracy(dataset)
+        # all_results.extend(result_base)
         result_arda = test_arda(dataset, sample_size=3000)
         all_results.extend(result_arda)
         # result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
         # all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_all_clsf_2.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_arda_2.csv", index=False)
 
 
-test_bfs_pipeline(accounting, value_ratio=0.25)
+# test_bfs_pipeline(school_small, value_ratio=0.45)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(steel, sample_size=3000)
-#
 # aggregate_results()
+
+ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
+# {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),
+#  'steel': (183, 0.6745116710662842)}
+
+# ablation_study_enumerate_and_join(CLASSIFICATION_DATASETS, value_ratio=0.45)
+# {'nyc': (11, 95.02598476409912), 'school': (1019, 1121.9258248806), 'credit': (1, 2.9994161128997803),
+#  'steel': (83, 36.911052942276)}
+
+# ablation_study_prune_paths(CLASSIFICATION_DATASETS, value_ratio=0.45)
+# {'nyc': (3, 45.107990026474), 'school': (52, 73.44366002082825), 'credit': (1, 2.2596540451049805),
+#  'steel': (63, 25.328887224197388)}
+
+# ablation_study_feature_selection(CLASSIFICATION_DATASETS, value_ratio=0.45)
+# {'nyc': (3, 58.07925200462341), 'school': (31, 238.45129704475403), 'credit': (1, 2.773263931274414),
+#  'steel': (1, 4.591271162033081)}
+
+# ablation_study_prune_join_key_level(CLASSIFICATION_DATASETS, value_ratio=0.45)
+# {'nyc': (4, 70.50428295135498), 'school': (35, 377.25908303260803), 'credit': (1, 3.509957790374756),
+#  'steel': (37, 201.2652440071106)}
+# {'nyc': (3, 65.19033694267273), 'school': (57, 928.0529820919037), 'credit': (1, 4.812485933303833),
+#  'steel': (1, 5.542677164077759)}
+
+# tune_value_ratio_threshold(CLASSIFICATION_DATASETS)
+
+# all_ablation(CLASSIFICATION_DATASETS, value_ratio=0.5)

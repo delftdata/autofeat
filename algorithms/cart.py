@@ -77,7 +77,7 @@ class CART(BaseAlgorithm):
 
     def _hyper_para_tuning_regression(self, train_data, train_labels):
         parameters = {"criterion": ["squared_error", "friedman_mse"],
-                      "max_depth": range(1, int(train_data.shape[1] / 2 + 1))
+                      "max_depth": range(1, int(train_data.shape[1] / 2 + 2))
                       }
         # parameters = {"criterion": ["entropy", "gini"]}
 

@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict, Set, Tuple
 
 import pandas as pd
@@ -32,9 +33,20 @@ class BfsAugmentation:
         self.discovered: Set[str] = set()
         # Save the selected features of the previous join path (used for conditional redundancy)
         self.partial_join_selected_features: Dict[str, List] = {}
-        self.partial_join_accuracy: Dict[str, float] = {}
+        # Count the joins and use it in the file naming convention
         self.counter = 0
+        # Track the base table accuracy in the final step
         self.base_node_label = None
+
+        # Ablation study parameters
+        self.total_paths = []
+        self.enumerate_paths = False
+        self.join_step = True
+        self.sample_data_step = True
+        self.data_quality_step = True
+        self.feature_selection_step = True
+        self.ranking_jk_step = True
+        self.ranking_path_step = True
 
     def bfs_traverse_join_pipeline(self, queue: set, previous_queue=None):
         """
@@ -93,7 +105,10 @@ class BfsAugmentation:
                 while len(previous_queue) > 0:
                     # Determine partial join
                     partial_join_name = previous_queue.pop()
-                    partial_join, partial_join_name = self.determine_partial_join(partial_join_name, base_node_id)
+
+                    partial_join = None
+                    if not self.enumerate_paths:
+                        partial_join, partial_join_name = self.determine_partial_join(partial_join_name, base_node_id)
                     print(f"\tPartial join name: {partial_join_name}")
 
                     # The current node can only be joined through the base node.
@@ -102,8 +117,7 @@ class BfsAugmentation:
                         print(f"\tBase node {base_node_label} not in partial join {partial_join_name}")
                         continue
 
-                    temporary_selected = {}
-                    max_accuracy = 0
+                    max_parameters = None
                     # Join the same partial join result with the new table on every join column possible
                     for prop in join_keys:
                         join_prop, from_table, to_table = prop
@@ -111,48 +125,72 @@ class BfsAugmentation:
                             continue
                         print(f"\t\tJoin properties: {join_prop}")
 
-                        # Step - Sample neighbour data - Transform to 1:1 or M:1
-                        sampled_right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1,
-                                                                                                              random_state=42)
+                        # Step - Explore all possible join paths based on the join keys - Compute the name of the join
+                        join_name = compute_partial_join_filename(prop=prop, partial_join_name=partial_join_name)
+                        print(f"\tJoin name: {join_name}")
 
                         # Step - Join
-                        joined_df, join_name, join_filename = self.step_join(prop, partial_join_name, partial_join,
-                                                                             sampled_right_df)
+                        if self.join_step:
+                            joined_df, join_filename = self.step_join(join_key_properties=prop,
+                                                                      partial_join=partial_join,
+                                                                      right_df=right_df,
+                                                                      right_label=right_label)
+                        else:
+                            current_queue.add(join_name)
+                            self.total_paths.append(join_name)
+                            continue
 
                         # Step - Data quality
-                        data_quality = self.step_data_quality(prop, joined_df)
-                        if not data_quality:
-                            continue
+                        if self.data_quality_step:
+                            data_quality = self.step_data_quality(prop, joined_df)
+                            if not data_quality:
+                                continue
 
                         # Step - Feature selection
-                        current_selected_features = self.step_feature_selection(joined_df, right_df, partial_join_name,
-                                                                                join_name)
-                        if current_selected_features is None:
-                            continue
-
-                        # Step - Rank path
-                        ranking = self.step_rank_path(joined_df, current_selected_features, join_name)
-
-                        # Step - Compare current accuracy with the accuracy from joining on the other join keys
-                        if ranking.accuracy - max_accuracy < 0:
-                            continue
+                        if self.feature_selection_step:
+                            current_selected_features = self.step_feature_selection(joined_df, right_df,
+                                                                                    partial_join_name,
+                                                                                    join_name)
+                            if current_selected_features is None:
+                                continue
                         else:
-                            max_accuracy = ranking.accuracy
-                        temporary_selected[max_accuracy] = (
-                            join_name, join_filename, current_selected_features, ranking)
+                            current_selected_features = list(right_df.columns)
+                            current_selected_features.extend(self.partial_join_selected_features[partial_join_name])
+
+                        # Step - Train and Rank path
+                        if self.ranking_jk_step:
+                            ranking = self.step_train_rank_path(joined_df, current_selected_features, join_name)
+
+                            # Step - Compare current accuracy with the accuracy from joining on the other join keys
+                            if max_parameters is None:
+                                max_parameters = (ranking, join_name)
+                            elif ranking.accuracy - max_parameters[0].accuracy < 0:
+                                continue
+                            else:
+                                # Remove the other join_key paths because they have lower accuracy
+                                self.join_name_mapping.pop(max_parameters[1])
+                                self.partial_join_selected_features.pop(max_parameters[1])
+                                current_queue.remove(max_parameters[1])
+                                max_parameters = (ranking, join_name)
+
+                        current_queue.add(join_name)
+                        self.total_paths.append(join_name)
+                        self.join_name_mapping[join_name] = join_filename
+                        self.partial_join_selected_features[join_name] = current_selected_features
+
+                    if max_parameters:
+                        self.ranked_paths[max_parameters[1]] = max_parameters[0]
 
                     # Step - Compare current accuracy with the accuracy of the previous paths - Remove the previous
-                    remove = self.step_compare_accuracy(max_accuracy, partial_join_name, current_queue, initial_queue)
-                    if remove:
-                        continue
-
-                    # Save the join name to be used as the partial join in the next iterations
-                    join_name, join_filename, current_selected_features, ranking = temporary_selected[max_accuracy]
-                    current_queue.add(join_name)
-                    self.join_name_mapping[join_name] = join_filename
-                    self.partial_join_selected_features[join_name] = current_selected_features
-                    self.ranked_paths[join_name] = ranking
-                    self.partial_join_accuracy[join_name] = max_accuracy
+                    if self.ranking_jk_step and self.ranking_path_step and max_parameters:
+                        ranking, join_name = max_parameters
+                        remove = self.step_is_current_accuracy_smaller(ranking.accuracy, partial_join_name,
+                                                                       current_queue, initial_queue)
+                        if remove:
+                            if join_name in self.join_name_mapping:
+                                self.join_name_mapping.pop(join_name)
+                            if join_name in current_queue:
+                                current_queue.remove(join_name)
 
                 # Repopulate with the old paths (initial_queue) and the new paths (current_queue)
                 previous_queue.update(initial_queue)
@@ -162,13 +200,62 @@ class BfsAugmentation:
             # Remove the paths from the initial queue when we go 1 level deeper
             self.bfs_traverse_join_pipeline(neighbours, previous_queue - initial_queue)
 
-    def step_join(self, prop: tuple, partial_join_name: str, partial_join: pd.DataFrame,
-                  right_df: pd.DataFrame) -> Tuple[pd.DataFrame, str, str]:
-        join_prop, from_table, to_table = prop
+    def enumerate_all_paths(self, queue: set) -> float:
+        start = time.time()
+        self.enumerate_paths = True
+        self.join_step = False
+        self.sample_data_step = False
+        self.data_quality_step = False
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
 
-        # Compute the name of the join
-        join_name = compute_partial_join_filename(prop=prop, partial_join_name=partial_join_name)
-        print(f"\tJoin name: {join_name}")
+    def enumerate_and_join(self, queue: set) -> float:
+        start = time.time()
+        self.data_quality_step = False
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def prune_paths(self, queue: set) -> float:
+        start = time.time()
+        self.feature_selection_step = False
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def apply_feature_selection(self, queue: set) -> float:
+        start = time.time()
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def prune_join_key_level(self, queue: set) -> float:
+        start = time.time()
+        self.ranking_path_step = False
+        self.bfs_traverse_join_pipeline(queue)
+        end = time.time()
+        return end - start
+
+    def step_join(self, join_key_properties: tuple, partial_join: pd.DataFrame, right_df: pd.DataFrame,
+                  right_label: str) -> Tuple[pd.DataFrame, str]:
+        join_prop, from_table, to_table = join_key_properties
+
+        # Step - Sample neighbour data - Transform to 1:1 or M:1
+        sampled_right_df = right_df
+        if self.sample_data_step:
+            sampled_right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1,
+                                                                                                  random_state=42)
 
         # File naming convention as the filename can be gigantic
         join_filename = f"join_BFS_{self.value_ratio}_{self.counter}.csv"
@@ -176,13 +263,13 @@ class BfsAugmentation:
 
         # Join
         joined_df = join_and_save(left_df=partial_join,
-                                  right_df=right_df,
+                                  right_df=sampled_right_df,
                                   left_column=f"{from_table}.{join_prop['from_column']}",
                                   right_column=f"{to_table}.{join_prop['to_column']}",
                                   label=self.base_table_label,
                                   join_name=join_filename)
 
-        return joined_df, join_name, join_filename
+        return joined_df, join_filename
 
     def step_data_quality(self, prop: tuple, joined_df: pd.DataFrame) -> bool:
         join_prop, from_table, to_table = prop
@@ -251,28 +338,24 @@ class BfsAugmentation:
         selected_features.extend(current_selected_features)
         return selected_features
 
-    def step_rank_path(self, joined_df: pd.DataFrame, features: List[str], join_name: str) -> Result:
+    def step_train_rank_path(self, joined_df: pd.DataFrame, features: List[str], join_name: str) -> Result:
         columns = features.copy()
         columns.append(self.target_column)
         result = train_test_cart(dataframe=joined_df[columns], target_column=self.target_column)
         return result
 
-    def step_compare_accuracy(self, current_accuracy: float, partial_join_name: str, current_queue: set,
-                              initial_queue: set) -> bool:
-        if current_accuracy - self.partial_join_accuracy[partial_join_name] <= 0:
+    def step_is_current_accuracy_smaller(self, current_accuracy: float, partial_join_name: str, current_queue: set,
+                                         initial_queue: set) -> bool:
+        if current_accuracy - self.ranked_paths[partial_join_name].accuracy <= 0:
             return True
 
         if partial_join_name != self.base_node_label:
-            if partial_join_name in self.partial_join_accuracy:
-                self.partial_join_accuracy.pop(partial_join_name)
             if partial_join_name in self.join_name_mapping:
                 self.join_name_mapping.pop(partial_join_name)
             if partial_join_name in self.partial_join_selected_features:
                 self.partial_join_selected_features.pop(partial_join_name)
             if partial_join_name in self.ranked_paths:
                 self.ranked_paths.pop(partial_join_name)
-            if partial_join_name in self.partial_join_accuracy:
-                self.partial_join_accuracy.pop(partial_join_name)
             if partial_join_name in current_queue:
                 current_queue.remove(partial_join_name)
             if partial_join_name in initial_queue:
@@ -286,7 +369,7 @@ class BfsAugmentation:
 
             if len(self.join_name_mapping.keys()) == 0:
                 entry = train_test_cart(dataframe=partial_join, target_column=self.target_column)
-                self.partial_join_accuracy[partial_join_name] = entry.accuracy
+                self.ranked_paths[partial_join_name] = entry
                 self.base_node_label = partial_join_name
 
         else:
