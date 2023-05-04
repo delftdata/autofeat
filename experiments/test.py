@@ -2,6 +2,7 @@ import json
 import time
 from typing import List
 
+import numpy as np
 import pandas as pd
 
 from augmentation.bfs_pipeline import BfsAugmentation
@@ -200,12 +201,12 @@ def ablation_study_prune_join_key_level(datasets: List[Dataset], value_ratio: fl
 
 def tune_value_ratio_threshold(datasets: List[Dataset]):
     all_results = []
-    value_ratio_threshold = [0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]
+    value_ratio_threshold = np.arange(0.15, 1.05, 0.05)
     for threshold in value_ratio_threshold:
         for dataset in datasets:
             result_bfs = test_bfs_pipeline(dataset, value_ratio=threshold)
             all_results.extend(result_bfs)
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_value_ratio_tuning.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_value_ratio_tuning_2.csv", index=False)
 
 
 def aggregate_results():
@@ -254,4 +255,3 @@ def aggregate_results():
 #  'steel': (1, 5.542677164077759)}
 
 tune_value_ratio_threshold(CLASSIFICATION_DATASETS)
-
