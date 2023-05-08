@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
@@ -8,15 +9,17 @@ REGRESSION = "true"
 
 
 class Dataset:
-    def __init__(self, base_table_id: str, base_table_name: str, base_table_label: str, target_column: str,
+    def __init__(self, base_table_path: Path, base_table_name: str, base_table_label: str, target_column: str,
                  dataset_type: bool, base_table_features: Optional[List] = None):
-        self.base_table_id = base_table_id
+        self.base_table_path = base_table_path
         self.target_column = target_column
         self.base_table_name = base_table_name
         self.base_table_label = base_table_label
         self.base_table_features = base_table_features
         self.dataset_type = dataset_type
         self.base_table_df = None
+
+        self.base_table_id = base_table_path / base_table_name
 
     def set_features(self):
         if self.base_table_df is not None:

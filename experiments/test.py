@@ -11,7 +11,7 @@ from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS
+from tfd_datasets import CLASSIFICATION_DATASETS, school_small
 
 
 def test_base_accuracy(dataset: Dataset):
@@ -146,9 +146,9 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_4_tuning.csv", index=False)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_all_mixed.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_4_tuning.csv')
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_all_mixed.csv')
 
     return results
 
@@ -263,13 +263,13 @@ def aggregate_results():
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_arda_2.csv", index=False)
 
 
-# test_bfs_pipeline(school_small, value_ratio=0.45)
+test_bfs_pipeline(school_small, value_ratio=0.65)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(steel, sample_size=3000)
 # aggregate_results()
 
-ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
+# ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
 # {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),
 #  'steel': (183, 0.6745116710662842)}
 

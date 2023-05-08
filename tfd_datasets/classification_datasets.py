@@ -3,7 +3,7 @@ from data_preparation.dataset_base import Dataset, CLASSIFICATION
 
 # classification
 school_small = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "ARDA/school/base.csv",
+    base_table_path=ROOT_FOLDER / DATA / "school",
     base_table_name="base.csv",
     base_table_label="school",
     target_column="class",
@@ -13,7 +13,7 @@ school_small = Dataset(
 )
 
 accounting = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "accounting/target_churn.csv",
+    base_table_path=ROOT_FOLDER / DATA / "accounting",
     base_table_name="target_churn.csv",
     base_table_label="accounting",
     target_column="target_churn",
@@ -22,7 +22,7 @@ accounting = Dataset(
 )
 
 nyc = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "nydata/housing.csv",
+    base_table_path=ROOT_FOLDER / DATA / "nydata",
     base_table_name="housing.csv",
     base_table_label="nyc",
     target_column="Reporting Construction Type",
@@ -32,7 +32,7 @@ nyc = Dataset(
 )
 
 credit = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "credit/table8.csv",
+    base_table_path=ROOT_FOLDER / DATA / "credit",
     base_table_name="table8.csv",
     base_table_label="credit",
     target_column="class",
@@ -41,7 +41,7 @@ credit = Dataset(
 )
 
 steel = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "steel/table10.csv",
+    base_table_path=ROOT_FOLDER / DATA / "steel",
     base_table_name="table10.csv",
     base_table_label="steel",
     target_column="Class",
@@ -50,7 +50,7 @@ steel = Dataset(
 )
 
 cylinder = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "cylinder/table2.csv",
+    base_table_path=ROOT_FOLDER / DATA / "cylinder",
     base_table_name="table2.csv",
     base_table_label="cylinder",
     target_column="band_type",
@@ -63,7 +63,7 @@ cylinder = Dataset(
 
 # Not ingested yet
 la_data = Dataset(
-    base_table_id=ROOT_FOLDER / DATA / "nydata/housing.csv",
+    base_table_path=ROOT_FOLDER / DATA / "ladata",
     base_table_name="housing.csv",
     base_table_label="ladata",
     target_column="Reporting Construction Type",
