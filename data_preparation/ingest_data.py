@@ -2,6 +2,7 @@ import csv
 import glob
 import itertools
 import os
+from typing import List
 
 import pandas as pd
 from valentine import valentine_match
@@ -91,12 +92,25 @@ def ingest_connections():
             create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all(dataset_name: str):
+def profile_valentine_all():
+    files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+    files = [f for f in files if CONNECTIONS not in f]
+
+    profile_valentine_logic(files)
+
+
+def profile_valentine_dataset(dataset_name: str):
     files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
+    profile_valentine_logic(files)
+
+
+def profile_valentine_logic(files: List[str]):
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
+        a_table_name = tab1.split("/")[-1]
+        b_table_name = tab2.split("/")[-1]
         print(f"Processing the match between:\n\t{tab1}\n\t{tab2}")
         df1 = pd.read_csv(tab1, encoding="utf8")
         df2 = pd.read_csv(tab2, encoding="utf8")
@@ -107,10 +121,11 @@ def profile_valentine_all(dataset_name: str):
             if similarity > VALENTINE_THRESHOLD:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
-                merge_nodes_relation_tables(a_table_name=tab1.partition(f"{DATA_FOLDER / dataset_name}/")[2],
-                                            b_table_name=tab2.partition(f"{DATA_FOLDER / dataset_name}/")[2],
+                merge_nodes_relation_tables(a_table_name=a_table_name,
+                                            b_table_name=b_table_name,
                                             a_table_path=tab1,
                                             b_table_path=tab2,
                                             a_col=col_from,
                                             b_col=col_to,
                                             weight=similarity)
+
