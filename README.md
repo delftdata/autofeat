@@ -11,6 +11,14 @@
 
 [comment]: <> (1. Import the database [neo4j-data.dump]&#40;neo4j-db/neo4j-data.dump&#41; in neo4j following these [instructions]&#40;https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/&#41;.)
 
+## Workflow 
+
+1. Create neo4j database 
+   1. Add the authentication parameters in [neo4j_transactions.py](graph_processing/neo4j_transactions.py)
+2. Create datasets in [tfd_datasets](tfd_datasets)
+   1. If the dataset is for classification, add it to [classification_datasets](tfd_datasets/classification_datasets.py)
+   2. If the dataset if for regression, add it to [regression_datasets](tfd_datasets/regression_datasets.py)
+3. Ingest the datasets in neo4j
 
 ### python setup
 1. Create virtual environment
