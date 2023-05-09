@@ -85,10 +85,9 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table
 
                 # Join
                 joined_df = join_and_save(left_df, right_df,
-                                          left_column=f"{from_table}.{join_prop['from_column']}",
-                                          right_column=f"{to_table}.{join_prop['to_column']}",
-                                          label=base_table_label,
-                                          join_name=join_filename)
+                                          left_column_name=f"{from_table}.{join_prop['from_column']}",
+                                          right_column_name=f"{to_table}.{join_prop['to_column']}",
+                                          label=base_table_label, join_name=join_filename)
 
                 if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
                     print("\t\tRight column value ration below 0.5.\nSKIPPED Join")

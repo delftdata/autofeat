@@ -123,6 +123,10 @@ class BfsAugmentation:
                         join_prop, from_table, to_table = prop
                         if join_prop['from_label'] != from_table:
                             continue
+
+                        if join_prop['from_column'] == self.target_column:
+                            continue
+
                         print(f"\t\tJoin properties: {join_prop}")
 
                         # Step - Explore all possible join paths based on the join keys - Compute the name of the join
@@ -135,6 +139,8 @@ class BfsAugmentation:
                                                                       partial_join=partial_join,
                                                                       right_df=right_df,
                                                                       right_label=right_label)
+                            if joined_df is None:
+                                continue
                         else:
                             current_queue.add(join_name)
                             self.total_paths.append(join_name)
@@ -248,7 +254,7 @@ class BfsAugmentation:
         return end - start
 
     def step_join(self, join_key_properties: tuple, partial_join: pd.DataFrame, right_df: pd.DataFrame,
-                  right_label: str) -> Tuple[pd.DataFrame, str]:
+                  right_label: str) -> Tuple[pd.DataFrame or None, str]:
         join_prop, from_table, to_table = join_key_properties
 
         # Step - Sample neighbour data - Transform to 1:1 or M:1
@@ -262,12 +268,12 @@ class BfsAugmentation:
         self.counter += 1
 
         # Join
-        joined_df = join_and_save(left_df=partial_join,
-                                  right_df=sampled_right_df,
-                                  left_column=f"{from_table}.{join_prop['from_column']}",
-                                  right_column=f"{to_table}.{join_prop['to_column']}",
-                                  label=self.base_table_label,
+        joined_df = join_and_save(left_df=partial_join, right_df=sampled_right_df,
+                                  left_column_name=f"{from_table}.{join_prop['from_column']}",
+                                  right_column_name=f"{to_table}.{join_prop['to_column']}", label=self.base_table_label,
                                   join_name=join_filename)
+        if joined_df is None:
+            return None, join_filename
 
         return joined_df, join_filename
 

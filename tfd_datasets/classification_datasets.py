@@ -22,7 +22,7 @@ accounting = Dataset(
 )
 
 nyc = Dataset(
-    base_table_path=ROOT_FOLDER / DATA / "nydata",
+    base_table_path=ROOT_FOLDER / DATA / "nyc",
     base_table_name="housing.csv",
     base_table_label="nyc",
     target_column="Reporting Construction Type",

@@ -65,18 +65,21 @@ def compute_partial_join_filename(prop: tuple, partial_join_name=None) -> str:
     return joined_path
 
 
-def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column: str, right_column: str,
-                  label: str, join_name: str) -> pd.DataFrame:
+def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column_name: str, right_column_name: str,
+                  label: str, join_name: str) -> pd.DataFrame or None:
     """
     Join two dataframes and save the result on disk.
     :param left_df: Left side of the join
     :param right_df: Right side of the join
-    :param left_column: The left join column
-    :param right_column: The right join column
+    :param left_column_name: The left join column
+    :param right_column_name: The right join column
     :param join_name: The computed join name
     :return: The join result.
     """
-    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column, right_on=right_column)
+    if left_df[left_column_name].dtype != right_df[right_column_name].dtype:
+        return None
+
+    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column_name, right_on=right_column_name)
     # Save join result
     partial_join.to_csv(JOIN_RESULT_FOLDER / label / join_name, index=False)
     return partial_join
