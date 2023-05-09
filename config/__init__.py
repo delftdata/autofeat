@@ -31,5 +31,3 @@ RESULTS_FOLDER = ROOT_FOLDER / "results" / "2024"
 # RESULTS_FOLDER = ROOT_FOLDER / "results" / "air"
 
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
-
-VALENTINE_THRESHOLD = 0.8
