@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from augmentation.trial_error import train_test_cart
 from config import JOIN_RESULT_FOLDER
 from data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
+from experiments.bfs_iteration_data_object import BfsDataModel
 from experiments.result_object import Result
 from feature_selection.join_path_feature_selection import measure_relevance, measure_conditional_redundancy, \
     measure_joint_mutual_information, measure_redundancy
@@ -17,6 +18,13 @@ from helpers.util_functions import get_df_with_prefix
 
 
 class BfsAugmentation:
+    RANKED_PATHS = 'ranked_paths'
+
+    GBM = "LightGBM"
+    RF = "RandomForest"
+    XT = "ExtraTrees"
+    XGB = "XGBoost"
+    WEL2 = "WeightedEnsemble_L2"
 
     def __init__(self, base_table_label: str, target_column: str, value_ratio: float, auto_gluon: bool = False):
         """
@@ -42,6 +50,15 @@ class BfsAugmentation:
         # Track the base table accuracy in the final step
         self.base_node_label = None
         self.hyper_parameters = {'RF': {}, 'GBM': {}, 'XGB': {}, 'XT': {}}
+
+        self.model_based_results = {
+            'LightGBM': BfsDataModel("LightGBM"),
+            'RandomForest': BfsDataModel("RandomForest"),
+            'ExtraTrees': BfsDataModel("ExtraTrees"),
+            'XGBoost': BfsDataModel("XGBoost"),
+            'WeightedEnsemble_L2': BfsDataModel("WeightedEnsemble_L2"),
+            'CART': BfsDataModel("CART")
+        }
 
         # Ablation study parameters
         self.total_paths = []
@@ -101,7 +118,7 @@ class BfsAugmentation:
                 right_df, right_label = get_df_with_prefix(node)
                 print(f"\tRight table shape: {right_df.shape}")
 
-                # Saves all the paths between base node and the neighbour node generated on every possible join column
+                # Join the neighbour node with all the previous processed and saved paths
                 current_queue = self.join_neighbour_with_previous_paths(base_node_id=base_node_id,
                                                                         base_node_label=base_node_label,
                                                                         right_df=right_df,
@@ -110,7 +127,7 @@ class BfsAugmentation:
                                                                         initial_queue=initial_queue,
                                                                         previous_queue=previous_queue)
 
-                # Repopulate with the old paths (initial_queue) and the new paths (current_queue)
+                # Initialise the queue with the old paths (initial_queue) and the new paths (current_queue)
                 previous_queue.update(initial_queue)
                 previous_queue.update(current_queue)
 
@@ -120,16 +137,17 @@ class BfsAugmentation:
 
     def join_neighbour_with_previous_paths(self, base_node_id: str, base_node_label: str,
                                            right_df: pd.DataFrame, right_label: str, join_keys: List[tuple],
-                                           initial_queue: set, previous_queue: set):
+                                           initial_queue: set, previous_queue: set) -> set:
         current_queue = set()
         # Iterate through all the previous paths of the join tree
         while len(previous_queue) > 0:
-            # Determine partial join
+            # Previous join path name
             previous_join_name = previous_queue.pop()
 
             previous_join = None
+            # TODO
             if not self.enumerate_paths:
-                previous_join, previous_join_name = self.get_current_join(previous_join_name, base_node_id)
+                previous_join, previous_join_name = self.get_previous_join(previous_join_name, base_node_id)
             print(f"\tPartial join name: {previous_join_name}")
 
             # The current node can only be joined through the base node.
@@ -139,12 +157,12 @@ class BfsAugmentation:
                 continue
 
             # Determine the best join key (which results in the highest accuracy)
-            aux_queue, max_parameters = self.determine_best_join_key_given_constraints(join_keys=join_keys,
+            new_queue, max_parameters = self.determine_best_join_key_given_constraints(join_keys=join_keys,
                                                                                        current_join_name=previous_join_name,
                                                                                        current_join_df=previous_join,
                                                                                        new_table_df=right_df,
                                                                                        new_table_label=right_label)
-            current_queue.update(aux_queue)
+            current_queue.update(new_queue)
 
             # Step - Compare current accuracy with the accuracy of the previous paths - Remove the previous
             self.compare_join_paths(current_queue, initial_queue, max_parameters, previous_join_name)
@@ -166,7 +184,7 @@ class BfsAugmentation:
 
     def determine_best_join_key_given_constraints(self, join_keys: List[tuple], current_join_name: str,
                                                   current_join_df: pd.DataFrame, new_table_df: pd.DataFrame,
-                                                  new_table_label: str):
+                                                  new_table_label: str) -> Tuple[set, tuple or None]:
         """
         Join the same partial join result with the new table on every join column possible
 
@@ -218,8 +236,7 @@ class BfsAugmentation:
             # Step - Feature selection
             if self.feature_selection_step:
                 current_selected_features = self.step_feature_selection(joined_df=joined_df,
-                                                                        new_features=list(
-                                                                            new_table_df.columns),
+                                                                        new_features=list(new_table_df.columns),
                                                                         current_selected_features=
                                                                         self.partial_join_selected_features[
                                                                             current_join_name])
@@ -232,7 +249,8 @@ class BfsAugmentation:
             # Step - Train and Rank path
             if self.ranking_jk_step:
                 ranking = self.step_train_rank_path(dataframe=joined_df,
-                                                    features=current_selected_features)
+                                                    features=current_selected_features,
+                                                    join_name=join_name)
 
                 # Step - Compare current accuracy with the accuracy from joining on the other join keys
                 if max_parameters is None:
@@ -397,11 +415,12 @@ class BfsAugmentation:
         selected_features.extend(current_selected_features)
         return selected_features
 
-    def step_train_rank_path(self, dataframe: pd.DataFrame, features: List[str]) -> Result:
+    def step_train_rank_path(self, dataframe: pd.DataFrame, features: List[str], join_name: str) -> Result:
         if self.auto_gluon:
             if self.target_column not in features:
                 features.append(self.target_column)
-            return self.run_auto_gluon(dataframe[features])
+            self.run_auto_gluon(dataframe[features], join_name)
+            return
         else:
             result = train_test_cart(train_data=dataframe[features],
                                      target=dataframe[self.target_column],
@@ -426,7 +445,7 @@ class BfsAugmentation:
                 initial_queue.remove(partial_join_name)
         return False
 
-    def get_current_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
+    def get_previous_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
         if partial_join_name == base_node_id:
             partial_join, partial_join_name = get_df_with_prefix(base_node_id, self.target_column)
             self.initialise_ranks_features(join_name=partial_join_name, dataframe=partial_join)
@@ -445,7 +464,7 @@ class BfsAugmentation:
 
         if len(self.join_name_mapping.keys()) == 0:
             if self.auto_gluon:
-                entry = self.run_auto_gluon(aux_df)
+                entry = self.run_auto_gluon(aux_df, join_name)
             else:
                 entry = train_test_cart(train_data=aux_df,
                                         target=aux_df[self.target_column],
@@ -465,8 +484,7 @@ class BfsAugmentation:
                                                              target_column=y)
         return selected_features
 
-    def run_auto_gluon(self, dataframe: pd.DataFrame) -> List[Result]:
-        results = []
+    def run_auto_gluon(self, dataframe: pd.DataFrame, join_name: str):
         X_train, X_test, y_train, y_test = train_test_split(dataframe.drop(columns=[self.target_column]),
                                                             dataframe[self.target_column],
                                                             test_size=0.2,
@@ -480,19 +498,16 @@ class BfsAugmentation:
                                                       hyperparameters=self.hyper_parameters)
         training_results = predictor.info()
         for model in training_results["model_info"].keys():
-            # values = predictor.evaluate(test, model=model)
             ft_imp = predictor.feature_importance(data=test, model=model, feature_stage='original')
-            print(ft_imp)
             entry = Result(
                 algorithm=model,
                 accuracy=training_results["model_info"][model]['val_score'],
                 feature_importance=dict(zip(list(ft_imp.index), ft_imp['importance'])),
-                train_time=training_results["model_info"][model]['fit_time']
+                train_time=training_results["model_info"][model]['fit_time'],
+                approach="TFD_BFS",
+                data_label=self.base_table_label,
+                cutoff_threshold=self.value_ratio,
+                data_path=join_name,
+                join_path_features=self.partial_join_selected_features[join_name]
             )
-            results.append(entry)
-        # result = predictor.evaluate(test, model="LightGBM")
-        # print(result)
-        # ft_imp = predictor.feature_importance(data=test, model="LightGBM", feature_stage='transformed_model')
-        # print(ft_imp)
-
-        return results
+            self.model_based_results[model][BfsAugmentation.RANKED_PATHS][join_name] = entry
