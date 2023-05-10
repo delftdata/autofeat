@@ -7,7 +7,7 @@ import pandas as pd
 
 from augmentation.bfs_pipeline import BfsAugmentation
 from augmentation.trial_error import dfs_traverse_join_pipeline, train_test_cart
-from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER
+from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER, ROOT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
@@ -28,7 +28,7 @@ def test_base_accuracy(dataset: Dataset):
     return [entry]
 
 
-def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
+def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:    
     from arda.arda import select_arda_features_budget_join
 
     print(f"ARDA result on table {dataset.base_table_id}")
@@ -69,6 +69,8 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
     entry.data_label = dataset.base_table_label
     entry.data_path = join_name
     entry.join_path_features = selected_features
+
+    print(entry)
 
     return [entry]
 
@@ -263,10 +265,68 @@ def aggregate_results():
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_arda_2.csv", index=False)
 
 
-test_bfs_pipeline(school_small, value_ratio=0.65)
+def test_autogluon():
+    from autogluon.tabular import TabularDataset, TabularPredictor
+    from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+    from sklearn.model_selection import train_test_split
+
+    train_data = TabularDataset(f'{ROOT_FOLDER}/other-data/original/titanic-og.csv')
+    label = 'Survived'
+
+    print(train_data.head())
+    # auto_ml_pipeline_feature_generator = AutoMLPipelineFeatureGenerator()
+    # tf_data = auto_ml_pipeline_feature_generator.fit_transform(X=train_data)
+    # print(tf_data.head())
+
+
+    X_train, X_test, y_train, y_test = train_test_split(train_data.drop(columns=[label]), train_data[label], test_size=0.2,
+                                                        random_state=10)
+    train = X_train.copy()
+    train[label] = y_train
+
+    test = X_test.copy()
+    test[label] = y_test
+
+    exclude_models = ['NN_TORCH', 'FASTAI', 'AG_AUTOMM', 'FT_TRANSFORMER', 'FASTTEXT', 'VW', 'AG_TEXT_NN',
+                      'AG_IMAGE_NN', 'WeightedEnsemble_L2']
+
+    predictor = TabularPredictor(label=label,
+                                 problem_type="binary",
+                                 verbosity=2).fit(train_data=train,
+                                                  hyperparameters={'RF': {}, 'GBM': {}, 'XGB': {}, 'XT': {}})
+    # predictor.evaluate()
+    res = []
+    all_results = predictor.info()
+    for model in all_results["model_info"].keys():
+        # values = predictor.evaluate(test, model=model)
+        ft_imp = predictor.feature_importance(data=test, model=model, feature_stage='original')
+        print(ft_imp)
+        entry = Result(
+            algorithm=model,
+            accuracy=all_results["model_info"][model]['val_score'],
+            feature_importance=dict(zip(list(ft_imp.index), ft_imp['importance'])),
+            train_time=all_results["model_info"][model]['fit_time']
+        )
+        res.append(entry)
+
+    print(res)
+
+
+    # result = predictor.evaluate(test, model="LightGBM")
+    # print(result)
+    # ft_imp = predictor.feature_importance(data=test, model="LightGBM", feature_stage='transformed_model')
+    # print(ft_imp)
+    # features = predictor.info()
+    # print(features)
+    # leaderboard = predictor.leaderboard()
+
+
+test_autogluon()
+
+# test_bfs_pipeline(school_small, value_ratio=0.65)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
-# test_arda(steel, sample_size=3000)
+# test_arda(credit, sample_size=3000)
 # aggregate_results()
 
 # ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
