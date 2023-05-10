@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
 from data_preparation.join_data import join_directly_connected
-from data_preparation.utils import prepare_data_for_ml, compute_partial_join_filename
+from data_preparation.utils import prepare_data_for_ml, compute_join_name
 from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
 
 
@@ -241,7 +241,7 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, samp
             left_table.drop(columns=[f"{to_table}.{to_column}"], inplace=True)
 
             # Compute the join name
-            join_name = compute_partial_join_filename(prop=join_key, partial_join_name=join_name)
+            join_name = compute_join_name(join_key_property=join_key, partial_join_name=join_name)
             print(f"\t\t\tJoin name: {join_name}")
 
             # Update feature count (subtract 1 for the deleted right key)

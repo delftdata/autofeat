@@ -131,3 +131,14 @@ dmypy.json
 .DS_Store
 .idea
 */**/.DS_Store
+/ada/*
+/data/*
+/experiment_results/*
+/experiments/AutogluonModels/*
+/joined-df/*
+/mappings/*
+/original_data/*
+/other-data/*
+/plots/*
+/results/*
+/results_workshop/

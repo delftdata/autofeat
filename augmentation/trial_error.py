@@ -7,11 +7,11 @@ import tqdm
 
 from algorithms import CART
 from config import JOIN_RESULT_FOLDER
-from data_preparation.utils import compute_partial_join_filename, join_and_save, prepare_data_for_ml
+from data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
 from experiments.result_object import Result
 from feature_selection.gini import gini_index, feature_ranking
 from feature_selection.util_functions import compute_correlation
-from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
+from graph_processing.neo4j_transactions import get_relation_properties_node_name
 from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_value
 
 
@@ -77,7 +77,7 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table
                                           header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
 
                 # Compute the name of the join
-                join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
+                join_name = compute_join_name(join_key_property=prop, partial_join_name=current_join_path)
                 print(f"\t\t\tJoin name: {join_name}")
 
                 # File naming convention as the filename can be gigantic
@@ -153,25 +153,36 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
     return results
 
 
-def train_test_cart(dataframe: pd.DataFrame, target_column: str, regression: bool = False) -> Result:
+def train_test_cart(train_data: pd.DataFrame, target: pd.Series, target_column: str, prepare_data: bool = True,
+                    regression: bool = False) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
 
-    :param dataframe: DataFrame for training
+    :param train_data: DataFrame for training (X)
+    :param target: Series representing the label/target data (y)
     :param target_column: Target/label column with the class labels
+    :param prepare_data: False - if train_data and target have been processed, True - if they need to be processed.
     :param regression: Bool - if True: a regressor is employed, if False: a classifier is employed
     :return: A Result object with the configuration and results of training
     """
 
     start = time.time()
-    X, y = prepare_data_for_ml(dataframe, target_column)
+
+    if prepare_data:
+        dataframe = pd.concat([train_data, target])
+        X, y = prepare_data_for_ml(dataframe, target_column)
+    else:
+        X = train_data
+        y = target
+
     acc_decision_tree, _, feature_importance, _ = CART().train(train_data=X,
                                                                target_data=y,
                                                                regression=regression)
     features_scores = dict(zip(X.columns, feature_importance))
     end = time.time()
     train_time = end - start
-    print(f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
+    print(
+        f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
     entry = Result(
         algorithm=CART.LABEL,
