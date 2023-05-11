@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
 from data_preparation.join_data import join_directly_connected
-from data_preparation.utils import prepare_data_for_ml, compute_partial_join_filename
+from data_preparation.utils import prepare_data_for_ml, compute_join_name
 from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
 
 
@@ -204,31 +204,44 @@ def select_arda_features_budget_join(base_node_id: str, target_column: str, samp
             print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
 
             # Get the keys between the base node and connected node
-            join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node_id)
-            # Keep the key which matches the outgoing node
-            result = [k for k in join_keys if k[0]['from_label'] == k[1]]
-            if len(result) == 0:
-                continue
-            join_prop, from_table, to_table = result[0]
+            join_key = get_relation_properties_node_name(from_id=base_node_id, to_id=node_id)[0]
+            join_prop, from_table, to_table = join_key
             print(f"Join properties: {join_prop}")
+
+            if join_prop['from_label'] == base_node.get('label'):
+                if join_prop['from_column'] == target_column:
+                    continue
+
+            if join_prop['to_label'] == base_node.get('label'):
+                if join_prop['to_column'] == target_column:
+                    continue
+
+            if join_prop['from_label'] == to_table:
+                from_column = join_prop['to_column']
+                to_column = join_prop['from_column']
+            else:
+                from_column = join_prop['from_column']
+                to_column = join_prop['to_column']
 
             # Read right table, aggregate on the join key (reduce to 1:1 or M:1 join) by random sampling
             right_table = pd.read_csv(node_id, header=0, engine="python", encoding="utf8", quotechar='"',
                                       escapechar='\\')
-            right_table = right_table.groupby(join_prop['to_column']).sample(n=1, random_state=random_state)
+            right_table = right_table.groupby(to_column).sample(n=1, random_state=random_state)
 
             # Prepend node label to every column for easy identification
             right_node = get_node_by_id(node_id)
             right_table = right_table.add_prefix(f"{right_node.get('label')}.")
 
             # Join tables, drop the right key as we don't need it anymore
+            if left_table[f"{from_table}.{from_column}"].dtype != right_table[f"{to_table}.{to_column}"].dtype:
+                continue
             left_table = pd.merge(left_table, right_table, how="left",
-                                  left_on=f"{from_table}.{join_prop['from_column']}",
-                                  right_on=f"{to_table}.{join_prop['to_column']}")
-            left_table.drop(columns=[f"{to_table}.{join_prop['to_column']}"], inplace=True)
+                                  left_on=f"{from_table}.{from_column}",
+                                  right_on=f"{to_table}.{to_column}")
+            left_table.drop(columns=[f"{to_table}.{to_column}"], inplace=True)
 
             # Compute the join name
-            join_name = compute_partial_join_filename(prop=result[0], partial_join_name=join_name)
+            join_name = compute_join_name(join_key_property=join_key, partial_join_name=join_name)
             print(f"\t\t\tJoin name: {join_name}")
 
             # Update feature count (subtract 1 for the deleted right key)

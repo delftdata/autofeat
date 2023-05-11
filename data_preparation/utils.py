@@ -49,34 +49,35 @@ def get_path_length(path: str) -> int:
     return len(path_tokens) - 1
 
 
-def compute_partial_join_filename(prop: tuple, partial_join_name=None) -> str:
+def compute_join_name(join_key_property: tuple, partial_join_name: str) -> str:
     """
     Compute the name of the partial join, given the properties of the new join and the previous join name.
-    :param prop: (neo4j relation property, outbound label, inbound label)
-    :param partial_join_name: Name of the partial join (if applicable).
+
+    :param join_key_property: (neo4j relation property, outbound label, inbound label)
+    :param partial_join_name: Name of the partial join.
     :return: The name of the next partial join
     """
-    join_prop, from_table, to_table = prop
-    if partial_join_name is None:
-        joined_path = f"{join_prop['from_column'].replace(' ', '')}--{from_table.replace('/', '--')}" \
-                      f"--{join_prop['to_column'].replace(' ', '')}--{to_table.replace('/', '--')}"
-    else:
-        joined_path = f"{partial_join_name}--{join_prop['to_column'].replace(' ', '')}-{to_table.replace('/', '--')}"
+    join_prop, _, to_table = join_key_property
+    joined_path = f"{partial_join_name}--{join_prop['to_column'].replace(' ', '')}-{to_table.replace('/', '--')}"
     return joined_path
 
 
-def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column: str, right_column: str,
-                  label: str, join_name: str) -> pd.DataFrame:
+def join_and_save(left_df: pd.DataFrame, right_df: pd.DataFrame, left_column_name: str, right_column_name: str,
+                  join_path: str) -> pd.DataFrame or None:
     """
     Join two dataframes and save the result on disk.
+
     :param left_df: Left side of the join
     :param right_df: Right side of the join
-    :param left_column: The left join column
-    :param right_column: The right join column
-    :param join_name: The computed join name
+    :param left_column_name: The left join column
+    :param right_column_name: The right join column
+    :param join_path: The path to save the join result.
     :return: The join result.
     """
-    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column, right_on=right_column)
+    if left_df[left_column_name].dtype != right_df[right_column_name].dtype:
+        return None
+
+    partial_join = pd.merge(left_df, right_df, how="left", left_on=left_column_name, right_on=right_column_name)
     # Save join result
-    partial_join.to_csv(JOIN_RESULT_FOLDER / label / join_name, index=False)
+    partial_join.to_csv(join_path, index=False)
     return partial_join

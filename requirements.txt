@@ -4,6 +4,7 @@ argon2-cffi==21.3.0
 argon2-cffi-bindings==21.2.0
 asttokens==2.0.5
 attrs==21.4.0
+autogluon=0.7.0
 backcall==0.2.0
 black==21.12b0
 bleach==4.1.0
@@ -102,6 +103,6 @@ valentine==0.1.4
 wcwidth==0.2.5
 webencodings==0.5.1
 widgetsnbextension==3.5.2
-xgboost==1.5.2
+xgboost==1.6.0
 zipp==3.7.0
 pyitlib==0.2.3

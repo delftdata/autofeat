@@ -8,7 +8,7 @@ import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
-from config import CONNECTIONS, DATA_FOLDER, VALENTINE_THRESHOLD, VALENTINE_CONNECTIONS
+from config import CONNECTIONS, DATA_FOLDER, VALENTINE_CONNECTIONS
 from data_preparation import SIBLING, RELATED
 from graph_processing.neo4j_transactions import merge_nodes_relation, create_relation, merge_nodes_relation_tables
 
@@ -92,21 +92,21 @@ def ingest_connections():
             create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all():
+def profile_valentine_all(valentine_threshold: float = 0.8):
     files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
-    profile_valentine_logic(files)
+    profile_valentine_logic(files, valentine_threshold)
 
 
-def profile_valentine_dataset(dataset_name: str):
+def profile_valentine_dataset(dataset_name: str, valentine_threshold: float = 0.8):
     files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
-    profile_valentine_logic(files)
+    profile_valentine_logic(files, valentine_threshold)
 
 
-def profile_valentine_logic(files: List[str]):
+def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
         a_table_name = tab1.split("/")[-1]
@@ -118,7 +118,7 @@ def profile_valentine_logic(files: List[str]):
 
         for item in matches.items():
             ((_, col_from), (_, col_to)), similarity = item
-            if similarity > VALENTINE_THRESHOLD:
+            if similarity > valentine_threshold:
                 print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
 
                 merge_nodes_relation_tables(a_table_name=a_table_name,

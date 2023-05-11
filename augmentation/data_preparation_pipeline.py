@@ -85,4 +85,4 @@ if __name__ == "__main__":
     # for dataset in CLASSIFICATION_DATASETS:
     #     ingest_data_with_connections(dataset=dataset, profile_valentine_in_dataset=False,
     #                                  profile_valentine_all_database=False)
-    profile_valentine_all()
+    profile_valentine_all(valentine_threshold=0.55)

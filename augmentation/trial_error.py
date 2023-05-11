@@ -7,11 +7,11 @@ import tqdm
 
 from algorithms import CART
 from config import JOIN_RESULT_FOLDER
-from data_preparation.utils import compute_partial_join_filename, join_and_save, prepare_data_for_ml
+from data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
 from experiments.result_object import Result
 from feature_selection.gini import gini_index, feature_ranking
 from feature_selection.util_functions import compute_correlation
-from graph_processing.neo4j_transactions import get_relation_properties_node_name, get_adjacent_nodes, get_node_by_id
+from graph_processing.neo4j_transactions import get_relation_properties_node_name
 from helpers.util_functions import get_df_with_prefix, get_elements_higher_than_value
 
 
@@ -77,7 +77,7 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table
                                           header=0, engine="python", encoding="utf8", quotechar='"', escapechar='\\')
 
                 # Compute the name of the join
-                join_name = compute_partial_join_filename(prop=prop, partial_join_name=current_join_path)
+                join_name = compute_join_name(join_key_property=prop, partial_join_name=current_join_path)
                 print(f"\t\t\tJoin name: {join_name}")
 
                 # File naming convention as the filename can be gigantic
@@ -85,10 +85,9 @@ def dfs_traverse_join_pipeline(base_node_id: str, target_column: str, base_table
 
                 # Join
                 joined_df = join_and_save(left_df, right_df,
-                                          left_column=f"{from_table}.{join_prop['from_column']}",
-                                          right_column=f"{to_table}.{join_prop['to_column']}",
-                                          label=base_table_label,
-                                          join_name=join_filename)
+                                          left_column_name=f"{from_table}.{join_prop['from_column']}",
+                                          right_column_name=f"{to_table}.{join_prop['to_column']}",
+                                          label=base_table_label, join_name=join_filename)
 
                 if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < value_ratio:
                     print("\t\tRight column value ration below 0.5.\nSKIPPED Join")
@@ -154,25 +153,35 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
     return results
 
 
-def train_test_cart(dataframe: pd.DataFrame, target_column: str, regression: bool = False) -> Result:
+def train_test_cart(train_data: pd.DataFrame, target_column: str, prepare_data: bool = True,
+                    regression: bool = False) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
 
-    :param dataframe: DataFrame for training
+    :param train_data: DataFrame for training (X)
+    :param target: Series representing the label/target data (y)
     :param target_column: Target/label column with the class labels
+    :param prepare_data: False - if train_data and target have been processed, True - if they need to be processed.
     :param regression: Bool - if True: a regressor is employed, if False: a classifier is employed
     :return: A Result object with the configuration and results of training
     """
 
     start = time.time()
-    X, y = prepare_data_for_ml(dataframe, target_column)
+
+    if prepare_data:
+        X, y = prepare_data_for_ml(train_data, target_column)
+    else:
+        X = train_data
+        y = train_data[[target_column]]
+
     acc_decision_tree, _, feature_importance, _ = CART().train(train_data=X,
                                                                target_data=y,
                                                                regression=regression)
     features_scores = dict(zip(X.columns, feature_importance))
     end = time.time()
     train_time = end - start
-    print(f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
+    print(
+        f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}")
 
     entry = Result(
         algorithm=CART.LABEL,
@@ -181,3 +190,51 @@ def train_test_cart(dataframe: pd.DataFrame, target_column: str, regression: boo
         train_time=train_time
     )
     return entry
+
+
+def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
+                   algorithms_to_run: dict, value_ratio: float = None):
+    from sklearn.model_selection import train_test_split
+    from autogluon.tabular import TabularPredictor
+
+    X_train, X_test, y_train, y_test = train_test_split(dataframe.drop(columns=[target_column]),
+                                                        dataframe[[target_column]],
+                                                        test_size=0.2,
+                                                        random_state=10)
+    train = X_train.copy()
+    train[target_column] = y_train
+
+    test = X_test.copy()
+    test[target_column] = y_test
+
+    predictor = TabularPredictor(label=target_column,
+                                 problem_type="binary",
+                                 verbosity=2).fit(train_data=train,
+                                                  hyperparameters=algorithms_to_run)
+    highest_acc = 0
+    best_model = None
+    results = []
+    training_results = predictor.info()
+    for model in training_results["model_info"].keys():
+        accuracy = training_results["model_info"][model]['val_score']
+        ft_imp = predictor.feature_importance(data=test, model=model, feature_stage='original')
+        entry = Result(
+            algorithm=model,
+            accuracy=accuracy,
+            feature_importance=dict(zip(list(ft_imp.index), ft_imp['importance'])),
+            train_time=training_results["model_info"][model]['fit_time'],
+            approach=approach,
+            data_label=data_label,
+            data_path=join_name,
+            join_path_features=list(X_train.columns)
+        )
+        if value_ratio:
+            entry.cutoff_threshold = value_ratio
+
+        if accuracy > highest_acc:
+            highest_acc = accuracy
+            best_model = entry
+
+        results.append(entry)
+
+    return best_model, results
