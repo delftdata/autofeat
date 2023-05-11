@@ -12,12 +12,13 @@ from data_preparation.utils import prepare_data_for_ml
 
 
 def measure_relevance(dataframe: pd.DataFrame, feature_names: List[str], target_column: pd.Series):
-    features = dataframe[feature_names]
+    common_features = set(dataframe.columns).intersection(set(feature_names))
+    features = dataframe[common_features]
     scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
                                                                                  entropy(target_column))
     final_feature_scores = []
     final_features = []
-    for value, name in list(zip(scores, feature_names)):
+    for value, name in list(zip(scores, common_features)):
         # value 0 means that the features are completely redundant
         # value 1 means that the features are perfectly correlated, which is still undesirable
         if 0 < value < 1:
