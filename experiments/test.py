@@ -6,29 +6,41 @@ import numpy as np
 import pandas as pd
 
 from augmentation.bfs_pipeline import BfsAugmentation
-from augmentation.trial_error import dfs_traverse_join_pipeline, train_test_cart
+from augmentation.trial_error import dfs_traverse_join_pipeline, train_test_cart, run_auto_gluon
 from config import RESULTS_FOLDER, JOIN_RESULT_FOLDER, ROOT_FOLDER
 from data_preparation.dataset_base import Dataset
 from experiments.result_object import Result
 from graph_processing.traverse_graph import dfs_traversal
-from tfd_datasets import CLASSIFICATION_DATASETS, school_small
+from tfd_datasets import CLASSIFICATION_DATASETS
+
+hyper_parameters = {'RF': {}, 'GBM': {}, 'XGB': {}, 'XT': {}}
 
 
-def test_base_accuracy(dataset: Dataset):
+def test_base_accuracy(dataset: Dataset, autogluon: bool = True):
     print(f"Base result on table {dataset.base_table_id}")
     dataframe = pd.read_csv(dataset.base_table_id, header=0, engine="python", encoding="utf8", quotechar='"',
                             escapechar='\\')
-    entry = train_test_cart(dataframe=dataframe,
-                            target_column=dataset.target_column,
-                            regression=dataset.dataset_type)
-    entry.approach = Result.BASE
-    entry.data_label = dataset.base_table_label
-    entry.data_path = dataset.base_table_label
 
-    return [entry]
+    if autogluon:
+        best_result, all_results = run_auto_gluon(approach=Result.BASE,
+                                                  dataframe=dataframe,
+                                                  target_column=dataset.target_column,
+                                                  data_label=dataset.base_table_label,
+                                                  join_name=dataset.base_table_label,
+                                                  algorithms_to_run=hyper_parameters)
+        return all_results
+    else:
+        entry = train_test_cart(train_data=dataframe,
+                                target_column=dataset.target_column,
+                                regression=dataset.dataset_type)
+        entry.approach = Result.BASE
+        entry.data_label = dataset.base_table_label
+        entry.data_path = dataset.base_table_label
+
+        return [entry]
 
 
-def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:    
+def test_arda(dataset: Dataset, sample_size: int = 1000, autogluon: bool = True) -> List:
     from arda.arda import select_arda_features_budget_join
 
     print(f"ARDA result on table {dataset.base_table_id}")
@@ -46,7 +58,7 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
         from algorithms import CART
         entry = Result(
             algorithm=CART.LABEL,
-            accuracy=-1,
+            accuracy=0,
             feature_importance={},
             feature_selection_time=end - start,
             approach=Result.ARDA,
@@ -60,19 +72,31 @@ def test_arda(dataset: Dataset, sample_size: int = 1000) -> List:
     features = selected_features.copy()
     features.append(dataset.target_column)
 
-    entry = train_test_cart(dataframe=dataframe[features],
-                            target_column=dataset.target_column,
-                            regression=dataset.dataset_type)
-    entry.feature_selection_time = end - start
-    entry.total_time += entry.feature_selection_time
-    entry.approach = Result.ARDA
-    entry.data_label = dataset.base_table_label
-    entry.data_path = join_name
-    entry.join_path_features = selected_features
+    if autogluon:
+        best_result, all_results = run_auto_gluon(approach=Result.ARDA,
+                                                  dataframe=dataframe[features],
+                                                  target_column=dataset.target_column,
+                                                  data_label=dataset.base_table_label,
+                                                  join_name=join_name,
+                                                  algorithms_to_run=hyper_parameters)
+        for result in all_results:
+            result.feature_selection_time = end - start
+            result.total_time += result.feature_selection_time
+        return all_results
+    else:
+        entry = train_test_cart(train_data=dataframe[features],
+                                target_column=dataset.target_column,
+                                regression=dataset.dataset_type)
+        entry.feature_selection_time = end - start
+        entry.total_time += entry.feature_selection_time
+        entry.approach = Result.ARDA
+        entry.data_label = dataset.base_table_label
+        entry.data_path = join_name
+        entry.join_path_features = selected_features
 
-    print(entry)
+        print(entry)
 
-    return [entry]
+        return [entry]
 
 
 def test_dfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = False) -> List:
@@ -127,7 +151,8 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
     start = time.time()
     bfs_traversal = BfsAugmentation(base_table_label=dataset.base_table_label,
                                     target_column=dataset.target_column,
-                                    value_ratio=value_ratio)
+                                    value_ratio=value_ratio,
+                                    auto_gluon=True)
     bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
     end = time.time()
 
@@ -136,21 +161,18 @@ def test_bfs_pipeline(dataset: Dataset, value_ratio: float = 0.55, gini: bool = 
     # Aggregate results
     results = []
     for join_name in bfs_traversal.join_name_mapping.keys():
-        result = bfs_traversal.ranked_paths[join_name]
-        result.feature_selection_time = end - start
-        result.approach = "TFD_BFS"
-        result.data_label = dataset.base_table_label
-        result.data_path = join_name
-        result.join_path_features = bfs_traversal.partial_join_selected_features[join_name]
-        result.cutoff_threshold = value_ratio
-        result.total_time += result.feature_selection_time
-        results.append(result)
+        aux = list(filter(lambda x: x.data_path == join_name, bfs_traversal.all_results))
+
+        for item in aux:
+            item.feature_selection_time = end - start
+            item.total_time += item.feature_selection_time
+            results.append(item)
 
     # Save results
     pd.DataFrame(results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_all_mixed.csv", index=False)
+        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv", index=False)
     pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient='index', columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_all_mixed.csv')
+        RESULTS_FOLDER / f'join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv')
 
     return results
 
@@ -253,7 +275,7 @@ def aggregate_results():
 
     for dataset in CLASSIFICATION_DATASETS:
         # for dataset in REGRESSION_DATASETS:
-        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.45)
+        # result_bfs = test_bfs_pipeline(dataset, value_ratio=0.65)
         # all_results.extend(result_bfs)
         # result_base = test_base_accuracy(dataset)
         # all_results.extend(result_base)
@@ -262,7 +284,7 @@ def aggregate_results():
         # result_dfs = test_dfs_pipeline(dataset, value_ratio=0.5)
         # all_results.extend(result_dfs)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_arda_2.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_autogluon_ARDA.csv", index=False)
 
 
 def test_autogluon():
@@ -274,12 +296,14 @@ def test_autogluon():
     label = 'Survived'
 
     print(train_data.head())
-    # auto_ml_pipeline_feature_generator = AutoMLPipelineFeatureGenerator()
-    # tf_data = auto_ml_pipeline_feature_generator.fit_transform(X=train_data)
-    # print(tf_data.head())
+    auto_ml_pipeline_feature_generator = AutoMLPipelineFeatureGenerator(
+        enable_text_special_features=False,
+        enable_text_ngram_features=False)
+    tf_data = auto_ml_pipeline_feature_generator.fit_transform(X=train_data)
+    print(tf_data.head())
 
-
-    X_train, X_test, y_train, y_test = train_test_split(train_data.drop(columns=[label]), train_data[label], test_size=0.2,
+    X_train, X_test, y_train, y_test = train_test_split(train_data.drop(columns=[label]), train_data[label],
+                                                        test_size=0.2,
                                                         random_state=10)
     train = X_train.copy()
     train[label] = y_train
@@ -311,7 +335,6 @@ def test_autogluon():
 
     print(res)
 
-
     # result = predictor.evaluate(test, model="LightGBM")
     # print(result)
     # ft_imp = predictor.feature_importance(data=test, model="LightGBM", feature_stage='transformed_model')
@@ -321,13 +344,13 @@ def test_autogluon():
     # leaderboard = predictor.leaderboard()
 
 
-test_autogluon()
+# test_autogluon()
 
 # test_bfs_pipeline(school_small, value_ratio=0.65)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(credit, sample_size=3000)
-# aggregate_results()
+aggregate_results()
 
 # ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
 # {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),

@@ -3,13 +3,10 @@ from typing import List, Dict, Set, Tuple
 
 import pandas as pd
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from autogluon.tabular import TabularPredictor
-from sklearn.model_selection import train_test_split
 
-from augmentation.trial_error import train_test_cart
+from augmentation.trial_error import train_test_cart, run_auto_gluon
 from config import JOIN_RESULT_FOLDER
 from data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
-from experiments.bfs_iteration_data_object import BfsDataModel
 from experiments.result_object import Result
 from feature_selection.join_path_feature_selection import measure_relevance, measure_conditional_redundancy, \
     measure_joint_mutual_information, measure_redundancy
@@ -50,15 +47,7 @@ class BfsAugmentation:
         # Track the base table accuracy in the final step
         self.base_node_label = None
         self.hyper_parameters = {'RF': {}, 'GBM': {}, 'XGB': {}, 'XT': {}}
-
-        self.model_based_results = {
-            'LightGBM': BfsDataModel("LightGBM"),
-            'RandomForest': BfsDataModel("RandomForest"),
-            'ExtraTrees': BfsDataModel("ExtraTrees"),
-            'XGBoost': BfsDataModel("XGBoost"),
-            'WeightedEnsemble_L2': BfsDataModel("WeightedEnsemble_L2"),
-            'CART': BfsDataModel("CART")
-        }
+        self.all_results = []
 
         # Ablation study parameters
         self.total_paths = []
@@ -231,7 +220,8 @@ class BfsAugmentation:
 
             # Transform data
             if self.auto_gluon:
-                joined_df = AutoMLPipelineFeatureGenerator().fit_transform(X=joined_df)
+                joined_df = AutoMLPipelineFeatureGenerator(enable_text_special_features=False,
+                                                           enable_text_ngram_features=False).fit_transform(X=joined_df)
 
             # Step - Feature selection
             if self.feature_selection_step:
@@ -248,22 +238,15 @@ class BfsAugmentation:
 
             # Step - Train and Rank path
             if self.ranking_jk_step:
-                ranking = self.step_train_rank_path(dataframe=joined_df,
-                                                    features=current_selected_features,
-                                                    join_name=join_name)
-
-                # Step - Compare current accuracy with the accuracy from joining on the other join keys
-                if max_parameters is None:
-                    max_parameters = (ranking, join_name)
-                elif ranking.accuracy - max_parameters[0].accuracy < 0:
+                result = self.step_train_rank_path(dataframe=joined_df,
+                                                   features=current_selected_features,
+                                                   join_name=join_name)
+                keep_path, max_parameters = self.is_current_join_key_better(ranking_result=result,
+                                                                            join_name=join_name,
+                                                                            current_queue=current_queue,
+                                                                            max_accuracy=max_parameters)
+                if not keep_path:
                     continue
-                else:
-                    # Remove the other join_key paths because they have lower accuracy
-                    _, previous_join_name = max_parameters
-                    self.join_name_mapping.pop(previous_join_name)
-                    self.partial_join_selected_features.pop(previous_join_name)
-                    current_queue.remove(previous_join_name)
-                    max_parameters = (ranking, join_name)
 
             current_queue.add(join_name)
             self.total_paths.append(join_name)
@@ -274,6 +257,22 @@ class BfsAugmentation:
             self.ranked_paths[max_parameters[1]] = max_parameters[0]
 
         return current_queue, max_parameters
+
+    def is_current_join_key_better(self, ranking_result: Result, join_name: str, current_queue: set,
+                                   max_accuracy: tuple = None) -> Tuple[bool, tuple]:
+        # Step - Compare current accuracy with the accuracy from joining on the other join keys
+        if max_accuracy is None:
+            max_accuracy = (ranking_result, join_name)
+        elif ranking_result.accuracy - max_accuracy[0].accuracy < 0:
+            return False, max_accuracy
+        else:
+            # Remove the other join_key paths because they have lower accuracy
+            _, previous_join_name = max_accuracy
+            self.join_name_mapping.pop(previous_join_name)
+            self.partial_join_selected_features.pop(previous_join_name)
+            current_queue.remove(previous_join_name)
+            max_accuracy = (ranking_result, join_name)
+        return True, max_accuracy
 
     def enumerate_all_paths(self, queue: set) -> float:
         start = time.time()
@@ -416,15 +415,20 @@ class BfsAugmentation:
         return selected_features
 
     def step_train_rank_path(self, dataframe: pd.DataFrame, features: List[str], join_name: str) -> Result:
+        if self.target_column not in features:
+            features.append(self.target_column)
+
         if self.auto_gluon:
-            if self.target_column not in features:
-                features.append(self.target_column)
-            self.run_auto_gluon(dataframe[features], join_name)
-            return
+            result, all_results = run_auto_gluon(approach=Result.TFD,
+                                                 dataframe=dataframe[features],
+                                                 target_column=self.target_column,
+                                                 data_label=self.base_table_label,
+                                                 join_name=join_name,
+                                                 algorithms_to_run=self.hyper_parameters,
+                                                 value_ratio=self.value_ratio)
+            self.all_results.extend(all_results)
         else:
-            result = train_test_cart(train_data=dataframe[features],
-                                     target=dataframe[self.target_column],
-                                     target_column=self.target_column)
+            result = train_test_cart(train_data=dataframe[features], target_column=self.target_column)
         return result
 
     def step_is_current_accuracy_smaller(self, current_accuracy: float, partial_join_name: str, current_queue: set,
@@ -458,16 +462,23 @@ class BfsAugmentation:
     def initialise_ranks_features(self, join_name: str, dataframe: pd.DataFrame):
         aux_df = dataframe
         if self.auto_gluon:
-            aux_df = AutoMLPipelineFeatureGenerator().fit_transform(X=dataframe)
+            aux_df = AutoMLPipelineFeatureGenerator(enable_text_special_features=False,
+                                                    enable_text_ngram_features=False).fit_transform(X=dataframe)
 
         self.partial_join_selected_features[join_name] = self.get_relevant_features(dataframe=aux_df)
 
         if len(self.join_name_mapping.keys()) == 0:
             if self.auto_gluon:
-                entry = self.run_auto_gluon(aux_df, join_name)
+                entry, all_results = run_auto_gluon(approach=Result.TFD,
+                                                    dataframe=aux_df,
+                                                    target_column=self.target_column,
+                                                    data_label=self.base_table_label,
+                                                    join_name=join_name,
+                                                    algorithms_to_run=self.hyper_parameters,
+                                                    value_ratio=self.value_ratio)
+                self.all_results.extend(all_results)
             else:
                 entry = train_test_cart(train_data=aux_df,
-                                        target=aux_df[self.target_column],
                                         target_column=self.target_column)
             self.ranked_paths[join_name] = entry
             self.base_node_label = join_name
@@ -483,31 +494,3 @@ class BfsAugmentation:
                                                              feature_names=list(X.columns),
                                                              target_column=y)
         return selected_features
-
-    def run_auto_gluon(self, dataframe: pd.DataFrame, join_name: str):
-        X_train, X_test, y_train, y_test = train_test_split(dataframe.drop(columns=[self.target_column]),
-                                                            dataframe[self.target_column],
-                                                            test_size=0.2,
-                                                            random_state=10)
-        train = pd.concat([X_train, y_train])
-        test = pd.concat([X_test, y_test])
-
-        predictor = TabularPredictor(label=self.target_column,
-                                     problem_type="binary",
-                                     verbosity=2).fit(train_data=train,
-                                                      hyperparameters=self.hyper_parameters)
-        training_results = predictor.info()
-        for model in training_results["model_info"].keys():
-            ft_imp = predictor.feature_importance(data=test, model=model, feature_stage='original')
-            entry = Result(
-                algorithm=model,
-                accuracy=training_results["model_info"][model]['val_score'],
-                feature_importance=dict(zip(list(ft_imp.index), ft_imp['importance'])),
-                train_time=training_results["model_info"][model]['fit_time'],
-                approach="TFD_BFS",
-                data_label=self.base_table_label,
-                cutoff_threshold=self.value_ratio,
-                data_path=join_name,
-                join_path_features=self.partial_join_selected_features[join_name]
-            )
-            self.model_based_results[model][BfsAugmentation.RANKED_PATHS][join_name] = entry

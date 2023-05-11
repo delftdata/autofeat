@@ -5,7 +5,7 @@ from typing import Dict, Optional, List
 @dataclass
 class Result:
     TFD_PATH = "TFD_PATH"
-    TFD = "TFD"
+    TFD = "TFD_BFS"
     ARDA = "ARDA"
     JOIN_ALL = "TFD_JOIN_ALL"
     JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
