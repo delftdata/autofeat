@@ -153,7 +153,7 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
     return results
 
 
-def train_test_cart(train_data: pd.DataFrame, target: pd.Series, target_column: str, prepare_data: bool = True,
+def train_test_cart(train_data: pd.DataFrame, target_column: str, prepare_data: bool = True,
                     regression: bool = False) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
@@ -169,11 +169,10 @@ def train_test_cart(train_data: pd.DataFrame, target: pd.Series, target_column: 
     start = time.time()
 
     if prepare_data:
-        dataframe = pd.concat([train_data, target])
-        X, y = prepare_data_for_ml(dataframe, target_column)
+        X, y = prepare_data_for_ml(train_data, target_column)
     else:
         X = train_data
-        y = target
+        y = train_data[[target_column]]
 
     acc_decision_tree, _, feature_importance, _ = CART().train(train_data=X,
                                                                target_data=y,
@@ -191,3 +190,51 @@ def train_test_cart(train_data: pd.DataFrame, target: pd.Series, target_column: 
         train_time=train_time
     )
     return entry
+
+
+def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
+                   algorithms_to_run: dict, value_ratio: float = None):
+    from sklearn.model_selection import train_test_split
+    from autogluon.tabular import TabularPredictor
+
+    X_train, X_test, y_train, y_test = train_test_split(dataframe.drop(columns=[target_column]),
+                                                        dataframe[[target_column]],
+                                                        test_size=0.2,
+                                                        random_state=10)
+    train = X_train.copy()
+    train[target_column] = y_train
+
+    test = X_test.copy()
+    test[target_column] = y_test
+
+    predictor = TabularPredictor(label=target_column,
+                                 problem_type="binary",
+                                 verbosity=2).fit(train_data=train,
+                                                  hyperparameters=algorithms_to_run)
+    highest_acc = 0
+    best_model = None
+    results = []
+    training_results = predictor.info()
+    for model in training_results["model_info"].keys():
+        accuracy = training_results["model_info"][model]['val_score']
+        ft_imp = predictor.feature_importance(data=test, model=model, feature_stage='original')
+        entry = Result(
+            algorithm=model,
+            accuracy=accuracy,
+            feature_importance=dict(zip(list(ft_imp.index), ft_imp['importance'])),
+            train_time=training_results["model_info"][model]['fit_time'],
+            approach=approach,
+            data_label=data_label,
+            data_path=join_name,
+            join_path_features=list(X_train.columns)
+        )
+        if value_ratio:
+            entry.cutoff_threshold = value_ratio
+
+        if accuracy > highest_acc:
+            highest_acc = accuracy
+            best_model = entry
+
+        results.append(entry)
+
+    return best_model, results
