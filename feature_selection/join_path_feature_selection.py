@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -47,8 +47,8 @@ def measure_conditional_redundancy(dataframe: pd.DataFrame, selected_features: L
     return final_feature_scores, final_feature_names
 
 
-def measure_redundancy(dataframe, feature_group: List[str], target_column):
-    if len(feature_group) == 1:
+def measure_redundancy(dataframe, feature_group: List[str], target_column) -> Tuple[List[float] or None, List[str]]:
+    if len(feature_group) == 1 or len(feature_group) == 0:
         return None, feature_group
 
     scores = np.vectorize(lambda feature:

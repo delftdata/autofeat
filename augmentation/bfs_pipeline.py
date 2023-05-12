@@ -15,15 +15,8 @@ from helpers.util_functions import get_df_with_prefix
 
 
 class BfsAugmentation:
-    RANKED_PATHS = 'ranked_paths'
 
-    GBM = "LightGBM"
-    RF = "RandomForest"
-    XT = "ExtraTrees"
-    XGB = "XGBoost"
-    WEL2 = "WeightedEnsemble_L2"
-
-    def __init__(self, base_table_label: str, target_column: str, value_ratio: float, auto_gluon: bool = False):
+    def __init__(self, base_table_label: str, target_column: str, value_ratio: float, auto_gluon: bool = True):
         """
 
         :param base_table_label: The name (label) of the base table to be used for saving data.
@@ -33,7 +26,7 @@ class BfsAugmentation:
         self.base_table_label: str = base_table_label
         self.target_column: str = target_column
         self.value_ratio: float = value_ratio
-        self.auto_gluon = auto_gluon
+        self.auto_gluon: bool = auto_gluon
         # Store the accuracy from CART for each join path
         self.ranked_paths: Dict[str, Result] = {}
         # Mapping with the name of the join and the corresponding name of the file containing the join result.
@@ -50,7 +43,7 @@ class BfsAugmentation:
         self.all_results = []
 
         # Ablation study parameters
-        self.total_paths = []
+        self.total_paths: Dict[str, int] = {}
         self.enumerate_paths = False
         self.join_step = True
         self.sample_data_step = True
@@ -209,7 +202,7 @@ class BfsAugmentation:
                     continue
             else:
                 current_queue.add(join_name)
-                self.total_paths.append(join_name)
+                self.total_paths[join_name] = 0
                 continue
 
             # Step - Data quality
@@ -249,7 +242,7 @@ class BfsAugmentation:
                     continue
 
             current_queue.add(join_name)
-            self.total_paths.append(join_name)
+            self.total_paths[join_name] = len(current_selected_features)
             self.join_name_mapping[join_name] = join_filename
             self.partial_join_selected_features[join_name] = current_selected_features
 

@@ -184,7 +184,8 @@ def ablation_study_enumerate_paths(datasets: List[Dataset], value_ratio: float):
                                         target_column=dataset.target_column,
                                         value_ratio=value_ratio)
         total_time = bfs_traversal.enumerate_all_paths(queue={str(dataset.base_table_id)})
-        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths.keys())
+        results[f"{dataset.base_table_label}_features"] = bfs_traversal.total_paths
         results[f"{dataset.base_table_label}_runtime"] = total_time
 
     return results
@@ -197,7 +198,8 @@ def ablation_study_prune_paths(datasets: List[Dataset], value_ratio: float):
                                         target_column=dataset.target_column,
                                         value_ratio=value_ratio)
         total_time = bfs_traversal.prune_paths(queue={str(dataset.base_table_id)})
-        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths.keys())
+        results[f"{dataset.base_table_label}_features"] = bfs_traversal.total_paths
         results[f"{dataset.base_table_label}_runtime"] = total_time
 
     return results
@@ -210,7 +212,8 @@ def ablation_study_enumerate_and_join(datasets: List[Dataset], value_ratio: floa
                                         target_column=dataset.target_column,
                                         value_ratio=value_ratio)
         total_time = bfs_traversal.enumerate_and_join(queue={str(dataset.base_table_id)})
-        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths.keys())
+        results[f"{dataset.base_table_label}_features"] = bfs_traversal.total_paths
         results[f"{dataset.base_table_label}_runtime"] = total_time
     return results
 
@@ -222,7 +225,8 @@ def ablation_study_feature_selection(datasets: List[Dataset], value_ratio: float
                                         target_column=dataset.target_column,
                                         value_ratio=value_ratio)
         total_time = bfs_traversal.apply_feature_selection(queue={str(dataset.base_table_id)})
-        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths.keys())
+        results[f"{dataset.base_table_label}_features"] = bfs_traversal.total_paths
         results[f"{dataset.base_table_label}_runtime"] = total_time
     return results
 
@@ -234,7 +238,8 @@ def ablation_study_prune_join_key_level(datasets: List[Dataset], value_ratio: fl
                                         target_column=dataset.target_column,
                                         value_ratio=value_ratio)
         total_time = bfs_traversal.prune_join_key_level(queue={str(dataset.base_table_id)})
-        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths)
+        results[f"{dataset.base_table_label}_paths"] = len(bfs_traversal.total_paths.keys())
+        results[f"{dataset.base_table_label}_features"] = bfs_traversal.total_paths
         results[f"{dataset.base_table_label}_runtime"] = total_time
     return results
 
@@ -257,7 +262,7 @@ def all_ablation(datasets: List[Dataset], value_ratio: float):
     result = ablation_study_prune_join_key_level(datasets, value_ratio=value_ratio)
     all_results.append(result)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f'ablation_study_{value_ratio}.csv', index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f'ablation_study_{value_ratio}_autogluon.csv', index=False)
 
 
 def tune_value_ratio_threshold(datasets: List[Dataset]):
@@ -350,7 +355,7 @@ def test_autogluon():
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(credit, sample_size=3000)
-aggregate_results()
+# aggregate_results()
 
 # ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=0.5)
 # {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),
@@ -376,4 +381,4 @@ aggregate_results()
 
 # tune_value_ratio_threshold(CLASSIFICATION_DATASETS)
 
-# all_ablation(CLASSIFICATION_DATASETS, value_ratio=0.5)
+all_ablation(CLASSIFICATION_DATASETS, value_ratio=0.65)
