@@ -23,3 +23,7 @@ PLOTS_FOLDER = ROOT_FOLDER / "plots" / "2024"
 RESULTS_FOLDER = ROOT_FOLDER / "results"
 
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
+
+### CREDENTIALS ###
+NEO4J_HOST = "neo4j://localhost:7687"
+NEO4J_CREDENTIALS = ("neo4j", "pass1234")

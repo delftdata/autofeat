@@ -146,3 +146,6 @@ dmypy.json
 /plots/*
 /results/*
 /results_workshop/
+
+# AutoGluon
+/AutogluonModels/*

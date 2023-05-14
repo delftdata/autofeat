@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase
 
+from feature_discovery.config import NEO4J_HOST, NEO4J_CREDENTIALS
 from feature_discovery.graph_processing.neo4j_queries import (
     _create_relation,
     _merge_nodes_relation_tables,
@@ -19,10 +20,8 @@ from feature_discovery.graph_processing.neo4j_queries import (
 from feature_discovery.graph_processing.neo4j_queries import _get_adjacent_nodes_rels
 
 driver = GraphDatabase.driver(
-    f"neo4j://localhost:7687",
-    # auth=("neo4j", "pass1234")
-    # f"neo4j://neo4j:7687",
-    auth=("neo4j", "pass")
+    NEO4J_HOST,
+    auth=NEO4J_CREDENTIALS
 )
 
 
