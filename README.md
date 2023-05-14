@@ -13,12 +13,17 @@
 
 ## Workflow 
 
-1. Create neo4j database 
+1. Download Neo4j Desktop (developed using version: 1.5.6)
+2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0)
    1. Add the authentication parameters in [neo4j_transactions.py](graph_processing/neo4j_transactions.py)
-2. Create datasets in [tfd_datasets](tfd_datasets)
+3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets
+4. 
+
+### Add new datasets 
+1. Create datasets in [tfd_datasets](tfd_datasets)
    1. If the dataset is for classification, add it to [classification_datasets](tfd_datasets/classification_datasets.py)
    2. If the dataset if for regression, add it to [regression_datasets](tfd_datasets/regression_datasets.py)
-3. Ingest the datasets in neo4j
+   3. Ingest the datasets in neo4j
 
 ### python setup
 1. Create virtual environment
