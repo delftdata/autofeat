@@ -128,11 +128,15 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# VSCode
+.vscode/
+
 .DS_Store
 .idea
 */**/.DS_Store
 /ada/*
 /data/*
+!/data/.keep
 /experiment_results/*
 /experiments/AutogluonModels/*
 /joined-df/*
