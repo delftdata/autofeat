@@ -136,6 +136,7 @@ dmypy.json
 */**/.DS_Store
 /ada/*
 /data/*
+!/data/.keep
 /experiment_results/*
 /experiments/AutogluonModels/*
 /joined-df/*
@@ -145,5 +146,3 @@ dmypy.json
 /plots/*
 /results/*
 /results_workshop/
-/src/**/data/*
-!/src/**/data/.keep

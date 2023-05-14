@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.resolve()
+ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.parent.parent.resolve()
 
 # MAPPING = "mapping.json"
 MAPPING = "mapping_"
