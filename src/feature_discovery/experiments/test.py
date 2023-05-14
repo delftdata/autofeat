@@ -351,13 +351,13 @@ def test_autogluon():
 
 # test_autogluon()
 
-# test_bfs_pipeline(school_small, value_ratio=0.65)
+test_bfs_pipeline(school_small, value_ratio=0.65)
 # test_dfs_pipeline()
 # test_base_accuracy(accounting)
 # test_arda(credit, sample_size=3000)
 # aggregate_results()
 
-ablation_study_enumerate_paths([school_small], value_ratio=0.65)
+# ablation_study_enumerate_paths([school_small], value_ratio=0.65)
 # {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),
 #  'steel': (183, 0.6745116710662842)}
 

@@ -15,19 +15,11 @@ RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'verify_ranking.csv'
 ALL_PATHS = 'all_paths'
 
-# CURRENT = "ARDA"
 DATA = "data"
-CURRENT = "cs"
-MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024' / "tables"
-JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df' / '2024'
-# DATA_FOLDER = ROOT_FOLDER / Path("..") / 'data' / 'nyc'
-# DATA_FOLDER = ROOT_FOLDER / 'data' / 'air'
-# DATA_FOLDER = ROOT_FOLDER / 'data' / 'cs'
+MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024'
+JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df'
 DATA_FOLDER = ROOT_FOLDER / DATA
-# DATA_FOLDER = ROOT_FOLDER / 'other-data' / 'synthetic'
-PLOTS_FOLDER = ROOT_FOLDER / "plots"
-# RESULTS_FOLDER = ROOT_FOLDER / "results" / "cs"
-RESULTS_FOLDER = ROOT_FOLDER / "results" / "2024"
-# RESULTS_FOLDER = ROOT_FOLDER / "results" / "air"
+PLOTS_FOLDER = ROOT_FOLDER / "plots" / "2024"
+RESULTS_FOLDER = ROOT_FOLDER / "results"
 
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
