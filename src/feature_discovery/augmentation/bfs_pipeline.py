@@ -316,6 +316,7 @@ class BfsAugmentation:
 
     def step_join(self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame,
                   right_label: str) -> Tuple[pd.DataFrame or None, str]:
+
         join_prop, from_table, to_table = join_key_properties
 
         # Step - Sample neighbour data - Transform to 1:1 or M:1
@@ -325,14 +326,14 @@ class BfsAugmentation:
                                                                                                   random_state=42)
 
         # File naming convention as the filename can be gigantic
-        join_filename = f"join_BFS_{self.value_ratio}_{self.counter}.csv"
+        join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{self.counter}.csv"
         self.counter += 1
 
         # Join
         joined_df = join_and_save(left_df=left_df, right_df=sampled_right_df,
                                   left_column_name=f"{from_table}.{join_prop['from_column']}",
                                   right_column_name=f"{to_table}.{join_prop['to_column']}",
-                                  join_path=JOIN_RESULT_FOLDER / self.base_table_label / join_filename)
+                                  join_path=JOIN_RESULT_FOLDER / join_filename)
         if joined_df is None:
             return None, join_filename
 
@@ -448,7 +449,7 @@ class BfsAugmentation:
             self.initialise_ranks_features(join_name=partial_join_name, dataframe=partial_join)
         else:
             partial_join = pd.read_csv(
-                JOIN_RESULT_FOLDER / self.base_table_label / self.join_name_mapping[partial_join_name], header=0,
+                JOIN_RESULT_FOLDER / self.join_name_mapping[partial_join_name], header=0,
                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         return partial_join, partial_join_name
 

@@ -20,8 +20,9 @@ from feature_discovery.graph_processing.neo4j_queries import _get_adjacent_nodes
 
 driver = GraphDatabase.driver(
     f"neo4j://localhost:7687",
-    auth=("neo4j", "pass1234")
-    # f"neo4j://neo4j:7687", auth=("neo4j", "pass")
+    # auth=("neo4j", "pass1234")
+    # f"neo4j://neo4j:7687",
+    auth=("neo4j", "pass")
 )
 
 
