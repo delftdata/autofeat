@@ -1,23 +1,29 @@
 version: "3.9"
+networks:
+  auto-data-augmentation-internal:
+
+
 services:
-  api:
-    build: .
-    ports:
-      - "5000:5000"
-    volumes:
-      - .:/feature-discovery
+  runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     tty: true
-    restart: always
+    # restart: always
 
   neo4j:
-    image: neo4j:5.1.0-enterprise
+    image: neo4j:latest
+    hostname: feature-discovery-neo4j
+    volumes:
+      - ./neo4j-db:/neo4j-db
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
-      - NEO4J_AUTH=neo4j/pass
-      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
-      - NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.*
-      - NEO4J_apoc_import_file_enabled=true
-      - NEO4J_apoc_export_file_enabled=true
-      - NEO4JLABS_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_AUTH=none
+      # - NEO4J_dbms_security_procedures_unrestricted=gds.*
+      # - NEO4J_dbms_security_procedures_allowlist=gds.*
+      # - NEO4JLABS_PLUGINS = ["graph-data-science"]
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+    tty: true
+
