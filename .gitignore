@@ -128,6 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# VSCode
+.vscode/
+
 .DS_Store
 .idea
 */**/.DS_Store
@@ -142,3 +145,5 @@ dmypy.json
 /plots/*
 /results/*
 /results_workshop/
+/src/**/data/*
+!/src/**/data/.keep
