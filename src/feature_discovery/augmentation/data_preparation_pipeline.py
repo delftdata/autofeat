@@ -70,8 +70,6 @@ def data_preparation_tables(ingest=True, enumerate_paths=True):
 def ingest_data_with_connections(dataset: Dataset, profile_valentine_in_dataset: bool = False,
                                  profile_valentine_all_database: bool = False):
     mapping = ingest_unprocessed_data(dataset.base_table_label)
-    with open(MAPPING_FOLDER / f"{MAPPING + dataset.base_table_label + JSON}", 'w') as fp:
-        json.dump(mapping, fp)
 
     if profile_valentine_in_dataset:
         profile_valentine_dataset(dataset.base_table_label)

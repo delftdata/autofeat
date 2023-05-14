@@ -32,30 +32,39 @@ def ingest_fabricated_data() -> dict:
     return mapping
 
 
-def ingest_unprocessed_data(dataset_name: str):
+def ingest_unprocessed_data(dataset_folder_name: str = None):
     print("Process the tables ...")
-    files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
+
+    if dataset_folder_name:
+        files = glob.glob(f"{DATA_FOLDER / dataset_folder_name}/**/*.csv", recursive=True)
+    else:
+        files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+
     # Filter out connections.csv file
     files = [f for f in files if CONNECTIONS not in f and f.endswith("csv")]
     mapping = {}
 
     for f in files:
-        table_path = f
-        table_name = f.partition(f"{DATA_FOLDER / dataset_name}/")[2]
+        table_path = f.partition(f"{DATA_FOLDER}")[2]
+        table_name = table_path.split("/")[-1]
 
         mapping[table_name] = table_path
 
     print("Add the ground-truth ... ")
-    connection_filename = glob.glob(f"{DATA_FOLDER / dataset_name}/**/{CONNECTIONS}", recursive=True)[0]
-    connections = pd.read_csv(connection_filename)
+    if dataset_folder_name:
+        connection_filename = glob.glob(f"{DATA_FOLDER / dataset_folder_name}/**/{CONNECTIONS}", recursive=True)
+    else:
+        connection_filename = glob.glob(f"{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)
 
-    for index, row in connections.iterrows():
-        merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
-                                    b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
-                                    a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
-        merge_nodes_relation_tables(a_table_name=row["pk_table"], a_table_path=mapping[row["pk_table"]],
-                                    b_table_name=row["fk_table"], b_table_path=mapping[row["fk_table"]],
-                                    a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
+    for connection_file in connection_filename:
+        connections = pd.read_csv(connection_filename)
+        for index, row in connections.iterrows():
+            merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
+                                        b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
+                                        a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
+            merge_nodes_relation_tables(a_table_name=row["pk_table"], a_table_path=mapping[row["pk_table"]],
+                                        b_table_name=row["fk_table"], b_table_path=mapping[row["fk_table"]],
+                                        a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
 
     return mapping
 
