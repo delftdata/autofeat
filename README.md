@@ -7,6 +7,18 @@
 
 ## Setup
 
+### Fix libomp
+LighGBM on AutoGluon [gives Segmentation Fault](https://github.com/autogluon/autogluon/issues/1442) or won't run unless you install the corret libomp 
+as described [here](https://github.com/autogluon/autogluon/pull/1453/files). 
+Steps: 
+```
+wget https://raw.githubusercontent.com/Homebrew/homebrew-core/fb8323f2b170bd4ae97e1bac9bf3e2983af3fdb0/Formula/libomp.rb
+brew uninstall libomp
+brew install libomp.rb
+rm libomp.rb
+```
+
+
 [comment]: <> (### neo4j databse)
 
 [comment]: <> (1. Import the database [neo4j-data.dump]&#40;neo4j-db/neo4j-data.dump&#41; in neo4j following these [instructions]&#40;https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/&#41;.)
