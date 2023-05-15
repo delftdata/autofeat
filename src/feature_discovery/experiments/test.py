@@ -121,12 +121,6 @@ def test_autogluon():
 
 # test_autogluon()
 
-# test_bfs_pipeline(school_small, value_ratio=0.65)
-# test_dfs_pipeline()
-# test_base_accuracy(accounting)
-# test_arda(credit, sample_size=3000)
-# aggregate_results()
-
 # ablation_study_enumerate_paths([school_small], value_ratio=0.65)
 # {'nyc': (11, 16.809264183044434), 'school': (1092, 2.2020440101623535), 'credit': (1, 0.5188112258911133),
 #  'steel': (183, 0.6745116710662842)}
@@ -148,7 +142,3 @@ def test_autogluon():
 #  'steel': (37, 201.2652440071106)}
 # {'nyc': (3, 65.19033694267273), 'school': (57, 928.0529820919037), 'credit': (1, 4.812485933303833),
 #  'steel': (1, 5.542677164077759)}
-
-# tune_value_ratio_threshold(CLASSIFICATION_DATASETS)
-
-# all_ablation(CLASSIFICATION_DATASETS, value_ratio=0.65)

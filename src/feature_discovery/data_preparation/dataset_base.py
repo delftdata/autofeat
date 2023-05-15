@@ -14,12 +14,15 @@ class Dataset:
         self.base_table_path = base_table_path
         self.target_column = target_column
         self.base_table_name = base_table_name
+        self.base_table_id = base_table_path / base_table_name
         self.base_table_label = base_table_label
         self.base_table_features = base_table_features
-        self.dataset_type = dataset_type
         self.base_table_df = None
 
-        self.base_table_id = base_table_path / base_table_name
+        if dataset_type == "classification":
+            self.dataset_type = CLASSIFICATION
+        else:
+            self.dataset_type = REGRESSION
 
     def set_features(self):
         if self.base_table_df is not None:

@@ -9,6 +9,7 @@ import tqdm as tqdm
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
+from feature_discovery.config import DATA_FOLDER
 from feature_discovery.data_preparation.join_data import join_directly_connected
 from feature_discovery.data_preparation.utils import (
     prepare_data_for_ml,
@@ -213,7 +214,7 @@ def select_arda_features_budget_join(
 
     # Read base table, uniform sample, set budget size
     left_table = pd.read_csv(
-        base_node_id,
+        str(DATA_FOLDER / base_node_id),
         header=0,
         engine="python",
         encoding="utf8",
@@ -268,7 +269,7 @@ def select_arda_features_budget_join(
 
             # Read right table, aggregate on the join key (reduce to 1:1 or M:1 join) by random sampling
             right_table = pd.read_csv(
-                node_id,
+                str(DATA_FOLDER / node_id),
                 header=0,
                 engine="python",
                 encoding="utf8",

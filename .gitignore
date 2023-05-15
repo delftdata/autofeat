@@ -134,7 +134,7 @@ dmypy.json
 .DS_Store
 .idea
 */**/.DS_Store
-/ada/*
+/env/*
 /data/*
 !/data/.keep
 /experiment_results/*
@@ -149,3 +149,4 @@ dmypy.json
 
 # AutoGluon
 /AutogluonModels/*
+/src/feature_discovery/**/AutogluonModels/*
