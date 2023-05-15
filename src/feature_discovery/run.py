@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import time
 
+import tqdm
 from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
 from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER
@@ -57,7 +58,7 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
         return [entry]
 
     all_results = []
-    for params in hyper_parameters.items():
+    for params in tqdm.tqdm(hyper_parameters.items()):
         hyper_param = dict([params])
         print(f"Base result on table {dataset.base_table_id} with hyper-parameters {hyper_param}")
 
@@ -130,7 +131,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         return [entry]
 
     all_results = []
-    for params in hyper_parameters.items():
+    for params in tqdm.tqdm(hyper_parameters.items()):
         print(f"Running {params[0]} on ARDA Feature Selection result with AutoGluon")
         hyper_param = dict([params])
         _, results = run_auto_gluon(
@@ -154,7 +155,7 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
     print(f"BFS result with table {dataset.base_table_id}")
 
     all_results = []
-    for params in hyper_parameters.items():
+    for params in tqdm.tqdm(hyper_parameters.items()):
         print(f"Running {params[0]} on TFD (Transitive Feature Discovery) result with AutoGluon")
         hyper_param = dict([params])
 
@@ -198,7 +199,7 @@ def get_classification_results(
     all_results = []
     datasets = filter_datasets(dataset_labels)
 
-    for dataset in datasets:
+    for dataset in tqdm.tqdm(datasets):
         result_bfs = get_tfd_results(dataset, value_ratio=value_ratio)
         all_results.extend(result_bfs)
         result_base = get_base_results(dataset)
@@ -209,32 +210,32 @@ def get_classification_results(
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
 
-def get_results_ablation_classification(value_ratio: float):
+def get_results_ablation_classification(value_ratio: float, dataset_labels: List[Dataset], results_filename: str):
     all_results = []
 
-    result = ablation_study_enumerate_paths(CLASSIFICATION_DATASETS, value_ratio=value_ratio)
+    result = ablation_study_enumerate_paths(dataset_labels, value_ratio=value_ratio)
     all_results.append(result)
 
-    result = ablation_study_enumerate_and_join(CLASSIFICATION_DATASETS, value_ratio=value_ratio)
+    result = ablation_study_enumerate_and_join(dataset_labels, value_ratio=value_ratio)
     all_results.append(result)
 
-    result = ablation_study_prune_paths(CLASSIFICATION_DATASETS, value_ratio=value_ratio)
+    result = ablation_study_prune_paths(dataset_labels, value_ratio=value_ratio)
     all_results.append(result)
 
-    result = ablation_study_feature_selection(CLASSIFICATION_DATASETS, value_ratio=value_ratio)
+    result = ablation_study_feature_selection(dataset_labels, value_ratio=value_ratio)
     all_results.append(result)
 
-    result = ablation_study_prune_join_key_level(CLASSIFICATION_DATASETS, value_ratio=value_ratio)
+    result = ablation_study_prune_join_key_level(dataset_labels, value_ratio=value_ratio)
     all_results.append(result)
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"ablation_study_{value_ratio}_autogluon.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
 
 
-def get_results_tune_value_ratio_classification():
+def get_results_tune_value_ratio_classification(datasets: List[Dataset], results_filename: str):
     all_results = []
     value_ratio_threshold = np.arange(0.15, 1.05, 0.05)
     for threshold in value_ratio_threshold:
-        for dataset in CLASSIFICATION_DATASETS:
+        for dataset in datasets:
             result_bfs = get_tfd_results(dataset, value_ratio=threshold)
             all_results.extend(result_bfs)
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"all_results_value_ratio_tuning.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
