@@ -149,3 +149,4 @@ dmypy.json
 
 # AutoGluon
 /AutogluonModels/*
+/src/feature_discovery/**/AutogluonModels/*
