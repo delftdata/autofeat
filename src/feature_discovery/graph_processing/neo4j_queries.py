@@ -1,5 +1,3 @@
-
-
 def _create_relation(tx, a_id, b_id, relation_name, weight):
     tx_result = tx.run("MATCH (a:Node {id: $a_id}) WITH a "
                        "MATCH (b:Node {id: $b_id}) "
@@ -145,4 +143,44 @@ def _get_adjacent_nodes(tx, node_id):
     values = []
     for record in tx_result:
         values.append(record["id"])
+    return values
+
+
+def _export_all_connections(tx):
+    tx_results = tx.run(
+        "match (n)-[r]-(m) "
+        "where n.label=r.from_label and m.label=r.to_label "
+        "with n, m, r, "
+        "split(n.id, n.label)[0] as from_path, "
+        "split(m.id, m.label)[0] as to_path "
+        "return from_path, n.label as from_table, r.from_column as from_column, "
+        "to_path, m.label as to_label, r.to_column as to_column")
+    return _parse_records(tx_results)
+
+
+def _export_dataset_connections(tx, dataset_label):
+    tx_results = tx.run(
+        "match (n)-[r]-(m) "
+        "where n.id contains $dataset_label and n.label=r.from_label and m.label=r.to_label "
+        "with n, m, r, "
+        "split(n.id, n.label)[0] as from_path, "
+        "split(m.id, m.label)[0] as to_path "
+        "return from_path, n.label as from_table, r.from_column as from_column, "
+        "to_path, m.label as to_label, r.to_column as to_column",
+        dataset_label=dataset_label)
+    return _parse_records(tx_results)
+
+
+def _parse_records(tx_results):
+    values = []
+    for record in tx_results:
+        values.append({
+            "from_path": record["from_path"],
+            "from_table": record["from_table"],
+            "from_column": record["from_column"],
+            "to_path": record["to_path"],
+            "to_label": record["to_label"],
+            "to_column": record["to_column"]
+        })
+
     return values

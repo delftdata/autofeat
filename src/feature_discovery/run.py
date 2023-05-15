@@ -18,6 +18,7 @@ from feature_discovery.experiments.ablation_experiments import (
     ablation_study_prune_join_key_level,
 )
 from feature_discovery.experiments.result_object import Result
+from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
 
 hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
@@ -241,3 +242,14 @@ def get_results_tune_value_ratio_classification(datasets: List[Dataset], results
             result_bfs = get_tfd_results(dataset, value_ratio=threshold)
             all_results.extend(result_bfs)
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
+
+
+def export_neo4j_connections(dataset_label: str = None):
+    if dataset_label:
+        result = export_dataset_connections(dataset_label)
+    else:
+        result = export_all_connections()
+    print(result)
+
+    pd.DataFrame(result).to_csv("all_connections.csv", index=False)
+
