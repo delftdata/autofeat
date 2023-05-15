@@ -8,15 +8,18 @@ from feature_discovery.augmentation.trial_error import train_test_cart, run_auto
 from feature_discovery.config import JOIN_RESULT_FOLDER
 from feature_discovery.data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
 from feature_discovery.experiments.result_object import Result
-from feature_discovery.feature_selection.join_path_feature_selection import measure_relevance, measure_conditional_redundancy, \
+from feature_discovery.feature_selection.join_path_feature_selection import measure_relevance, \
+    measure_conditional_redundancy, \
     measure_joint_mutual_information, measure_redundancy
-from feature_discovery.graph_processing.neo4j_transactions import get_node_by_id, get_adjacent_nodes, get_relation_properties_node_name
+from feature_discovery.graph_processing.neo4j_transactions import get_node_by_id, get_adjacent_nodes, \
+    get_relation_properties_node_name
 from feature_discovery.helpers.util_functions import get_df_with_prefix
 
 
 class BfsAugmentation:
 
-    def __init__(self, base_table_label: str, target_column: str, value_ratio: float, auto_gluon: bool = True):
+    def __init__(self, base_table_label: str, target_column: str, value_ratio: float, auto_gluon: bool = True,
+                 auto_gluon_hyper_parameters: Dict[str, dict] = None):
         """
 
         :param base_table_label: The name (label) of the base table to be used for saving data.
@@ -27,6 +30,7 @@ class BfsAugmentation:
         self.target_column: str = target_column
         self.value_ratio: float = value_ratio
         self.auto_gluon: bool = auto_gluon
+        self.hyper_parameters = auto_gluon_hyper_parameters
         # Store the accuracy from CART for each join path
         self.ranked_paths: Dict[str, Result] = {}
         # Mapping with the name of the join and the corresponding name of the file containing the join result.
@@ -39,8 +43,6 @@ class BfsAugmentation:
         self.counter = 0
         # Track the base table accuracy in the final step
         self.base_node_label = None
-        self.hyper_parameters = {'RF': {}, 'GBM': {}, 'XGB': {}, 'XT': {}}
-        self.all_results = []
 
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
@@ -413,14 +415,14 @@ class BfsAugmentation:
             features.append(self.target_column)
 
         if self.auto_gluon:
-            result, all_results = run_auto_gluon(approach=Result.TFD,
-                                                 dataframe=dataframe[features],
-                                                 target_column=self.target_column,
-                                                 data_label=self.base_table_label,
-                                                 join_name=join_name,
-                                                 algorithms_to_run=self.hyper_parameters,
-                                                 value_ratio=self.value_ratio)
-            self.all_results.extend(all_results)
+            _, all_results = run_auto_gluon(approach=Result.TFD,
+                                            dataframe=dataframe[features],
+                                            target_column=self.target_column,
+                                            data_label=self.base_table_label,
+                                            join_name=join_name,
+                                            algorithms_to_run=self.hyper_parameters,
+                                            value_ratio=self.value_ratio)
+            result = all_results[0]
         else:
             result = train_test_cart(train_data=dataframe[features], target_column=self.target_column)
         return result
@@ -463,14 +465,14 @@ class BfsAugmentation:
 
         if len(self.join_name_mapping.keys()) == 0:
             if self.auto_gluon:
-                entry, all_results = run_auto_gluon(approach=Result.TFD,
-                                                    dataframe=aux_df,
-                                                    target_column=self.target_column,
-                                                    data_label=self.base_table_label,
-                                                    join_name=join_name,
-                                                    algorithms_to_run=self.hyper_parameters,
-                                                    value_ratio=self.value_ratio)
-                self.all_results.extend(all_results)
+                _, all_results = run_auto_gluon(approach=Result.TFD,
+                                                dataframe=aux_df,
+                                                target_column=self.target_column,
+                                                data_label=self.base_table_label,
+                                                join_name=join_name,
+                                                algorithms_to_run=self.hyper_parameters,
+                                                value_ratio=self.value_ratio)
+                entry = all_results[0]
             else:
                 entry = train_test_cart(train_data=aux_df,
                                         target_column=self.target_column)

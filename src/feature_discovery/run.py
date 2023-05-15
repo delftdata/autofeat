@@ -33,7 +33,6 @@ def filter_datasets(dataset_labels: Optional[List[str]] = None):
 
 
 def get_base_results(dataset: Dataset, autogluon: bool = True):
-    print(f"Base result on table {dataset.base_table_id}")
     dataframe = pd.read_csv(
         DATA_FOLDER / dataset.base_table_id,
         header=0,
@@ -43,17 +42,9 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
         escapechar="\\",
     )
 
-    if autogluon:
-        best_result, all_results = run_auto_gluon(
-            approach=Result.BASE,
-            dataframe=dataframe,
-            target_column=dataset.target_column,
-            data_label=dataset.base_table_label,
-            join_name=dataset.base_table_label,
-            algorithms_to_run=hyper_parameters,
-        )
-        return all_results
-    else:
+    if not autogluon:
+        print(f"Base result on table {dataset.base_table_id}")
+
         entry = train_test_cart(
             train_data=dataframe,
             target_column=dataset.target_column,
@@ -64,6 +55,23 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
         entry.data_path = dataset.base_table_label
 
         return [entry]
+
+    all_results = []
+    for params in hyper_parameters.items():
+        hyper_param = dict([params])
+        print(f"Base result on table {dataset.base_table_id} with hyper-parameters {hyper_param}")
+
+        _, result = run_auto_gluon(
+            approach=Result.BASE,
+            dataframe=dataframe,
+            target_column=dataset.target_column,
+            data_label=dataset.base_table_label,
+            join_name=dataset.base_table_label,
+            algorithms_to_run=hyper_param,
+        )
+        all_results.extend(result)
+
+    return all_results
 
 
 def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool = True) -> List:
@@ -105,20 +113,8 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     features = selected_features.copy()
     features.append(dataset.target_column)
 
-    if autogluon:
-        best_result, all_results = run_auto_gluon(
-            approach=Result.ARDA,
-            dataframe=dataframe[features],
-            target_column=dataset.target_column,
-            data_label=dataset.base_table_label,
-            join_name=join_name,
-            algorithms_to_run=hyper_parameters,
-        )
-        for result in all_results:
-            result.feature_selection_time = end - start
-            result.total_time += result.feature_selection_time
-        return all_results
-    else:
+    if not autogluon:
+        print("Running CART on ARDA feature selection ... ")
         entry = train_test_cart(
             train_data=dataframe[features],
             target_column=dataset.target_column,
@@ -131,46 +127,67 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         entry.data_path = join_name
         entry.join_path_features = selected_features
 
-        print(entry)
-
         return [entry]
+
+    all_results = []
+    for params in hyper_parameters.items():
+        print(f"Running {params[0]} on ARDA Feature Selection result with AutoGluon")
+        hyper_param = dict([params])
+        _, results = run_auto_gluon(
+            approach=Result.ARDA,
+            dataframe=dataframe[features],
+            target_column=dataset.target_column,
+            data_label=dataset.base_table_label,
+            join_name=join_name,
+            algorithms_to_run=hyper_param,
+        )
+        for result in results:
+            result.feature_selection_time = end - start
+            result.total_time += result.feature_selection_time
+
+        all_results.extend(results)
+
+    return all_results
 
 
 def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
     print(f"BFS result with table {dataset.base_table_id}")
 
-    start = time.time()
-    bfs_traversal = BfsAugmentation(
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        auto_gluon=auto_gluon,
-    )
-    bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
-    end = time.time()
+    all_results = []
+    for params in hyper_parameters.items():
+        print(f"Running {params[0]} on TFD (Transitive Feature Discovery) result with AutoGluon")
+        hyper_param = dict([params])
 
-    print("FINISHED BFS")
+        start = time.time()
+        bfs_traversal = BfsAugmentation(
+            base_table_label=dataset.base_table_label,
+            target_column=dataset.target_column,
+            value_ratio=value_ratio,
+            auto_gluon=auto_gluon,
+            auto_gluon_hyper_parameters=hyper_param
+        )
+        bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
+        end = time.time()
 
-    # Aggregate results
-    results = []
-    for join_name in bfs_traversal.join_name_mapping.keys():
-        aux = list(filter(lambda x: x.data_path == join_name, bfs_traversal.all_results))
+        print("FINISHED BFS")
 
-        for item in aux:
+        # Aggregate results
+        results = []
+        for join_name in bfs_traversal.ranked_paths.keys():
+            item = bfs_traversal.ranked_paths[join_name]
             item.feature_selection_time = end - start
             item.total_time += item.feature_selection_time
             results.append(item)
 
+        all_results.extend(results)
+
     # Save results
-    pd.DataFrame(results).to_csv(
+    pd.DataFrame(all_results).to_csv(
         RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
         index=False,
     )
-    pd.DataFrame.from_dict(bfs_traversal.join_name_mapping, orient="index", columns=["join_name"]).to_csv(
-        RESULTS_FOLDER / f"join_mapping_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv"
-    )
 
-    return results
+    return all_results
 
 
 def get_classification_results(
