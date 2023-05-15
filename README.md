@@ -46,10 +46,36 @@ rm libomp.rb
 3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets
 
 ### (or) add new datasets 
-1. Create datasets in [tfd_datasets](tfd_datasets)
-   1. If the dataset is for classification, add it to [classification_datasets](tfd_datasets/classification_datasets.py)
-   2. If the dataset if for regression, add it to [regression_datasets](tfd_datasets/regression_datasets.py)
-   3. Ingest the datasets in neo4j using [ingest_data_with_pk_fk](src/feature_discovery/augmentation/data_preparation_pipeline.py)
+1. Create a folder <folder_name> in [data](data)
+2. Add your data in <folder_name> folder.
+3. Add a new line in [datasets](data/datasets.csv) to identify the new dataset. 
+
+Example: 
+
+| base_table_path | base_table_name | base_table_label | target_column | dataset_type |
+| --------------- | --------------- | ---------------- | ------------- | ------------ |
+| "school" | "base.csv" | "school" | "class" | classification |
+
+`base_table_path` is the <folder_name> where you added the data.
+
+`base_table_name` is the name of the table that you want to augment with new features.
+
+`base_table_label` string used to identify your dataset (can be the same as <folder_name> if <folder_name> is human 
+readable).
+
+`target_column` the target/label feature containing the class labels. 
+
+`dataset_type` - "classification" if the dataset is used for classification or "regression" if the dataset
+if used for regression problems. 
+
+4. Ingest the new dataset 
+`feature-discovery-cli ingest-data --dataset_label <base_table_label>`
+
+> Note: `--discover_connections_data_lake` will create even more connections and simulate a real life data lake scenario.
+> However, running the experiments with `--discover_connections_data_lake` flag increases the runtime exponentially. 
+> 
+> Best: Let it run overnight when using `--discover_connections_data_lake`
+
 
 ### Run experiments
 `feature-discovery-cli --help` will show the commands for running experiments: 

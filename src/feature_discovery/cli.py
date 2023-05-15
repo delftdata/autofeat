@@ -4,6 +4,7 @@ import pandas as pd
 import typer
 from typing_extensions import Annotated
 
+from feature_discovery.augmentation.data_preparation_pipeline import ingest_data_with_pk_fk
 from feature_discovery.config import RESULTS_FOLDER
 from feature_discovery.run import (
     filter_datasets,
@@ -118,6 +119,28 @@ def run_tune_value_ratio(
     """ Run experiment on the sensitivity of value_ratio hyper-parameter"""
     datasets = filter_datasets(dataset_labels)
     get_results_tune_value_ratio_classification(datasets, results_file)
+
+
+@app.command()
+def ingest_data(
+        dataset_label: Annotated[
+            Optional[str],
+            typer.Option(help="The label of the dataset to ingest"),
+        ],
+        discover_connections_dataset: Annotated[
+            bool, typer.Option(help="Run dataset discovery to find more connections within the dataset")] = True,
+        discover_connections_data_lake: Annotated[
+            bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
+        ] = False,
+):
+    datasets = filter_datasets([dataset_label])
+    if len(datasets) == 0:
+        raise typer.BadParameter(
+            "Incorrect dataset label. The label should have the same value with <base_table_label>.")
+
+    ingest_data_with_pk_fk(dataset=datasets[0],
+                           profile_valentine=discover_connections_dataset,
+                           mix_datasets=discover_connections_data_lake)
 
 
 if __name__ == "__main__":

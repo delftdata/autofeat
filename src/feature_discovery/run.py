@@ -1,11 +1,11 @@
+import time
 from datetime import time
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-import time
-
 import tqdm
+
 from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
 from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER
@@ -18,9 +18,11 @@ from feature_discovery.experiments.ablation_experiments import (
     ablation_study_prune_join_key_level,
 )
 from feature_discovery.experiments.result_object import Result
-from feature_discovery.tfd_datasets import CLASSIFICATION_DATASETS
+from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
 
 hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+
+init_datasets()
 
 
 def filter_datasets(dataset_labels: Optional[List[str]] = None):
@@ -192,9 +194,9 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
 
 
 def get_classification_results(
-    value_ratio: float,
-    dataset_labels: Optional[List[str]] = None,
-    results_file: str = "all_results_autogluon.csv",
+        value_ratio: float,
+        dataset_labels: Optional[List[str]] = None,
+        results_file: str = "all_results_autogluon.csv",
 ):
     all_results = []
     datasets = filter_datasets(dataset_labels)
