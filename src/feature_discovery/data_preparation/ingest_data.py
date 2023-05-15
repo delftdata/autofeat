@@ -57,7 +57,7 @@ def ingest_unprocessed_data(dataset_folder_name: str = None):
         connection_filename = glob.glob(f"{DATA_FOLDER}/**/{CONNECTIONS}", recursive=True)
 
     for connection_file in connection_filename:
-        connections = pd.read_csv(connection_filename)
+        connections = pd.read_csv(connection_file)
         for index, row in connections.iterrows():
             merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
                                         b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],

@@ -1,11 +1,12 @@
 import json
 
-from feature_discovery.config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER, JSON
+from feature_discovery.config import ENUMERATED_PATHS, MAPPING, MAPPING_FOLDER
 from feature_discovery.data_preparation.dataset_base import Dataset
-from feature_discovery.data_preparation.ingest_data import profile_valentine_dataset, ingest_fabricated_data, ingest_connections, \
+from feature_discovery.data_preparation.ingest_data import profile_valentine_dataset, ingest_fabricated_data, \
+    ingest_connections, \
     ingest_tables, ingest_unprocessed_data, profile_valentine_all
-from feature_discovery.graph_processing.neo4j_transactions import drop_graph, init_graph, enumerate_all_paths, find_graph
-from feature_discovery.tfd_datasets import CLASSIFICATION_DATASETS
+from feature_discovery.graph_processing.neo4j_transactions import drop_graph, init_graph, enumerate_all_paths, \
+    find_graph
 
 
 def data_preparation(ingest_data: bool = True, profile_valentine: bool = False):
@@ -67,14 +68,13 @@ def data_preparation_tables(ingest=True, enumerate_paths=True):
             json.dump(all_paths, fp)
 
 
-def ingest_data_with_connections(dataset: Dataset, profile_valentine_in_dataset: bool = False,
-                                 profile_valentine_all_database: bool = False):
+def ingest_data_with_pk_fk(dataset: Dataset, profile_valentine: bool = False, mix_datasets: bool = False):
     mapping = ingest_unprocessed_data(dataset.base_table_label)
 
-    if profile_valentine_in_dataset:
-        profile_valentine_dataset(dataset.base_table_label)
-    elif profile_valentine_all_database:
+    if profile_valentine and mix_datasets:
         profile_valentine_all()
+    elif profile_valentine and not mix_datasets:
+        profile_valentine_dataset(dataset.base_table_label)
 
 
 if __name__ == "__main__":
