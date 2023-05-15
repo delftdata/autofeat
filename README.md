@@ -7,6 +7,19 @@
 
 ## Setup
 
+### python setup
+1. Create virtual environment
+
+`virtualenv {env-name}`
+
+2. Activate environment 
+
+`source {env-name}/bin/activate`
+
+3. Install requirements 
+
+`pip install -e .`
+
 ### Fix libomp
 LighGBM on AutoGluon [gives Segmentation Fault](https://github.com/autogluon/autogluon/issues/1442) or won't run unless you install the corret libomp 
 as described [here](https://github.com/autogluon/autogluon/pull/1453/files). 
@@ -25,67 +38,92 @@ rm libomp.rb
 
 ## Workflow 
 
-1. Download Neo4j Desktop (developed using version: 1.5.6)
-2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0)
-   1. Add the authentication parameters in [neo4j_transactions.py](graph_processing/neo4j_transactions.py)
-3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets
-4. 
+### Work with our test datasets
 
-### Add new datasets 
-1. Create datasets in [tfd_datasets](tfd_datasets)
-   1. If the dataset is for classification, add it to [classification_datasets](tfd_datasets/classification_datasets.py)
-   2. If the dataset if for regression, add it to [regression_datasets](tfd_datasets/regression_datasets.py)
-   3. Ingest the datasets in neo4j
+1. Download Neo4j Desktop (developed using version: 1.5.6).
+2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0).
+   1. Add the authentication parameters in [config](src/feature_discovery/config.py).
+3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets.
 
-### python setup
-1. Create virtual environment
+### (or) add new datasets 
+1. Create a folder <folder_name> in [data](data).
+2. Add your data in <folder_name> folder.
+3. Add a new line in [datasets](data/datasets.csv) to identify the new dataset. 
 
-`virtualenv {env-name}`
+Example: 
 
-2. Activate environment 
+| base_table_path | base_table_name | base_table_label | target_column | dataset_type |
+| --------------- | --------------- | ---------------- | ------------- | ------------ |
+| "school" | "base.csv" | "school" | "class" | classification |
 
-`source {env-name}/bin/activate`
+`base_table_path` is the <folder_name> where you added the data.
 
-3. Install requirements 
+`base_table_name` is the name of the table that you want to augment with new features.
 
-`pip install -r requirements.txt`
+`base_table_label` string used to identify your dataset (can be the same as <folder_name> if <folder_name> is human 
+readable).
 
-## Run experiments
-All the experiments are in [experiments/all_experiments.py](experiments/all_experiments.py).
-Just run the `main` function and everything will start running. 
-> Note: The experiments take a long time to run.
+`target_column` the target/label feature containing the class labels. 
 
-[comment]: <> (### Non-Aug baseline )
+`dataset_type` - "classification" if the dataset is used for classification or "regression" if the dataset
+if used for regression problems. 
 
-[comment]: <> (1. Locate the file [baseline.py]&#40;augmentation/baseline.py&#41;.)
+4. Ingest the new dataset 
+`feature-discovery-cli ingest-data --dataset_label <base_table_label>`
 
-[comment]: <> (2. Run the script. )
+> Note: `--discover_connections_data_lake` will create even more connections and simulate a real life data lake scenario.
+> However, running the experiments with `--discover_connections_data_lake` flag increases the runtime exponentially. 
+> 
+> Best: Let it run overnight when using `--discover_connections_data_lake`
 
-[comment]: <> (### JoinAll baseline.)
 
-[comment]: <> (1. Locate the file [join-all.py]&#40;augmentation/join-all.py&#41;.)
+### Run experiments
+`feature-discovery-cli --help` will show the commands for running experiments: 
 
-[comment]: <> (2. Run the script. )
+1. `run-all` Runs all experiments (ARDA + base + TFD).
+` feature-discovery-cli run-all --help ` will show you the parameters needed for running 
+2. `run-arda` Runs the ARDA experiments
+` feature-discovery-cli run-arda --help ` will show you the parameters needed for running 
 
-[comment]: <> (### BestRank approach. )
+`--dataset-labels` has to be the label of one of the datasets from [tfd_datasets](src/feature_discovery/tfd_datasets)
 
-[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
+`--results-file` by default the experiments are saved as CSV with a predefined filename.
 
-[comment]: <> (2. Uncomment line 57: )
+Example:
 
-[comment]: <> (`pipeline&#40;datasets, k=1&#41;  # BestRank` )
+`feature-discovery-cli run-arda --dataset-labels steel` Will run the experiments on the _steel_ dataset and the results 
+are saved in [results folder](results)
 
-[comment]: <> (3. Run the script. )
 
-[comment]: <> (### Get top-k best ranked join paths)
+3. `run-base` Runs the base experiments
+` feature-discovery-cli run-base --help ` will show you the parameters needed for running 
 
-[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
+`--dataset-labels` has to be the label of one of the datasets from [tfd_datasets](src/feature_discovery/tfd_datasets)
 
-[comment]: <> (2. Uncomment line 58: )
+`--results-file` by default the experiments are saved as CSV with a predefined filename.
 
-[comment]: <> (`pipeline&#40;datasets&#41;  # Top-k` )
+Example: 
 
-[comment]: <> (3. Run the script. )
+`feature-discovery-cli run-base --dataset-labels steel` Will run the experiments on the _steel_ dataset and the results 
+are saved in [results folder](results)
+
+4. `run-tfd` Runs the TFD experiments.   
+` feature-discovery-cli run-tfd --help ` will show you the parameters needed for running 
+
+`--dataset-labels` has to be the label of one of the datasets from [tfd_datasets](src/feature_discovery/tfd_datasets)
+
+`--results-file` by default the experiments are saved as CSV with a predefined filename.
+
+`--value-ratio` one of the hyper-parameters of our approach, it represents a data quality metric - the percentage of 
+null values (1-value_ratio) allowed in the datasets. Default: 0.55
+
+`--auto-gluon` Runs the experiments using AutoGluon framework. Default True. 
+
+Example: 
+
+`feature-discovery-cli run-tfd --dataset-labels steel --value-ratio 0.65` Will run the experiments on the _steel_ 
+dataset and the results are saved in [results folder](results)
+
 
 ## Datasets 
 
@@ -131,10 +169,3 @@ _Chepurko, Nadiia, et al. "ARDA: Automatic Relational Data Augmentation for Mach
 6. [Visualisations](Visualisations.ipynb) Jupyter Notebook is used to create the plots from the paper using the results from
 [experiment_results](experiment_results). 
 
-
-### Old unused code
-The following modules are not used for this version of the code:
-1. [augmentation_workshop](augmentation_workshop) - data structure and ranking function used for the workshop version
-
-2. [classification_approach](classification_approach) - Old approach using a regressor to predict the ranking
-3. [neo4j-db](neo4j-db) - Contains the dump of the neo4j database we used for the experiments. 

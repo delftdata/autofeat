@@ -1,0 +1,6 @@
+base_table_path,base_table_name,base_table_label,target_column,dataset_type
+"school","base.csv","school","class",classification
+"nyc","housing.csv","nyc","Reporting Construction Type",classification
+"credit","table8.csv","credit","class",classification
+"steel","table10.csv","steel","Class",classification
+"cylinder","table2.csv","cylinder","band_type",classification

@@ -25,16 +25,16 @@ from feature_discovery.helpers.util_functions import (
 
 
 def dfs_traverse_join_pipeline(
-    base_node_id: str,
-    target_column: str,
-    base_table_label: str,
-    join_tree: Dict,
-    join_name_mapping: dict,
-    value_ratio: float,
-    paths_score: Dict,
-    gini: bool,
-    smallest_gini_score=None,
-    previous_paths=None,
+        base_node_id: str,
+        target_column: str,
+        base_table_label: str,
+        join_tree: Dict,
+        join_name_mapping: dict,
+        value_ratio: float,
+        paths_score: Dict,
+        gini: bool,
+        smallest_gini_score=None,
+        previous_paths=None,
 ) -> set:
     """
     Recursive function - the pipeline to traverse the graph give a base node_id, join with the new nodes during traversal,
@@ -126,9 +126,9 @@ def dfs_traverse_join_pipeline(
                 )
 
                 if (
-                    joined_df[f"{to_table}.{join_prop['to_column']}"].count()
-                    / joined_df.shape[0]
-                    < value_ratio
+                        joined_df[f"{to_table}.{join_prop['to_column']}"].count()
+                        / joined_df.shape[0]
+                        < value_ratio
                 ):
                     print("\t\tRight column value ration below 0.5.\nSKIPPED Join")
                     continue
@@ -212,10 +212,10 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
 
 
 def train_test_cart(
-    train_data: pd.DataFrame,
-    target_column: str,
-    prepare_data: bool = True,
-    regression: bool = False,
+        train_data: pd.DataFrame,
+        target_column: str,
+        prepare_data: bool = True,
+        regression: bool = False,
 ) -> Result:
     """
     Train CART decision tree on the dataframe and save the result.
@@ -255,15 +255,8 @@ def train_test_cart(
     return entry
 
 
-def run_auto_gluon(
-    approach: str,
-    dataframe: pd.DataFrame,
-    target_column: str,
-    data_label: str,
-    join_name: str,
-    algorithms_to_run: dict,
-    value_ratio: float = None,
-):
+def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
+                   algorithms_to_run: dict, value_ratio: float = None):
     from sklearn.model_selection import train_test_split
     from autogluon.tabular import TabularPredictor
 
@@ -279,15 +272,17 @@ def run_auto_gluon(
     test = X_test.copy()
     test[target_column] = y_test
 
-    predictor = TabularPredictor(
-        label=target_column, problem_type="binary", verbosity=2
-    ).fit(train_data=train, hyperparameters=algorithms_to_run)
+    predictor = TabularPredictor(label=target_column,
+                                 problem_type="binary").fit(train_data=train,
+                                                            hyperparameters=algorithms_to_run)
     highest_acc = 0
     best_model = None
     results = []
-    training_results = predictor.info()
-    for model in training_results["model_info"].keys():
-        accuracy = training_results["model_info"][model]["val_score"]
+
+    model_names = predictor.get_model_names()
+    for model in model_names[:-1]:
+        result = predictor.evaluate(data=test, model=model)
+        accuracy = result['accuracy']
         ft_imp = predictor.feature_importance(
             data=test, model=model, feature_stage="original"
         )
@@ -295,7 +290,6 @@ def run_auto_gluon(
             algorithm=model,
             accuracy=accuracy,
             feature_importance=dict(zip(list(ft_imp.index), ft_imp["importance"])),
-            train_time=training_results["model_info"][model]["fit_time"],
             approach=approach,
             data_label=data_label,
             data_path=join_name,

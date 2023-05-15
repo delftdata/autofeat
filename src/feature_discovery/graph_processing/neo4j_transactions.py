@@ -1,3 +1,5 @@
+from typing import List
+
 from neo4j import GraphDatabase
 
 from feature_discovery.config import NEO4J_HOST, NEO4J_CREDENTIALS
@@ -14,7 +16,7 @@ from feature_discovery.graph_processing.neo4j_queries import (
     _get_node_by_source_name,
     _get_pk_fk_nodes,
     _get_adjacent_nodes,
-    _get_relation_properties_node_name,
+    _get_relation_properties_node_name, _export_all_connections, _export_dataset_connections,
 )
 
 from feature_discovery.graph_processing.neo4j_queries import _get_adjacent_nodes_rels
@@ -155,3 +157,16 @@ def get_adjacent_nodes(node_id) -> list:
     with driver.session() as session:
         result = session.write_transaction(_get_adjacent_nodes, node_id)
     return result
+
+
+def export_all_connections() -> List[dict]:
+    with driver.session() as session:
+        results = session.write_transaction(_export_all_connections)
+    return results
+
+
+def export_dataset_connections(dataset_label: str) -> List[dict]:
+    with driver.session() as session:
+        results = session.write_transaction(_export_dataset_connections, dataset_label)
+    return results
+

@@ -26,4 +26,4 @@ ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
 
 ### CREDENTIALS ###
 NEO4J_HOST = "neo4j://localhost:7687"
-NEO4J_CREDENTIALS = ("neo4j", "pass1234")
+NEO4J_CREDENTIALS = ("neo4j", "pass")
