@@ -19,23 +19,16 @@ from feature_discovery.graph_processing.neo4j_queries import (
 
 from feature_discovery.graph_processing.neo4j_queries import _get_adjacent_nodes_rels
 
-driver = GraphDatabase.driver(
-    NEO4J_HOST,
-    auth=NEO4J_CREDENTIALS
-)
+driver = GraphDatabase.driver(NEO4J_HOST, auth=NEO4J_CREDENTIALS)
 
 
 def create_relation(from_node_id, to_node_id, relation_name, weight=1):
     with driver.session() as session:
-        relation = session.write_transaction(
-            _create_relation, from_node_id, to_node_id, relation_name, weight
-        )
+        relation = session.write_transaction(_create_relation, from_node_id, to_node_id, relation_name, weight)
     return relation
 
 
-def merge_nodes_relation_tables(
-    a_table_name, b_table_name, a_table_path, b_table_path, a_col, b_col, weight=1
-):
+def merge_nodes_relation_tables(a_table_name, b_table_name, a_table_path, b_table_path, a_col, b_col, weight=1):
     with driver.session() as session:
         result = session.write_transaction(
             _merge_nodes_relation_tables,
@@ -96,17 +89,16 @@ def get_relation_properties(from_id, to_id):
 
 def get_relation_properties_node_name(from_id, to_id):
     with driver.session() as session:
-        result = session.write_transaction(
-            _get_relation_properties_node_name, from_id, to_id
-        )
+        result = session.write_transaction(_get_relation_properties_node_name, from_id, to_id)
 
     return result
 
 
 def get_node_by_id(node_id):
-    with driver.session() as session:
+    with driver.session(database="alldatamixed") as session:
         result = session.write_transaction(_get_node_by_id, node_id)
 
+    print(result)
     return result
 
 

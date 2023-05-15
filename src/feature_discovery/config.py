@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 
-ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.parent.parent.resolve()
+ROOT_FOLDER = Path(
+    os.getenv("TFD_ROOT_FOLDER", Path(os.path.abspath(__file__)).parent.parent.parent.resolve())
+).resolve()
 
 # MAPPING = "mapping.json"
 MAPPING = "mapping_"

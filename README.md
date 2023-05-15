@@ -5,6 +5,22 @@
 [![Neo4j Desktop](https://img.shields.io/badge/neo4jDesktop-1.4.10-blue.svg)](https://pypi.org/project/pip/)
 ![Neo4J 4.3.19](https://img.shields.io/badge/Neo4j-008CC1?style=for-the-badge&logo=neo4j&logoColor=white)
 
+
+# Run With Docker
+1. Build necessary Docker containers
+``` bash
+   docker-compose up -d --build
+```
+
+2. Load Data into Neo4J DB 
+``` bash
+   docker exec -it feature-discovery-neo4j /bin/bash -c "/neo4j-db/neo4j-entrypoint.sh"
+```
+
+3. Bash into container and run experiments
+``` bash
+   docker exec -it feature-discovery-runner /bin/bash
+```
 ## Setup
 
 ### Fix libomp
