@@ -40,13 +40,13 @@ rm libomp.rb
 
 ### Work with our test datasets
 
-1. Download Neo4j Desktop (developed using version: 1.5.6)
-2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0)
-   1. Add the authentication parameters in [neo4j_transactions.py](graph_processing/neo4j_transactions.py)
-3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets
+1. Download Neo4j Desktop (developed using version: 1.5.6).
+2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0).
+   1. Add the authentication parameters in [config](src/feature_discovery/config.py).
+3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets.
 
 ### (or) add new datasets 
-1. Create a folder <folder_name> in [data](data)
+1. Create a folder <folder_name> in [data](data).
 2. Add your data in <folder_name> folder.
 3. Add a new line in [datasets](data/datasets.csv) to identify the new dataset. 
 
@@ -124,44 +124,6 @@ Example:
 `feature-discovery-cli run-tfd --dataset-labels steel --value-ratio 0.65` Will run the experiments on the _steel_ 
 dataset and the results are saved in [results folder](results)
 
-
-
-## Run experiments
-All the experiments are in [experiments/all_experiments.py](experiments/all_experiments.py).
-Just run the `main` function and everything will start running. 
-> Note: The experiments take a long time to run.
-
-[comment]: <> (### Non-Aug baseline )
-
-[comment]: <> (1. Locate the file [baseline.py]&#40;augmentation/baseline.py&#41;.)
-
-[comment]: <> (2. Run the script. )
-
-[comment]: <> (### JoinAll baseline.)
-
-[comment]: <> (1. Locate the file [join-all.py]&#40;augmentation/join-all.py&#41;.)
-
-[comment]: <> (2. Run the script. )
-
-[comment]: <> (### BestRank approach. )
-
-[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
-
-[comment]: <> (2. Uncomment line 57: )
-
-[comment]: <> (`pipeline&#40;datasets, k=1&#41;  # BestRank` )
-
-[comment]: <> (3. Run the script. )
-
-[comment]: <> (### Get top-k best ranked join paths)
-
-[comment]: <> (1. Locate the file [algorithm_pipeline.py]&#40;augmentation/algorithm_pipeline.py&#41;.)
-
-[comment]: <> (2. Uncomment line 58: )
-
-[comment]: <> (`pipeline&#40;datasets&#41;  # Top-k` )
-
-[comment]: <> (3. Run the script. )
 
 ## Datasets 
 

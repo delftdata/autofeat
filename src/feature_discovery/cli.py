@@ -133,6 +133,7 @@ def ingest_data(
             bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
         ] = False,
 ):
+    """ Ingest the new dataset into neo4j database """
     datasets = filter_datasets([dataset_label])
     if len(datasets) == 0:
         raise typer.BadParameter(

@@ -1,6 +1,5 @@
 base_table_path,base_table_name,base_table_label,target_column,dataset_type
 "school","base.csv","school","class",classification
-"accounting","target_churn.csv","accounting","target_churn",classification
 "nyc","housing.csv","nyc","Reporting Construction Type",classification
 "credit","table8.csv","credit","class",classification
 "steel","table10.csv","steel","Class",classification
