@@ -212,23 +212,28 @@ def get_classification_results(
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
 
-def get_results_ablation_classification(value_ratio: float, dataset_labels: List[Dataset], results_filename: str):
+def get_results_ablation_classification(value_ratio: float, dataset_labels: List[Dataset], results_filename: str,
+                                        ml_model: dict):
     all_results = []
 
-    result = ablation_study_enumerate_paths(dataset_labels, value_ratio=value_ratio)
-    all_results.append(result)
+    for params in tqdm.tqdm(ml_model.items()):
+        print(f"Running ablation study with algorithm {params[0]} with AutoGluon")
+        hyper_param = dict([params])
 
-    result = ablation_study_enumerate_and_join(dataset_labels, value_ratio=value_ratio)
-    all_results.append(result)
+        result = ablation_study_enumerate_paths(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
+        all_results.append(result)
 
-    result = ablation_study_prune_paths(dataset_labels, value_ratio=value_ratio)
-    all_results.append(result)
+        result = ablation_study_enumerate_and_join(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
+        all_results.append(result)
 
-    result = ablation_study_feature_selection(dataset_labels, value_ratio=value_ratio)
-    all_results.append(result)
+        result = ablation_study_prune_paths(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
+        all_results.append(result)
 
-    result = ablation_study_prune_join_key_level(dataset_labels, value_ratio=value_ratio)
-    all_results.append(result)
+        result = ablation_study_feature_selection(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
+        all_results.append(result)
+
+        result = ablation_study_prune_join_key_level(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
+        all_results.append(result)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
 

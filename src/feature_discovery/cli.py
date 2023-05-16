@@ -100,10 +100,13 @@ def run_ablation(
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "ablation_study_autogluon.csv",
+        ml_model: Annotated[
+            str, typer.Option(help="Model name from AutoGluon ML Hyper-parameters")
+        ] = 'GBM',
 ):
     """ Run all the ablation study experiments """
     datasets = filter_datasets(dataset_labels)
-    get_results_ablation_classification(value_ratio, datasets, results_file)
+    get_results_ablation_classification(value_ratio, datasets, results_file, {ml_model: {}})
 
 
 @app.command()
