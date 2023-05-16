@@ -63,7 +63,7 @@ def run_tfd(
         ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.55,
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
         auto_gluon: Annotated[bool, typer.Option(help="Whether to use AutoGluon")] = True,
 ):
     """Runs the TFD experiments."""
@@ -84,7 +84,7 @@ def run_all(
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "all_results_autogluon.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.55,
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
     """Runs all experiments (ARDA + base + TFD)."""
     get_classification_results(value_ratio, dataset_labels, results_file)
