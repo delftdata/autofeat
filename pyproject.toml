@@ -13,6 +13,7 @@ classifiers = [
 
 dependencies = [
     "autogluon == 0.7.0",
+    "deprecation == 2.1.0",
     "ITMO-FS == 0.3.3",
     "matplotlib == 3.3.4",
     "neo4j == 4.4.0",
