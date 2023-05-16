@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 
-ROOT_FOLDER = Path(os.path.abspath(__file__)).parent.parent.parent.resolve()
+ROOT_FOLDER = Path(
+    os.getenv("TFD_ROOT_FOLDER", Path(os.path.abspath(__file__)).parent.parent.parent.resolve())
+).resolve()
 
 # MAPPING = "mapping.json"
 MAPPING = "mapping_"
@@ -25,5 +27,9 @@ RESULTS_FOLDER = ROOT_FOLDER / "results"
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
 
 ### CREDENTIALS ###
-NEO4J_HOST = "neo4j://localhost:7687"
-NEO4J_CREDENTIALS = ("neo4j", "pass")
+NEO4J_HOST = os.getenv("NEO4J_HOST", "neo4j://localhost:7687")
+NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASS = os.getenv("NEO4J_PASS", "pass1234")
+NEO4J_CREDENTIALS = (NEO4J_USER, NEO4J_PASS)
+
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
