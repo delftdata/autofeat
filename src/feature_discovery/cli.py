@@ -92,7 +92,7 @@ def run_all(
 
 @app.command()
 def run_ablation(
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.55,
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
         dataset_labels: Annotated[
             Optional[List[str]],
             typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),

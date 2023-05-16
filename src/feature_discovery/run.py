@@ -1,5 +1,4 @@
 import time
-from datetime import time
 from typing import List, Optional
 
 import numpy as np
@@ -168,7 +167,7 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
             target_column=dataset.target_column,
             value_ratio=value_ratio,
             auto_gluon=auto_gluon,
-            auto_gluon_hyper_parameters=hyper_param
+            auto_gluon_hyper_parameters=hyper_param,
         )
         bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
         end = time.time()
@@ -195,9 +194,9 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
 
 
 def get_classification_results(
-        value_ratio: float,
-        dataset_labels: Optional[List[str]] = None,
-        results_file: str = "all_results_autogluon.csv",
+    value_ratio: float,
+    dataset_labels: Optional[List[str]] = None,
+    results_file: str = "all_results_autogluon.csv",
 ):
     all_results = []
     datasets = filter_datasets(dataset_labels)
@@ -252,4 +251,3 @@ def export_neo4j_connections(dataset_label: str = None):
     print(result)
 
     pd.DataFrame(result).to_csv("all_connections.csv", index=False)
-
