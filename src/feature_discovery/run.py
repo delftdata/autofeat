@@ -25,7 +25,7 @@ hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
 init_datasets()
 
 
-def filter_datasets(dataset_labels: Optional[List[str]] = None):
+def filter_datasets(dataset_labels: Optional[List[str]] = None) -> List[Dataset]:
     # `is None` is missing on purpose, because typer cannot return None default values for lists, only []
     if not dataset_labels:
         datasets = CLASSIFICATION_DATASETS
@@ -251,3 +251,11 @@ def export_neo4j_connections(dataset_label: str = None):
     print(result)
 
     pd.DataFrame(result).to_csv("all_connections.csv", index=False)
+
+
+def transform_arff_to_csv(dataset_label: str, dataset_name: str):
+    from scipy.io import arff
+    data = arff.loadarff(DATA_FOLDER / dataset_label / dataset_name)
+    dataframe = pd.DataFrame(data[0])
+    dataframe.to_csv(DATA_FOLDER / dataset_label / f"{dataset_label}_original.csv", index=False)
+
