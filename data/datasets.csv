@@ -4,3 +4,7 @@ base_table_path,base_table_name,base_table_label,target_column,dataset_type
 "credit","table8.csv","credit","class",classification
 "steel","table10.csv","steel","Class",classification
 "cylinder","table2.csv","cylinder","band_type",classification
+"jannis","table_0_0.csv","jannis","class",classification
+"miniboone","table_0_0.csv","miniboone","signal",classification
+"covertype","table_0_0.csv","covertype","class",classification
+"eyemove","table_0_0.csv","eyemove","label",classification

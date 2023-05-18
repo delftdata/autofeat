@@ -143,6 +143,19 @@ dataset and the results are saved in [results folder](results)
 
 ## Datasets 
 
+
+### Current Datasets
+
+| Dataset Label | Source | Processing strategy | Dataset Discovery | 
+| ------------- | ------ | --------- | -------- |
+| [jannis](data/jannis) | [openml](https://www.openml.org/search?type=data&sort=runs&id=45021&status=active) | [random-tree](https://github.com/kirilvasilev16/PythonTableDivider/tree/main) | [valentine - COMA](https://github.com/delftdata/valentine) |
+| [MiniBooNe](data/miniboone) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44128&status=active) | [reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [covertype](data/covertype) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44159&status=active) | [reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [EyeMovement](data/eyemove) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44157&status=active)
+
+
+### Old datasets
+
 [other-data](other-data) folder contains the experimental data. 
 1. [data](other-data/data) contains the real datasets collected from 
 
