@@ -6,7 +6,7 @@ import pandas as pd
 import tqdm
 
 from feature_discovery.algorithms import CART
-from feature_discovery.config import JOIN_RESULT_FOLDER
+from feature_discovery.config import JOIN_RESULT_FOLDER, AUTO_GLUON_FOLDER
 from feature_discovery.data_preparation.utils import (
     compute_join_name,
     join_and_save,
@@ -273,8 +273,10 @@ def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, d
     test[target_column] = y_test
 
     predictor = TabularPredictor(label=target_column,
-                                 problem_type="binary").fit(train_data=train,
-                                                            hyperparameters=algorithms_to_run)
+                                 problem_type="binary",
+                                 verbosity=0,
+                                 path=AUTO_GLUON_FOLDER / "models").fit(train_data=train,
+                                                                        hyperparameters=algorithms_to_run)
     highest_acc = 0
     best_model = None
     results = []
