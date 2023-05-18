@@ -44,6 +44,8 @@ class BfsAugmentation:
         # Track the base table accuracy in the final step
         self.base_node_label = None
 
+        self.ranking: Dict[str, float] = {}
+
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
         self.enumerate_paths = False
@@ -51,8 +53,8 @@ class BfsAugmentation:
         self.sample_data_step = True
         self.data_quality_step = True
         self.feature_selection_step = True
-        self.ranking_jk_step = True
-        self.ranking_path_step = True
+        self.ranking_jk_step = False
+        self.ranking_path_step = False
 
     def bfs_traverse_join_pipeline(self, queue: set, previous_queue=None):
         """
@@ -220,19 +222,21 @@ class BfsAugmentation:
 
             # Step - Feature selection
             if self.feature_selection_step:
-                current_selected_features = self.step_feature_selection(joined_df=joined_df,
-                                                                        new_features=list(new_table_df.columns),
-                                                                        current_selected_features=
-                                                                        self.partial_join_selected_features[
-                                                                            current_join_name])
-                if current_selected_features is None:
-                    continue
+                score, current_selected_features = self.step_feature_selection(joined_df=joined_df,
+                                                                               new_features=list(new_table_df.columns),
+                                                                               current_selected_features=
+                                                                               self.partial_join_selected_features[
+                                                                                   current_join_name],
+                                                                               previous_score=self.ranking[
+                                                                                   current_join_name])
+                self.ranking[join_name] = score
             else:
                 current_selected_features = list(new_table_df.columns)
                 current_selected_features.extend(self.partial_join_selected_features[current_join_name])
 
             # Step - Train and Rank path
-            if self.ranking_jk_step:
+            if self.ranking_jk_step and \
+                    (not current_selected_features == self.partial_join_selected_features[current_join_name]):
                 result = self.step_train_rank_path(dataframe=joined_df,
                                                    features=current_selected_features,
                                                    join_name=join_name)
@@ -352,7 +356,7 @@ class BfsAugmentation:
         return True
 
     def step_feature_selection(self, joined_df: pd.DataFrame, new_features: List[str],
-                               current_selected_features: List[str]) -> List[str] or None:
+                               current_selected_features: List[str], previous_score: float) -> Tuple[float, List[str]]:
         print("\t\tFeature selection step ... ")
 
         if self.auto_gluon:
@@ -369,7 +373,7 @@ class BfsAugmentation:
         feature_score_rel, relevant_features = measure_relevance(joined_df, new_features, y)
         if len(relevant_features) == 0:
             print("\t\tNo relevant features. SKIPPED JOIN...")
-            return None
+            return previous_score, current_selected_features
         print(f"\t\tRelevant features:\n{relevant_features}")
 
         # 2. Measure conditional redundancy
@@ -390,7 +394,7 @@ class BfsAugmentation:
         if len(non_cond_red_feat) == 0:
             if len(joint_rel_feat) == 0:
                 print("\t\tAll relevant features are redundant. SKIPPED JOIN...")
-                return None
+                return previous_score, current_selected_features
             else:
                 selected_features = set(joint_rel_feat)
         else:
@@ -403,12 +407,21 @@ class BfsAugmentation:
                                                                     target_column=y)
         if len(non_red_feat) == 0:
             print("\t\tAll relevant features are redundant. SKIPPED JOIN...")
-            return None
+            return previous_score, current_selected_features
         print(f"\t\tNon redundant features:\n{non_red_feat}")
+
+        m = len(feature_score_rel)
+        n = len(feature_score_cr) if feature_score_cr else 1
+        o = len(feature_score_jmi) if feature_score_jmi else 1
+        p = len(feature_score_redundancy) if feature_score_redundancy else 1
+        score = (n * o * p * sum(list(map(lambda x: x[1], feature_score_rel))) +
+                 m * o * p * sum(list(map(lambda x: x[1], feature_score_cr))) +
+                 m * n * p * sum(list(map(lambda x: x[1], feature_score_jmi))) +
+                 m * n * o * sum(list(map(lambda x: x[1], feature_score_redundancy)))) / (m * n * o * p)
 
         selected_features = non_red_feat.copy()
         selected_features.extend(current_selected_features)
-        return selected_features
+        return score, selected_features
 
     def step_train_rank_path(self, dataframe: pd.DataFrame, features: List[str], join_name: str) -> Result:
         if self.target_column not in features:
@@ -461,7 +474,9 @@ class BfsAugmentation:
             aux_df = AutoMLPipelineFeatureGenerator(enable_text_special_features=False,
                                                     enable_text_ngram_features=False).fit_transform(X=dataframe)
 
-        self.partial_join_selected_features[join_name] = self.get_relevant_features(dataframe=aux_df)
+        score, features = self.get_relevant_features(dataframe=aux_df)
+        self.partial_join_selected_features[join_name] = features
+        self.ranking[join_name] = score
 
         if len(self.join_name_mapping.keys()) == 0:
             if self.auto_gluon:
@@ -489,4 +504,5 @@ class BfsAugmentation:
         feature_score, selected_features = measure_relevance(dataframe=X,
                                                              feature_names=list(X.columns),
                                                              target_column=y)
-        return selected_features
+        score = sum(list(map(lambda x: x[1], feature_score))) / len(feature_score)
+        return score, selected_features
