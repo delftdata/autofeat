@@ -20,7 +20,8 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+# hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+hyper_parameters = {"GBM": {}}
 
 init_datasets()
 
@@ -157,6 +158,7 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
     print(f"BFS result with table {dataset.base_table_id}")
 
     all_results = []
+    ranked_paths = {}
     for params in tqdm.tqdm(hyper_parameters.items()):
         print(f"Running {params[0]} on TFD (Transitive Feature Discovery) result with AutoGluon")
         hyper_param = dict([params])
@@ -183,6 +185,9 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
             results.append(item)
 
         all_results.extend(results)
+        ranked_paths.update(bfs_traversal.ranking)
+
+    sorted_paths = sorted(ranked_paths.items(), key=lambda x: (x[1], x[0]), reverse=True)
 
     # Save results
     pd.DataFrame(all_results).to_csv(
@@ -262,5 +267,12 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
     from scipy.io import arff
     data = arff.loadarff(DATA_FOLDER / dataset_label / dataset_name)
     dataframe = pd.DataFrame(data[0])
+    catCols = [col for col in dataframe.columns if dataframe[col].dtype == "O"]
+    dataframe[catCols] = dataframe[catCols].apply(lambda x: x.str.decode('utf8'))
     dataframe.to_csv(DATA_FOLDER / dataset_label / f"{dataset_label}_original.csv", index=False)
 
+
+if __name__ == "__main__":
+    # transform_arff_to_csv("covertype", "covertype_dataset.arff")
+    dataset = filter_datasets(["steel"])[0]
+    get_tfd_results(dataset, value_ratio=0.65)
