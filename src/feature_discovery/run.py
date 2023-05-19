@@ -7,8 +7,9 @@ import tqdm
 
 from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
 from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
-from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER
+from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, JOIN_RESULT_FOLDER
 from feature_discovery.data_preparation.dataset_base import Dataset
+from feature_discovery.data_preparation.utils import get_path_length
 from feature_discovery.experiments.ablation_experiments import (
     ablation_study_enumerate_paths,
     ablation_study_enumerate_and_join,
@@ -20,8 +21,8 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
 
-# hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
-hyper_parameters = {"GBM": {}}
+hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+# hyper_parameters = {"GBM": {}}
 
 init_datasets()
 
@@ -154,42 +155,50 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     return all_results
 
 
-def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
-    print(f"BFS result with table {dataset.base_table_id}")
+def evaluate_paths(bfs_result: BfsAugmentation, top_k: int):
+    print(f"Evaluate top-{top_k} paths ... ")
+    sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
+    top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
 
     all_results = []
-    ranked_paths = {}
-    for params in tqdm.tqdm(hyper_parameters.items()):
-        print(f"Running {params[0]} on TFD (Transitive Feature Discovery) result with AutoGluon")
-        hyper_param = dict([params])
+    for path in tqdm.tqdm(top_k_paths):
+        join_name, _ = path
+        if join_name == bfs_result.base_node_label:
+            continue
+        dataframe = pd.read_csv(JOIN_RESULT_FOLDER / bfs_result.join_name_mapping[join_name], header=0,
+                                engine="python", encoding="utf8", quotechar='"', escapechar='\\')
+        features = bfs_result.partial_join_selected_features[join_name]
+        features.append(bfs_result.target_column)
 
-        start = time.time()
-        bfs_traversal = BfsAugmentation(
-            base_table_label=dataset.base_table_label,
-            target_column=dataset.target_column,
-            value_ratio=value_ratio,
-            auto_gluon=auto_gluon,
-            auto_gluon_hyper_parameters=hyper_param,
-        )
-        bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
-        end = time.time()
-
-        print("FINISHED BFS")
-
-        # Aggregate results
-        results = []
-        for join_name in bfs_traversal.ranked_paths.keys():
-            item = bfs_traversal.ranked_paths[join_name]
-            item.feature_selection_time = end - start
-            item.total_time += item.feature_selection_time
-            results.append(item)
-
+        best_model, results = run_auto_gluon(approach=Result.TFD,
+                                             dataframe=dataframe[features],
+                                             target_column=bfs_result.target_column,
+                                             data_label=bfs_result.base_table_label,
+                                             join_name=join_name,
+                                             algorithms_to_run=hyper_parameters,
+                                             value_ratio=bfs_result.value_ratio)
         all_results.extend(results)
-        ranked_paths.update(bfs_traversal.ranking)
+    return all_results
 
-    sorted_paths = sorted(ranked_paths.items(), key=lambda x: (x[1], x[0]), reverse=True)
 
-    # Save results
+def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
+    print(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
+
+    start = time.time()
+    bfs_traversal = BfsAugmentation(
+        base_table_label=dataset.base_table_label,
+        target_column=dataset.target_column,
+        value_ratio=value_ratio,
+        auto_gluon=auto_gluon,
+    )
+    bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
+    end = time.time()
+
+    print("FINISHED BFS")
+
+    all_results = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k)
+
+    print("Save results ... ")
     pd.DataFrame(all_results).to_csv(
         RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
         index=False,
@@ -199,9 +208,9 @@ def get_tfd_results(dataset: Dataset, value_ratio: float = 0.55, auto_gluon: boo
 
 
 def get_classification_results(
-    value_ratio: float,
-    dataset_labels: Optional[List[str]] = None,
-    results_file: str = "all_results_autogluon.csv",
+        value_ratio: float,
+        dataset_labels: Optional[List[str]] = None,
+        results_file: str = "all_results_autogluon.csv",
 ):
     all_results = []
     datasets = filter_datasets(dataset_labels)

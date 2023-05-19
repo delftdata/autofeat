@@ -87,7 +87,7 @@ class BfsAugmentation:
             print(f"New iteration with base node: {base_node_id}")
 
             # Determine the neighbours (unvisited)
-            neighbours = set(get_adjacent_nodes(base_node_id)) - set(self.discovered)
+            neighbours = sorted(set(get_adjacent_nodes(base_node_id)) - set(self.discovered))
             if len(neighbours) == 0:
                 continue
 
@@ -410,14 +410,19 @@ class BfsAugmentation:
             return previous_score, current_selected_features
         print(f"\t\tNon redundant features:\n{non_red_feat}")
 
-        m = len(feature_score_rel)
+        m = len(feature_score_rel) if len(feature_score_rel) > 0 else 1
+        sum_m = sum(list(map(lambda x: x[1], feature_score_rel)))
+
         n = len(feature_score_cr) if feature_score_cr else 1
+        sum_n = sum(list(map(lambda x: x[1], feature_score_cr))) if feature_score_cr else 0
+
         o = len(feature_score_jmi) if feature_score_jmi else 1
+        sum_o = sum(list(map(lambda x: x[1], feature_score_jmi))) if feature_score_jmi else 0
+
         p = len(feature_score_redundancy) if feature_score_redundancy else 1
-        score = (n * o * p * sum(list(map(lambda x: x[1], feature_score_rel))) +
-                 m * o * p * sum(list(map(lambda x: x[1], feature_score_cr))) +
-                 m * n * p * sum(list(map(lambda x: x[1], feature_score_jmi))) +
-                 m * n * o * sum(list(map(lambda x: x[1], feature_score_redundancy)))) / (m * n * o * p)
+        sum_p = sum(list(map(lambda x: x[1], feature_score_redundancy))) if feature_score_redundancy else 0
+
+        score = (n * o * p * sum_m + m * o * p * sum_n + m * n * p * sum_o + m * n * o * sum_p) / (m * n * o * p)
 
         selected_features = non_red_feat.copy()
         selected_features.extend(current_selected_features)
@@ -494,7 +499,7 @@ class BfsAugmentation:
             self.ranked_paths[join_name] = entry
             self.base_node_label = join_name
 
-    def get_relevant_features(self, dataframe: pd.DataFrame) -> List[str]:
+    def get_relevant_features(self, dataframe: pd.DataFrame) -> Tuple[float, List[str]]:
         if self.auto_gluon:
             X = dataframe.drop(columns=[self.target_column])
             y = dataframe[self.target_column]
@@ -504,5 +509,7 @@ class BfsAugmentation:
         feature_score, selected_features = measure_relevance(dataframe=X,
                                                              feature_names=list(X.columns),
                                                              target_column=y)
-        score = sum(list(map(lambda x: x[1], feature_score))) / len(feature_score)
+        m = len(feature_score) if len(feature_score) > 0 else 1
+        score = sum(list(map(lambda x: x[1], feature_score))) / m
+
         return score, selected_features
