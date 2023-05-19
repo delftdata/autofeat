@@ -8,3 +8,4 @@ base_table_path,base_table_name,base_table_label,target_column,dataset_type
 "miniboone","table_0_0.csv","miniboone","signal",classification
 "covertype","table_0_0.csv","covertype","class",classification
 "eyemove","table_0_0.csv","eyemove","label",classification
+"accounting","target_churn.csv","accounting","target_churn",classification
