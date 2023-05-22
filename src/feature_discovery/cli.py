@@ -150,5 +150,15 @@ def ingest_data(
                            mix_datasets=discover_connections_data_lake)
 
 
+@app.command()
+def ingest_all_data():
+    """
+        Ingest all dataset from "data" folder.
+    """
+    datasets = filter_datasets()
+    for dataset in datasets:
+        ingest_data_with_pk_fk(dataset=dataset)
+
+
 if __name__ == "__main__":
     app()
