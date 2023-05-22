@@ -12,7 +12,6 @@ from feature_discovery.data_preparation.utils import prepare_data_for_ml
 
 
 def measure_relevance(dataframe: pd.DataFrame, feature_names: List[str], target_column: pd.Series):
-    print("Measure relevance ... ")
     common_features = list(set(dataframe.columns).intersection(set(feature_names)))
     features = dataframe[common_features]
     scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
