@@ -45,7 +45,7 @@ def ingest_unprocessed_data(dataset_folder_name: str = None):
     mapping = {}
 
     for f in files:
-        table_path = f.partition(f"{DATA_FOLDER}")[2]
+        table_path = f.partition(f"{DATA_FOLDER}/")[2]
         table_name = table_path.split("/")[-1]
 
         mapping[table_name] = table_path
@@ -62,9 +62,9 @@ def ingest_unprocessed_data(dataset_folder_name: str = None):
             merge_nodes_relation_tables(a_table_name=row["fk_table"], a_table_path=mapping[row["fk_table"]],
                                         b_table_name=row["pk_table"], b_table_path=mapping[row["pk_table"]],
                                         a_col=row["fk_column"], b_col=row["pk_column"], weight=1)
-            merge_nodes_relation_tables(a_table_name=row["pk_table"], a_table_path=mapping[row["pk_table"]],
-                                        b_table_name=row["fk_table"], b_table_path=mapping[row["fk_table"]],
-                                        a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
+            # merge_nodes_relation_tables(a_table_name=row["pk_table"], a_table_path=mapping[row["pk_table"]],
+            #                             b_table_name=row["fk_table"], b_table_path=mapping[row["fk_table"]],
+            #                             a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
 
     return mapping
 
@@ -118,9 +118,14 @@ def profile_valentine_dataset(dataset_name: str, valentine_threshold: float = 0.
 def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
     for table_pair in itertools.combinations(files, r=2):
         (tab1, tab2) = table_pair
-        a_table_name = tab1.split("/")[-1]
-        b_table_name = tab2.split("/")[-1]
-        print(f"Processing the match between:\n\t{tab1}\n\t{tab2}")
+
+        a_table_path = tab1.partition(f"{DATA_FOLDER}/")[2]
+        b_table_path = tab2.partition(f"{DATA_FOLDER}/")[2]
+
+        a_table_name = a_table_path.split("/")[-1]
+        b_table_name = b_table_path.split("/")[-1]
+
+        print(f"Processing the match between:\n\t{a_table_path}\n\t{b_table_path}")
         df1 = pd.read_csv(tab1, encoding="utf8")
         df2 = pd.read_csv(tab2, encoding="utf8")
         matches = valentine_match(df1, df2, Coma(strategy="COMA_OPT"))
@@ -128,12 +133,12 @@ def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
         for item in matches.items():
             ((_, col_from), (_, col_to)), similarity = item
             if similarity > valentine_threshold:
-                print(f"Similarity {similarity} between:\n\t{tab1} -- {col_from}\n\t{tab2} -- {col_to}")
+                print(f"Similarity {similarity} between:\n\t{a_table_path} -- {col_from}\n\t{b_table_path} -- {col_to}")
 
                 merge_nodes_relation_tables(a_table_name=a_table_name,
                                             b_table_name=b_table_name,
-                                            a_table_path=tab1,
-                                            b_table_path=tab2,
+                                            a_table_path=a_table_path,
+                                            b_table_path=b_table_path,
                                             a_col=col_from,
                                             b_col=col_to,
                                             weight=similarity)

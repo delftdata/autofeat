@@ -57,20 +57,23 @@ def run_base(
 
 @app.command()
 def run_tfd(
+        top_k: Annotated[
+            int, typer.Option(help="Number of results (paths)")
+        ] = 10,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.55,
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
         auto_gluon: Annotated[bool, typer.Option(help="Whether to use AutoGluon")] = True,
 ):
     """Runs the TFD experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels)
     for dataset in datasets:
-        all_results.extend(get_tfd_results(dataset, value_ratio, auto_gluon))
+        all_results.extend(get_tfd_results(dataset, top_k, value_ratio, auto_gluon))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -84,7 +87,7 @@ def run_all(
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "all_results_autogluon.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.55,
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
     """Runs all experiments (ARDA + base + TFD)."""
     get_classification_results(value_ratio, dataset_labels, results_file)
@@ -100,10 +103,13 @@ def run_ablation(
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "ablation_study_autogluon.csv",
+        ml_model: Annotated[
+            str, typer.Option(help="Model name from AutoGluon ML Hyper-parameters")
+        ] = 'GBM',
 ):
     """ Run all the ablation study experiments """
     datasets = filter_datasets(dataset_labels)
-    get_results_ablation_classification(value_ratio, datasets, results_file)
+    get_results_ablation_classification(value_ratio, datasets, results_file, {ml_model: {}})
 
 
 @app.command()
@@ -142,6 +148,16 @@ def ingest_data(
     ingest_data_with_pk_fk(dataset=datasets[0],
                            profile_valentine=discover_connections_dataset,
                            mix_datasets=discover_connections_data_lake)
+
+
+@app.command()
+def ingest_all_data():
+    """
+        Ingest all dataset from "data" folder.
+    """
+    datasets = filter_datasets()
+    for dataset in datasets:
+        ingest_data_with_pk_fk(dataset=dataset)
 
 
 if __name__ == "__main__":

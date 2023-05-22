@@ -1,3 +1,4 @@
+import logging
 import math
 import time
 from typing import List
@@ -21,6 +22,8 @@ from feature_discovery.graph_processing.neo4j_transactions import (
     get_node_by_id,
 )
 
+logging.getLogger().setLevel(logging.WARNING)
+
 
 def gen_features(A: pd.DataFrame, eta: float):
     """
@@ -34,11 +37,11 @@ def gen_features(A: pd.DataFrame, eta: float):
     d = A.shape[1]
     m = np.mean(A, axis=1)
     s = np.cov(A)
-    print(f"\t\tARDA: Generate: {math.ceil(eta * d)} features")
+    logging.debug(f"\t\tARDA: Generate: {math.ceil(eta * d)} features")
     for i in tqdm.tqdm(range(math.ceil(eta * d))):
         L.append(np.random.multivariate_normal(m, s))
     result = np.array(L).T
-    print(f"\t\tARDA: Generated {result.shape}")
+    logging.debug(f"\t\tARDA: Generated {result.shape}")
     return result
 
 
@@ -96,7 +99,7 @@ def select_features(
         estimator = RandomForestClassifier()
 
     d = normalised_matrix.shape[1]
-    print("\tARDA: Generate features")
+    logging.debug("\tARDA: Generate features")
     X = np.concatenate(
         (normalised_matrix, gen_features(normalised_matrix, eta)), axis=1
     )  # This gives us A' from the paper
@@ -106,7 +109,7 @@ def select_features(
     counts = np.zeros(d)
 
     # Repeat process 'k' times, as in the algorithm
-    print("\tARDA: Decide feature importance")
+    logging.debug("\tARDA: Decide feature importance")
     for i in range(k):
         estimator.fit(X, y)
         counts += _bin_count_ranking(estimator.feature_importances_, mask, d)
@@ -150,7 +153,7 @@ def wrapper_algo(
         X_train, X_test, y_train, y_test = train_test_split(
             normalised_matrix, y, test_size=0.2
         )
-        print("\nARDA: Select features")
+        logging.debug("\nARDA: Select features")
         indices = select_features(
             X_train, y_train, tau=t, eta=eta, k=k, regression=regression
         )
@@ -162,7 +165,7 @@ def wrapper_algo(
         if len(X_train.iloc[:, indices]) == 0:
             return last_indices
 
-        print("ARDA: Train and score")
+        logging.debug("ARDA: Train and score")
         estimator.fit(X_train.iloc[:, indices], y_train)
         accuracy = estimator.score(X_test.iloc[:, indices], y_test)
         if accuracy < last_accuracy:
@@ -175,27 +178,27 @@ def wrapper_algo(
 
 @deprecation.deprecated(details="Use select_arda_features_budget_join instead")
 def select_arda_features(base_table_id, target_column, base_table_features):
-    print("ARDA - Join directly connected tables ... ")
+    logging.debug("ARDA - Join directly connected tables ... ")
     start = time.time()
     dataset_df = join_directly_connected(base_table_id)
     end = time.time()
     join_time = end - start
 
-    print("ARDA - Prepare data for ML ... ")
+    logging.debug("ARDA - Prepare data for ML ... ")
     X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
-    print(X.shape)
+    logging.debug(X.shape)
     if X.shape[0] > 10000:
         _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
-    print(X.shape)
+    logging.debug(X.shape)
 
-    print("ARDA Feature selection - Started ... ")
+    logging.debug("ARDA Feature selection - Started ... ")
     start = time.time()
     T = np.arange(0.0, 1.0, 0.1)
     indices = wrapper_algo(X, y, T)
     fs_X = X.iloc[:, indices].columns
     end = time.time()
     fs_time = end - start
-    print("ARDA Feature selection - Ended ... ")
+    logging.debug("ARDA Feature selection - Ended ... ")
 
     columns_to_drop = [
         c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
@@ -235,6 +238,7 @@ def select_arda_features_budget_join(
 
     join_name = base_node.get("label")
 
+    join_keys = []
     # Get directly connected nodes
     nodes = get_adjacent_nodes(base_node_id)
     while len(nodes) > 0:
@@ -243,14 +247,14 @@ def select_arda_features_budget_join(
         # Join every table according to the budget
         while feature_count <= budget_size and len(nodes) > 0:
             node_id = nodes.pop()
-            print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
+            logging.debug(f"Node id: {node_id}\n\tRemaining nodes: {len(nodes)}")
 
             # Get the keys between the base node and connected node
             join_key = get_relation_properties_node_name(
                 from_id=base_node_id, to_id=node_id
             )[0]
             join_prop, from_table, to_table = join_key
-            print(f"Join properties: {join_prop}")
+            logging.debug(f"Join properties: {join_prop}")
 
             if join_prop["from_label"] == base_node.get("label"):
                 if join_prop["from_column"] == target_column:
@@ -290,48 +294,54 @@ def select_arda_features_budget_join(
                 != right_table[f"{to_table}.{to_column}"].dtype
             ):
                 continue
+
+            left_on = f"{from_table}.{from_column}"
+            right_on = f"{to_table}.{to_column}"
             left_table = pd.merge(
                 left_table,
                 right_table,
                 how="left",
-                left_on=f"{from_table}.{from_column}",
-                right_on=f"{to_table}.{to_column}",
+                left_on=left_on,
+                right_on=right_on,
             )
-            left_table.drop(columns=[f"{to_table}.{to_column}"], inplace=True)
+            join_keys.append(left_on)
+            join_keys.append(right_on)
 
             # Compute the join name
             join_name = compute_join_name(
                 join_key_property=join_key, partial_join_name=join_name
             )
-            print(f"\t\t\tJoin name: {join_name}")
+            logging.debug(f"\t\t\tJoin name: {join_name}")
 
             # Update feature count (subtract 1 for the deleted right key)
             feature_count += right_table.shape[1] - 1
-            print(f"Feature count: {feature_count}")
+            logging.debug(f"Feature count: {feature_count}")
 
         # Compute the columns of the batch and create the batch dataset
-        columns = [c for c in list(left_table.columns) if c not in all_columns]
-        print(f"{len(columns)} columns to select")
+        columns = set(left_table.columns) - set(all_columns)
+        columns = list(set(columns) - set(join_keys))
+
+        logging.debug(f"{len(columns)} columns to select")
 
         # If the algorithm failed
         if len(columns) == 0:
-            print("No selected column")
+            logging.debug("No selected column")
             continue
 
         # If the algorithm doesn't find any new feature
         if len(columns) == 1 and target_column in columns:
-            print("No selected column")
+            logging.debug("No selected column")
             continue
 
         # If the algorithm only selects one feature
         if len(columns) == 2 and target_column in columns:
             columns.remove(target_column)
             final_selected_features.extend(columns)
-            print(f"Selected columns: {columns}")
+            logging.debug(f"Selected columns: {columns}")
             continue
 
         joined_tables_batch = left_table[columns]
-        print(f"shape: {joined_tables_batch.shape}")
+        logging.debug(f"shape: {joined_tables_batch.shape}")
 
         # Save the computed columns
         all_columns.extend(columns)
@@ -346,7 +356,7 @@ def select_arda_features_budget_join(
         T = np.arange(0.0, 1.0, 0.1)
         indices = wrapper_algo(X, y, T, regression=regression)
         fs_X = X.iloc[:, indices].columns
-        print(f"Selected columns: {fs_X}")
+        logging.debug(f"Selected columns: {fs_X}")
 
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)

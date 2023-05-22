@@ -7,7 +7,6 @@ from feature_discovery.graph_processing.neo4j_transactions import get_node_by_id
 from feature_discovery.config import DATA_FOLDER
 
 
-
 def get_top_k_from_dict(join_paths: dict, k: int):
     return {key: join_paths[key] for i, key in enumerate(join_paths) if i < k}
 

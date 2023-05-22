@@ -23,6 +23,7 @@ JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df'
 DATA_FOLDER = ROOT_FOLDER / DATA
 PLOTS_FOLDER = ROOT_FOLDER / "plots" / "2024"
 RESULTS_FOLDER = ROOT_FOLDER / "results"
+AUTO_GLUON_FOLDER = ROOT_FOLDER / "AutogluonModels"
 
 ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
 
@@ -32,4 +33,4 @@ NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASS = os.getenv("NEO4J_PASS", "pass1234")
 NEO4J_CREDENTIALS = (NEO4J_USER, NEO4J_PASS)
 
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "alldatamixed")
