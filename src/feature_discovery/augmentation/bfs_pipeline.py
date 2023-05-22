@@ -45,6 +45,7 @@ class BfsAugmentation:
         self.base_node_label = None
 
         self.ranking: Dict[str, float] = {}
+        self.join_keys: Dict[str, list] = {}
 
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
@@ -200,10 +201,12 @@ class BfsAugmentation:
 
             # Step - Join
             if self.join_step:
-                joined_df, join_filename = self.step_join(join_key_properties=prop, left_df=current_join_df,
-                                                          right_df=new_table_df, right_label=new_table_label)
+                joined_df, join_filename, join_keys = self.step_join(join_key_properties=prop, left_df=current_join_df,
+                                                                     right_df=new_table_df, right_label=new_table_label)
                 if joined_df is None:
                     continue
+                join_keys.extend(self.join_keys[current_join_name])
+                self.join_keys[join_name] = join_keys
             else:
                 current_queue.add(join_name)
                 self.total_paths[join_name] = 0
@@ -321,7 +324,7 @@ class BfsAugmentation:
         return end - start
 
     def step_join(self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame,
-                  right_label: str) -> Tuple[pd.DataFrame or None, str]:
+                  right_label: str) -> Tuple[pd.DataFrame or None, str, list]:
 
         join_prop, from_table, to_table = join_key_properties
 
@@ -336,14 +339,16 @@ class BfsAugmentation:
         self.counter += 1
 
         # Join
+        left_on = f"{from_table}.{join_prop['from_column']}"
+        right_on = f"{to_table}.{join_prop['to_column']}"
         joined_df = join_and_save(left_df=left_df, right_df=sampled_right_df,
-                                  left_column_name=f"{from_table}.{join_prop['from_column']}",
-                                  right_column_name=f"{to_table}.{join_prop['to_column']}",
+                                  left_column_name=left_on,
+                                  right_column_name=right_on,
                                   join_path=JOIN_RESULT_FOLDER / join_filename)
         if joined_df is None:
-            return None, join_filename
+            return None, join_filename, []
 
-        return joined_df, join_filename
+        return joined_df, join_filename, [left_on, right_on]
 
     def step_data_quality(self, join_key_properties: tuple, joined_df: pd.DataFrame) -> bool:
         join_prop, from_table, to_table = join_key_properties
@@ -482,6 +487,7 @@ class BfsAugmentation:
         score, features = self.get_relevant_features(dataframe=aux_df)
         self.partial_join_selected_features[join_name] = features
         self.ranking[join_name] = score
+        self.join_keys[join_name] = []
 
         if len(self.join_name_mapping.keys()) == 0:
             if self.auto_gluon:

@@ -38,6 +38,8 @@ def filter_datasets(dataset_labels: Optional[List[str]] = None) -> List[Dataset]
 
 
 def get_base_results(dataset: Dataset, autogluon: bool = True):
+    print(f"Base result on table {dataset.base_table_id}")
+
     dataframe = pd.read_csv(
         DATA_FOLDER / dataset.base_table_id,
         header=0,
@@ -61,22 +63,20 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
 
         return [entry]
 
-    all_results = []
-    for params in tqdm.tqdm(hyper_parameters.items()):
-        hyper_param = dict([params])
-        print(f"Base result on table {dataset.base_table_id} with hyper-parameters {hyper_param}")
+    features = list(dataframe.columns)
+    if "Key_0_0" in features:
+        features.remove("Key_0_0")
 
-        _, result = run_auto_gluon(
-            approach=Result.BASE,
-            dataframe=dataframe,
-            target_column=dataset.target_column,
-            data_label=dataset.base_table_label,
-            join_name=dataset.base_table_label,
-            algorithms_to_run=hyper_param,
-        )
-        all_results.extend(result)
+    _, results = run_auto_gluon(
+        approach=Result.BASE,
+        dataframe=dataframe[features],
+        target_column=dataset.target_column,
+        data_label=dataset.base_table_label,
+        join_name=dataset.base_table_label,
+        algorithms_to_run=hyper_parameters,
+    )
 
-    return all_results
+    return results
 
 
 def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool = True) -> List:
@@ -155,7 +155,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     return all_results
 
 
-def evaluate_paths(bfs_result: BfsAugmentation, top_k: int):
+def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float):
     print(f"Evaluate top-{top_k} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
@@ -165,10 +165,14 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int):
         join_name, _ = path
         if join_name == bfs_result.base_node_label:
             continue
+
         dataframe = pd.read_csv(JOIN_RESULT_FOLDER / bfs_result.join_name_mapping[join_name], header=0,
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)
+        print(f"Feature before join_key removal:\n{features}")
+        features = list(set(features) - set(bfs_result.join_keys[join_name]))
+        print(f"Feature after join_key removal:\n{features}")
 
         best_model, results = run_auto_gluon(approach=Result.TFD,
                                              dataframe=dataframe[features],
@@ -177,8 +181,12 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int):
                                              join_name=join_name,
                                              algorithms_to_run=hyper_parameters,
                                              value_ratio=bfs_result.value_ratio)
+        for result in results:
+            result.feature_selection_time = feat_sel_time
+            result.total_time += feat_sel_time
+
         all_results.extend(results)
-    return all_results
+    return all_results, top_k_paths
 
 
 def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
@@ -196,13 +204,16 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
 
     print("FINISHED BFS")
 
-    all_results = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k)
+    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k)
+    print(top_k_paths)
 
     print("Save results ... ")
     pd.DataFrame(all_results).to_csv(
         RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
         index=False,
     )
+    pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
+        f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
 
     return all_results
 
@@ -283,5 +294,6 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
 
 if __name__ == "__main__":
     # transform_arff_to_csv("covertype", "covertype_dataset.arff")
-    dataset = filter_datasets(["steel"])[0]
-    get_tfd_results(dataset, value_ratio=0.65)
+    dataset = filter_datasets(["covertype"])[0]
+    # get_tfd_results(dataset, value_ratio=0.65)
+    get_arda_results(dataset)
