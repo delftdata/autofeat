@@ -7,3 +7,6 @@ base_table_path,base_table_name,base_table_label,target_column,dataset_type
 "eyemove","table_0_0.csv","eyemove","label",classification
 "bioresponse","table_0_0.csv","bioresponse","target",classification
 "school","base.csv","school","class",classification
+"air","temp.csv","air","Temperature",regression
+"yprop","table_0_0.csv","yprop","oz252",regression
+"superconduct","table_0_0.csv","superconduct","criticaltemp",regression

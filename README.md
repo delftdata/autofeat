@@ -146,12 +146,21 @@ dataset and the results are saved in [results folder](results)
 
 ### Current Datasets
 
+Main [source](https://huggingface.co/datasets/inria-soda/tabular-benchmark#source-data) for finding datasets.
+
 | Dataset Label | Source | Processing strategy | Dataset Discovery | 
 | ------------- | ------ | --------- | -------- |
-| [jannis](data/jannis) | [openml](https://www.openml.org/search?type=data&sort=runs&id=45021&status=active) | [random-tree](https://github.com/kirilvasilev16/PythonTableDivider/tree/main) | [valentine - COMA](https://github.com/delftdata/valentine) |
-| [MiniBooNe](data/miniboone) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44128&status=active) | [reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
-| [covertype](data/covertype) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44159&status=active) | [reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
-| [EyeMovement](data/eyemove) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44157&status=active)
+| [jannis](data/jannis) | [openml](https://www.openml.org/search?type=data&sort=runs&id=45021&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [MiniBooNe](data/miniboone) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44128&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [covertype](data/covertype) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44159&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [EyeMovement](data/eyemove) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44157&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [Bioresponse](data/bioresponse) | [openml](https://www.openml.org/search?type=data&sort=runs&id=45019&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [school](data/school) | [ARDA Paper](http://www.vldb.org/pvldb/vol13/p1373-chepurko.pdf) | None | No |
+| [steel](data/steel) | [openml](https://www.openml.org/search?type=data&sort=runs&status=active&qualities.NumberOfClasses=%3D_2&id=1504) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [credit](data/credit) | [openml](https://www.openml.org/search?type=data&sort=runs&status=active&qualities.NumberOfClasses=%3D_2&id=31) | [normalisation](https://github.com/HPI-Information-Systems/metanome-algorithms/tree/master/Normalize) | No |
+| [yprop](data/yprop) | [openml](https://www.openml.org/search?type=data&sort=runs&id=45032&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [superconduct](data/superconduct) | [openml](https://www.openml.org/search?type=data&sort=runs&id=44148&status=active) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) | No |
+| [air](data/air) | [Paper Source](http://da.qcri.org/ntang/pubs/autofeature.pdf) - [Kaggle Resource](https://www.kaggle.com/code/sohier/getting-started-with-big-query/data) | None | No |
 
 
 ### Old datasets
