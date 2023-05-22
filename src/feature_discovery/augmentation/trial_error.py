@@ -228,6 +228,7 @@ def train_test_cart(
     :return: A Result object with the configuration and results of training
     """
 
+    print("Train CART ... ")
     start = time.time()
 
     if prepare_data:
@@ -259,6 +260,8 @@ def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, d
                    algorithms_to_run: dict, value_ratio: float = None):
     from sklearn.model_selection import train_test_split
     from autogluon.tabular import TabularPredictor
+
+    print(f"Train algorithms: {list(algorithms_to_run.keys())} with AutoGluon ...")
 
     X_train, X_test, y_train, y_test = train_test_split(
         dataframe.drop(columns=[target_column]),
