@@ -208,7 +208,7 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
 
     logging.debug("FINISHED BFS")
 
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k)
+    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k, feat_sel_time=end-start)
     logging.debug(top_k_paths)
 
     logging.debug("Save results ... ")
