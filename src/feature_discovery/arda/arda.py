@@ -235,6 +235,7 @@ def select_arda_features_budget_join(
 
     join_name = base_node.get("label")
 
+    join_keys = []
     # Get directly connected nodes
     nodes = get_adjacent_nodes(base_node_id)
     while len(nodes) > 0:
@@ -243,7 +244,7 @@ def select_arda_features_budget_join(
         # Join every table according to the budget
         while feature_count <= budget_size and len(nodes) > 0:
             node_id = nodes.pop()
-            print(f"Node id: {node_id}\n\tRemaining: {len(nodes)}")
+            print(f"Node id: {node_id}\n\tRemaining nodes: {len(nodes)}")
 
             # Get the keys between the base node and connected node
             join_key = get_relation_properties_node_name(
@@ -290,14 +291,18 @@ def select_arda_features_budget_join(
                 != right_table[f"{to_table}.{to_column}"].dtype
             ):
                 continue
+
+            left_on = f"{from_table}.{from_column}"
+            right_on = f"{to_table}.{to_column}"
             left_table = pd.merge(
                 left_table,
                 right_table,
                 how="left",
-                left_on=f"{from_table}.{from_column}",
-                right_on=f"{to_table}.{to_column}",
+                left_on=left_on,
+                right_on=right_on,
             )
-            left_table.drop(columns=[f"{to_table}.{to_column}"], inplace=True)
+            join_keys.append(left_on)
+            join_keys.append(right_on)
 
             # Compute the join name
             join_name = compute_join_name(
@@ -310,7 +315,9 @@ def select_arda_features_budget_join(
             print(f"Feature count: {feature_count}")
 
         # Compute the columns of the batch and create the batch dataset
-        columns = [c for c in list(left_table.columns) if c not in all_columns]
+        columns = set(left_table.columns) - set(all_columns)
+        columns = list(set(columns) - set(join_keys))
+
         print(f"{len(columns)} columns to select")
 
         # If the algorithm failed
