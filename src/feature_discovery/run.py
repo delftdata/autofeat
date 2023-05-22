@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import List, Optional
 
@@ -21,6 +22,8 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
 
+logging.getLogger().setLevel(logging.WARNING)
+
 hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
 # hyper_parameters = {"GBM": {}}
 
@@ -38,7 +41,7 @@ def filter_datasets(dataset_labels: Optional[List[str]] = None) -> List[Dataset]
 
 
 def get_base_results(dataset: Dataset, autogluon: bool = True):
-    print(f"Base result on table {dataset.base_table_id}")
+    logging.debug(f"Base result on table {dataset.base_table_id}")
 
     dataframe = pd.read_csv(
         DATA_FOLDER / dataset.base_table_id,
@@ -50,7 +53,7 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
     )
 
     if not autogluon:
-        print(f"Base result on table {dataset.base_table_id}")
+        logging.debug(f"Base result on table {dataset.base_table_id}")
 
         entry = train_test_cart(
             train_data=dataframe,
@@ -85,7 +88,7 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
 def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool = True) -> List:
     from feature_discovery.arda.arda import select_arda_features_budget_join
 
-    print(f"ARDA result on table {dataset.base_table_id}")
+    logging.debug(f"ARDA result on table {dataset.base_table_id}")
 
     start = time.time()
     (
@@ -100,10 +103,10 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         regression=dataset.dataset_type,
     )
     end = time.time()
-    print(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
+    logging.debug(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
     if len(selected_features) == 0:
-        print("No selected features ... ")
+        logging.debug("No selected features ... ")
         entry = Result(
             algorithm="",
             accuracy=0,
@@ -121,7 +124,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     features.append(dataset.target_column)
 
     if not autogluon:
-        print("Running CART on ARDA feature selection ... ")
+        logging.debug("Running CART on ARDA feature selection ... ")
         entry = train_test_cart(
             train_data=dataframe[features],
             target_column=dataset.target_column,
@@ -136,7 +139,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
 
         return [entry]
 
-    print(f"Running on ARDA Feature Selection result with AutoGluon")
+    logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
     _, results = run_auto_gluon(
         approach=Result.ARDA,
         dataframe=dataframe[features],
@@ -155,7 +158,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
 
 
 def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float):
-    print(f"Evaluate top-{top_k} paths ... ")
+    logging.debug(f"Evaluate top-{top_k} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
 
@@ -169,9 +172,9 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)
-        print(f"Feature before join_key removal:\n{features}")
+        logging.debug(f"Feature before join_key removal:\n{features}")
         features = list(set(features) - set(bfs_result.join_keys[join_name]))
-        print(f"Feature after join_key removal:\n{features}")
+        logging.debug(f"Feature after join_key removal:\n{features}")
 
         best_model, results = run_auto_gluon(approach=Result.TFD,
                                              dataframe=dataframe[features],
@@ -191,7 +194,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
 
 
 def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
-    print(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
+    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
     bfs_traversal = BfsAugmentation(
@@ -203,12 +206,12 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
     bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
     end = time.time()
 
-    print("FINISHED BFS")
+    logging.debug("FINISHED BFS")
 
     all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k)
-    print(top_k_paths)
+    logging.debug(top_k_paths)
 
-    print("Save results ... ")
+    logging.debug("Save results ... ")
     pd.DataFrame(all_results).to_csv(
         RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
         index=False,
@@ -243,7 +246,7 @@ def get_results_ablation_classification(value_ratio: float, dataset_labels: List
     all_results = []
 
     for params in tqdm.tqdm(ml_model.items()):
-        print(f"Running ablation study with algorithm {params[0]} with AutoGluon")
+        logging.debug(f"Running ablation study with algorithm {params[0]} with AutoGluon")
         hyper_param = dict([params])
 
         result = ablation_study_enumerate_paths(dataset_labels, value_ratio=value_ratio, ml_model=hyper_param)
@@ -279,7 +282,6 @@ def export_neo4j_connections(dataset_label: str = None):
         result = export_dataset_connections(dataset_label)
     else:
         result = export_all_connections()
-    print(result)
 
     pd.DataFrame(result).to_csv("all_connections.csv", index=False)
 
@@ -298,4 +300,4 @@ if __name__ == "__main__":
     dataset = filter_datasets(["covertype"])[0]
     # get_tfd_results(dataset, value_ratio=0.65)
     # get_arda_results(dataset)
-    # get_base_results(dataset)
+    get_base_results(dataset)

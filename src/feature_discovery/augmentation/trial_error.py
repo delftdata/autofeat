@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Dict
 
@@ -22,6 +23,8 @@ from feature_discovery.helpers.util_functions import (
     get_df_with_prefix,
     get_elements_higher_than_value,
 )
+
+logging.getLogger().setLevel(logging.WARNING)
 
 
 def dfs_traverse_join_pipeline(
@@ -49,11 +52,11 @@ def dfs_traverse_join_pipeline(
     :param previous_paths: The join paths used in previous iteration, which are used to create a join tree of paths.
     :return: Set of paths
     """
-    print(f"New iteration with {base_node_id}")
+    logging.debug(f"New iteration with {base_node_id}")
 
     # Trace the recursion
     if len(join_tree[base_node_id].keys()) == 0:
-        print(f"End node: {base_node_id}")
+        logging.debug(f"End node: {base_node_id}")
         return previous_paths
 
     # Get current dataframe
@@ -69,18 +72,18 @@ def dfs_traverse_join_pipeline(
 
     # Traverse
     for node in tqdm.tqdm(join_tree[base_node_id].keys()):
-        print(f"\n\t{base_node_id} Joining with {node}")
+        logging.debug(f"\n\t{base_node_id} Joining with {node}")
         join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
 
         right_df, right_label = get_df_with_prefix(node)
-        print(f"\tRight table shape: {right_df.shape}")
+        logging.debug(f"\tRight table shape: {right_df.shape}")
 
         next_paths = set()
         for prop in tqdm.tqdm(join_keys):
             join_prop, from_table, to_table = prop
             if join_prop["from_label"] != from_table:
                 continue
-            print(f"\n\t\tJoin properties: {join_prop}")
+            logging.debug(f"\n\t\tJoin properties: {join_prop}")
 
             # Transform to 1:1 or M:1 based on the join property
             right_df = right_df.groupby(
@@ -90,7 +93,7 @@ def dfs_traverse_join_pipeline(
             current_paths = all_paths.copy()
             while len(current_paths) > 0:
                 current_join_path = current_paths.pop()
-                print(f"\t\t\tCurrent join path: {current_join_path}")
+                logging.debug(f"\t\t\tCurrent join path: {current_join_path}")
 
                 if left_df is None:
                     left_df = pd.read_csv(
@@ -108,7 +111,7 @@ def dfs_traverse_join_pipeline(
                 join_name = compute_join_name(
                     join_key_property=prop, partial_join_name=current_join_path
                 )
-                print(f"\t\t\tJoin name: {join_name}")
+                logging.debug(f"\t\t\tJoin name: {join_name}")
 
                 # File naming convention as the filename can be gigantic
                 join_filename = (
@@ -130,17 +133,17 @@ def dfs_traverse_join_pipeline(
                         / joined_df.shape[0]
                         < value_ratio
                 ):
-                    print("\t\tRight column value ration below 0.5.\nSKIPPED Join")
+                    logging.debug("\t\tRight column value ration below 0.5.\nSKIPPED Join")
                     continue
 
                 if gini:
-                    print("\tGini index computation ... ")
+                    logging.debug("\tGini index computation ... ")
                     X, y = prepare_data_for_ml(joined_df, target_column)
                     scores = gini_index(X.to_numpy(), y)
                     indices = feature_ranking(scores)
 
                     if not np.any(scores < smallest_gini_score):
-                        print(
+                        logging.debug(
                             f"\t\tNo feature with gini index smallest than {smallest_gini_score}.\nSKIPPED Join"
                         )
                         continue
@@ -150,7 +153,7 @@ def dfs_traverse_join_pipeline(
                 next_paths.add(join_name)
                 join_name_mapping[join_name] = join_filename
 
-            print(f"\tEnd join properties iteration for {node}")
+            logging.debug(f"\tEnd join properties iteration for {node}")
 
         # Continue traversal
         current_paths = dfs_traverse_join_pipeline(
@@ -166,7 +169,7 @@ def dfs_traverse_join_pipeline(
             next_paths,
         )
         all_paths.update(current_paths)
-        print(f"End depth iteration for {node}")
+        logging.debug(f"End depth iteration for {node}")
 
     return all_paths
 
@@ -196,11 +199,11 @@ def _select_features_train(joined_df, right_df, target_column, join_name):
         selected_features_df = joined_df[features_with_selected]
 
     # Train, test - With feature selection
-    print(f"TRAIN WITH feature selection")
+    logging.debug(f"TRAIN WITH feature selection")
     if selected_features_df is None:
-        print(f"\tNo selected features. Skipping ...")
+        logging.debug(f"\tNo selected features. Skipping ...")
     elif selected_features_df.shape == joined_df.shape:
-        print(f"\tAll features were selected. Skipping ... ")
+        logging.debug(f"\tAll features were selected. Skipping ... ")
     else:
         result = train_test_cart(selected_features_df, target_column)
         result.data_path = join_name
@@ -228,7 +231,7 @@ def train_test_cart(
     :return: A Result object with the configuration and results of training
     """
 
-    print("Train CART ... ")
+    logging.debug("Train CART ... ")
     start = time.time()
 
     if prepare_data:
@@ -243,7 +246,7 @@ def train_test_cart(
     features_scores = dict(zip(X.columns, feature_importance))
     end = time.time()
     train_time = end - start
-    print(
+    logging.debug(
         f"\tAccuracy/RMSE: {abs(acc_decision_tree)}\n\tFeature scores: \n{features_scores}\n\tTrain time: {train_time}"
     )
 
@@ -261,7 +264,7 @@ def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, d
     from sklearn.model_selection import train_test_split
     from autogluon.tabular import TabularPredictor
 
-    print(f"Train algorithms: {list(algorithms_to_run.keys())} with AutoGluon ...")
+    logging.debug(f"Train algorithms: {list(algorithms_to_run.keys())} with AutoGluon ...")
 
     X_train, X_test, y_train, y_test = train_test_split(
         dataframe.drop(columns=[target_column]),
