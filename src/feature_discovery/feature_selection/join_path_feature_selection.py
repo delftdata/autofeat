@@ -12,6 +12,7 @@ from feature_discovery.data_preparation.utils import prepare_data_for_ml
 
 
 def measure_relevance(dataframe: pd.DataFrame, feature_names: List[str], target_column: pd.Series):
+    print("Measure relevance ... ")
     common_features = list(set(dataframe.columns).intersection(set(feature_names)))
     features = dataframe[common_features]
     scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
@@ -78,10 +79,10 @@ def measure_joint_mutual_information(dataframe: pd.DataFrame, selected_features:
         return None, []
 
     if np.max(scores) == np.min(scores):
-        return scores[0], new_features
+        normalised_scores = (scores - np.min(scores)) / np.max(scores)
+    else:
+        normalised_scores = (scores - np.min(scores)) / (np.max(scores) - np.min(scores))
 
-    # normalise
-    normalised_scores = (scores - np.min(scores)) / (np.max(scores) - np.min(scores))
     feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
     final_feature_scores = [(name, value) for name, value in feature_scores if value > 0]
     final_feature_names = [feat for feat, _ in final_feature_scores]
