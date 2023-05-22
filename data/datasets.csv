@@ -6,3 +6,4 @@ base_table_path,base_table_name,base_table_label,target_column,dataset_type
 "covertype","table_0_0.csv","covertype","class",classification
 "eyemove","table_0_0.csv","eyemove","label",classification
 "bioresponse","table_0_0.csv","bioresponse","target",classification
+"school","base.csv","school","class",classification
