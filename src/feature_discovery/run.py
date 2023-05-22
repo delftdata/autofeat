@@ -103,10 +103,9 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     print(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
     if len(selected_features) == 0:
-        from feature_discovery.algorithms import CART
-
+        print("No selected features ... ")
         entry = Result(
-            algorithm=CART.LABEL,
+            algorithm="",
             accuracy=0,
             feature_importance={},
             feature_selection_time=end - start,
@@ -295,8 +294,8 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
 
 
 if __name__ == "__main__":
-    # transform_arff_to_csv("covertype", "covertype_dataset.arff")
+    # transform_arff_to_csv("bioresponse", "bioresponse_dataset.arff")
     dataset = filter_datasets(["covertype"])[0]
     # get_tfd_results(dataset, value_ratio=0.65)
     # get_arda_results(dataset)
-    get_base_results(dataset)
+    # get_base_results(dataset)
