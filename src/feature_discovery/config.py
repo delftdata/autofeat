@@ -33,4 +33,4 @@ NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASS = os.getenv("NEO4J_PASS", "pass1234")
 NEO4J_CREDENTIALS = (NEO4J_USER, NEO4J_PASS)
 
-NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "alldatamixed")
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
