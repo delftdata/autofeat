@@ -132,7 +132,6 @@ class BfsAugmentation:
             previous_join_name = previous_queue.pop()
 
             previous_join = None
-            # TODO
             if not self.enumerate_paths:
                 previous_join, previous_join_name = self.get_previous_join(previous_join_name, base_node_id)
             print(f"\tPartial join name: {previous_join_name}")
@@ -326,6 +325,7 @@ class BfsAugmentation:
     def step_join(self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame,
                   right_label: str) -> Tuple[pd.DataFrame or None, str, list]:
 
+        print("\tSTEP Join ... ")
         join_prop, from_table, to_table = join_key_properties
 
         # Step - Sample neighbour data - Transform to 1:1 or M:1
@@ -351,6 +351,7 @@ class BfsAugmentation:
         return joined_df, join_filename, [left_on, right_on]
 
     def step_data_quality(self, join_key_properties: tuple, joined_df: pd.DataFrame) -> bool:
+        print("\tSTEP data quality ...")
         join_prop, from_table, to_table = join_key_properties
 
         # Data Quality check - Prune the joins with high null values ratio
@@ -362,7 +363,7 @@ class BfsAugmentation:
 
     def step_feature_selection(self, joined_df: pd.DataFrame, new_features: List[str],
                                current_selected_features: List[str], previous_score: float) -> Tuple[float, List[str]]:
-        print("\t\tFeature selection step ... ")
+        print("\tSTEP Feature selection ... ")
 
         if self.auto_gluon:
             X = joined_df.drop(columns=[self.target_column])
@@ -471,6 +472,7 @@ class BfsAugmentation:
     def get_previous_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
         if partial_join_name == base_node_id:
             partial_join, partial_join_name = get_df_with_prefix(base_node_id, self.target_column)
+            print("Initialise first node ... ")
             self.initialise_ranks_features(join_name=partial_join_name, dataframe=partial_join)
         else:
             partial_join = pd.read_csv(
@@ -490,22 +492,24 @@ class BfsAugmentation:
         self.join_keys[join_name] = []
 
         if len(self.join_name_mapping.keys()) == 0:
-            if self.auto_gluon:
-                _, all_results = run_auto_gluon(approach=Result.TFD,
-                                                dataframe=aux_df,
-                                                target_column=self.target_column,
-                                                data_label=self.base_table_label,
-                                                join_name=join_name,
-                                                algorithms_to_run=self.hyper_parameters,
-                                                value_ratio=self.value_ratio)
-                entry = all_results[0]
-            else:
-                entry = train_test_cart(train_data=aux_df,
-                                        target_column=self.target_column)
-            self.ranked_paths[join_name] = entry
+            if self.ranking_jk_step:
+                if self.auto_gluon:
+                    _, all_results = run_auto_gluon(approach=Result.TFD,
+                                                    dataframe=aux_df,
+                                                    target_column=self.target_column,
+                                                    data_label=self.base_table_label,
+                                                    join_name=join_name,
+                                                    algorithms_to_run=self.hyper_parameters,
+                                                    value_ratio=self.value_ratio)
+                    entry = all_results[0]
+                else:
+                    entry = train_test_cart(train_data=aux_df,
+                                            target_column=self.target_column)
+                self.ranked_paths[join_name] = entry
             self.base_node_label = join_name
 
     def get_relevant_features(self, dataframe: pd.DataFrame) -> Tuple[float, List[str]]:
+        print("Get relevant features ... ")
         if self.auto_gluon:
             X = dataframe.drop(columns=[self.target_column])
             y = dataframe[self.target_column]
