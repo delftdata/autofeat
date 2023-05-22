@@ -11,7 +11,7 @@ from feature_discovery.run import (
     get_arda_results,
     get_base_results,
     get_tfd_results,
-    get_classification_results, get_results_ablation_classification, get_results_tune_value_ratio_classification,
+    get_classification_results, get_results_ablation_classification, get_results_tune_value_ratio_classification, plot,
 )
 
 app = typer.Typer()
@@ -158,6 +158,18 @@ def ingest_all_data():
     datasets = filter_datasets()
     for dataset in datasets:
         ingest_data_with_pk_fk(dataset=dataset)
+
+
+@app.command()
+def plot_data(
+        results_filename: Annotated[
+            str, typer.Option(help="The name of the file with results which is in result folder")
+        ] = "all_results_autogluon.csv",
+):
+    """
+        Plots the accuracy and time given the results.
+    """
+    plot(results_filename)
 
 
 if __name__ == "__main__":

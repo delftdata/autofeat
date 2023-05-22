@@ -21,6 +21,7 @@ from feature_discovery.experiments.ablation_experiments import (
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
+from feature_discovery.visualisations.plot_data import parse_data, plot_accuracy, plot_time
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -295,9 +296,17 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
     dataframe.to_csv(DATA_FOLDER / dataset_label / f"{dataset_label}_original.csv", index=False)
 
 
+def plot(results_file_name: str):
+    dataframe = pd.read_csv(
+        RESULTS_FOLDER / results_file_name, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\")
+    dataframe = parse_data(dataframe)
+    plot_accuracy(dataframe)
+    plot_time(dataframe)
+
+
 if __name__ == "__main__":
-    # transform_arff_to_csv("bioresponse", "bioresponse_dataset.arff")
-    dataset = filter_datasets(["covertype"])[0]
+    transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
+    # dataset = filter_datasets(["yprop"])[0]
     # get_tfd_results(dataset, value_ratio=0.65)
     # get_arda_results(dataset)
-    get_base_results(dataset)
+    # get_base_results(dataset)
