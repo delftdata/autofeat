@@ -76,6 +76,9 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
         algorithms_to_run=hyper_parameters,
     )
 
+    # Save intermediate results
+    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
+
     return results
 
 
@@ -134,25 +137,22 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
 
         return [entry]
 
-    all_results = []
-    for params in tqdm.tqdm(hyper_parameters.items()):
-        print(f"Running {params[0]} on ARDA Feature Selection result with AutoGluon")
-        hyper_param = dict([params])
-        _, results = run_auto_gluon(
-            approach=Result.ARDA,
-            dataframe=dataframe[features],
-            target_column=dataset.target_column,
-            data_label=dataset.base_table_label,
-            join_name=join_name,
-            algorithms_to_run=hyper_param,
-        )
-        for result in results:
-            result.feature_selection_time = end - start
-            result.total_time += result.feature_selection_time
+    print(f"Running on ARDA Feature Selection result with AutoGluon")
+    _, results = run_auto_gluon(
+        approach=Result.ARDA,
+        dataframe=dataframe[features],
+        target_column=dataset.target_column,
+        data_label=dataset.base_table_label,
+        join_name=join_name,
+        algorithms_to_run=hyper_parameters,
+    )
+    for result in results:
+        result.feature_selection_time = end - start
+        result.total_time += result.feature_selection_time
 
-        all_results.extend(results)
+    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 
-    return all_results
+    return results
 
 
 def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float):
@@ -186,6 +186,8 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
             result.total_time += feat_sel_time
 
         all_results.extend(results)
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd.csv", index=False)
     return all_results, top_k_paths
 
 
@@ -296,4 +298,5 @@ if __name__ == "__main__":
     # transform_arff_to_csv("covertype", "covertype_dataset.arff")
     dataset = filter_datasets(["covertype"])[0]
     # get_tfd_results(dataset, value_ratio=0.65)
-    get_arda_results(dataset)
+    # get_arda_results(dataset)
+    get_base_results(dataset)
