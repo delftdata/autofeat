@@ -57,6 +57,9 @@ def run_base(
 
 @app.command()
 def run_tfd(
+        top_k: Annotated[
+            int, typer.Option(help="Number of results (paths)")
+        ] = 10,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
@@ -70,7 +73,7 @@ def run_tfd(
     all_results = []
     datasets = filter_datasets(dataset_labels)
     for dataset in datasets:
-        all_results.extend(get_tfd_results(dataset, value_ratio, auto_gluon))
+        all_results.extend(get_tfd_results(dataset, top_k, value_ratio, auto_gluon))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
