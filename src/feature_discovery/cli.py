@@ -11,7 +11,7 @@ from feature_discovery.run import (
     get_arda_results,
     get_base_results,
     get_tfd_results,
-    get_classification_results, get_results_ablation_classification, get_results_tune_value_ratio_classification, plot,
+    get_all_results, get_results_ablation_classification, get_results_tune_value_ratio_classification, plot,
 )
 
 app = typer.Typer()
@@ -23,13 +23,16 @@ def run_arda(
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "results_arda.csv",
 ):
     """Runs the ARDA experiments."""
     all_results = []
-    datasets = filter_datasets(dataset_labels)
+    datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in datasets:
         all_results.extend(get_arda_results(dataset))
 
@@ -42,13 +45,16 @@ def run_base(
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "results_base.csv",
 ):
     """Runs the base experiments."""
     all_results = []
-    datasets = filter_datasets(dataset_labels)
+    datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in datasets:
         all_results.extend(get_base_results(dataset))
 
@@ -64,6 +70,9 @@ def run_tfd(
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
@@ -71,7 +80,7 @@ def run_tfd(
 ):
     """Runs the TFD experiments."""
     all_results = []
-    datasets = filter_datasets(dataset_labels)
+    datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in datasets:
         all_results.extend(get_tfd_results(dataset, top_k, value_ratio, auto_gluon))
 
@@ -84,13 +93,16 @@ def run_all(
             Optional[List[str]],
             typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
         ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "all_results_autogluon.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
     """Runs all experiments (ARDA + base + TFD)."""
-    get_classification_results(value_ratio, dataset_labels, results_file)
+    get_all_results(value_ratio, problem_type, dataset_labels, results_file)
 
 
 @app.command()

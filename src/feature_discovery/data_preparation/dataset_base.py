@@ -4,8 +4,8 @@ from typing import List, Optional
 import pandas as pd
 
 
-CLASSIFICATION = "false"
-REGRESSION = "true"
+CLASSIFICATION = "binary"
+REGRESSION = "regression"
 
 
 class Dataset:
@@ -19,10 +19,10 @@ class Dataset:
         self.base_table_features = base_table_features
         self.base_table_df = None
 
-        if dataset_type == "classification":
-            self.dataset_type = CLASSIFICATION
-        else:
+        if dataset_type == "regression":
             self.dataset_type = REGRESSION
+        else:
+            self.dataset_type = CLASSIFICATION
 
     def set_features(self):
         if self.base_table_df is not None:
