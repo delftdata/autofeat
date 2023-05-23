@@ -8,6 +8,7 @@ import tqdm
 
 from feature_discovery.algorithms import CART
 from feature_discovery.config import JOIN_RESULT_FOLDER, AUTO_GLUON_FOLDER
+from feature_discovery.data_preparation.dataset_base import REGRESSION
 from feature_discovery.data_preparation.utils import (
     compute_join_name,
     join_and_save,
@@ -260,7 +261,7 @@ def train_test_cart(
 
 
 def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, data_label: str, join_name: str,
-                   algorithms_to_run: dict, value_ratio: float = None):
+                   problem_type: str, algorithms_to_run: dict, value_ratio: float = None):
     from sklearn.model_selection import train_test_split
     from autogluon.tabular import TabularPredictor
 
@@ -279,10 +280,14 @@ def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, d
     test[target_column] = y_test
 
     predictor = TabularPredictor(label=target_column,
-                                 problem_type="binary",
+                                 problem_type=problem_type,
                                  verbosity=0,
                                  path=AUTO_GLUON_FOLDER / "models").fit(train_data=train,
                                                                         hyperparameters=algorithms_to_run)
+    score_type = 'accuracy'
+    if problem_type == REGRESSION:
+        score_type = 'root_mean_squared_error'
+
     highest_acc = 0
     best_model = None
     results = []
@@ -290,7 +295,7 @@ def run_auto_gluon(approach: str, dataframe: pd.DataFrame, target_column: str, d
     model_names = predictor.get_model_names()
     for model in model_names[:-1]:
         result = predictor.evaluate(data=test, model=model)
-        accuracy = result['accuracy']
+        accuracy = abs(result[score_type])
         ft_imp = predictor.feature_importance(
             data=test, model=model, feature_stage="original"
         )

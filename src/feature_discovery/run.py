@@ -9,7 +9,7 @@ import tqdm
 from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
 from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, JOIN_RESULT_FOLDER
-from feature_discovery.data_preparation.dataset_base import Dataset
+from feature_discovery.data_preparation.dataset_base import Dataset, REGRESSION, CLASSIFICATION
 from feature_discovery.data_preparation.utils import get_path_length
 from feature_discovery.experiments.ablation_experiments import (
     ablation_study_enumerate_paths,
@@ -20,7 +20,8 @@ from feature_discovery.experiments.ablation_experiments import (
 )
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
-from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets
+from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets, ALL_DATASETS, \
+    REGRESSION_DATASETS
 from feature_discovery.visualisations.plot_data import parse_data, plot_accuracy, plot_time
 
 logging.getLogger().setLevel(logging.WARNING)
@@ -31,14 +32,18 @@ hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
 init_datasets()
 
 
-def filter_datasets(dataset_labels: Optional[List[str]] = None) -> List[Dataset]:
+def filter_datasets(dataset_labels: Optional[List[str]] = None, problem_type: Optional[str] = None) -> List[Dataset]:
     # `is None` is missing on purpose, because typer cannot return None default values for lists, only []
-    if not dataset_labels:
-        datasets = CLASSIFICATION_DATASETS
-    else:
-        datasets = [dataset for dataset in CLASSIFICATION_DATASETS if dataset.base_table_label in dataset_labels]
+    if problem_type == CLASSIFICATION:
+        return CLASSIFICATION_DATASETS if not dataset_labels else [dataset for dataset in CLASSIFICATION_DATASETS if
+                                                                   dataset.base_table_label in dataset_labels]
+    if problem_type == REGRESSION:
+        return REGRESSION_DATASETS if not dataset_labels else [dataset for dataset in REGRESSION_DATASETS if
+                                                               dataset.base_table_label in dataset_labels]
+    if not problem_type and dataset_labels:
+        return [dataset for dataset in ALL_DATASETS if dataset.base_table_label in dataset_labels]
 
-    return datasets
+    return ALL_DATASETS
 
 
 def get_base_results(dataset: Dataset, autogluon: bool = True):
@@ -78,6 +83,7 @@ def get_base_results(dataset: Dataset, autogluon: bool = True):
         data_label=dataset.base_table_label,
         join_name=dataset.base_table_label,
         algorithms_to_run=hyper_parameters,
+        problem_type=dataset.dataset_type,
     )
 
     # Save intermediate results
@@ -101,7 +107,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         base_node_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
         sample_size=sample_size,
-        regression=dataset.dataset_type,
+        regression=(dataset.dataset_type == REGRESSION),
     )
     end = time.time()
     logging.debug(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
@@ -148,6 +154,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         data_label=dataset.base_table_label,
         join_name=join_name,
         algorithms_to_run=hyper_parameters,
+        problem_type=dataset.dataset_type
     )
     for result in results:
         result.feature_selection_time = end - start
@@ -158,7 +165,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     return results
 
 
-def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float):
+def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float, problem_type: str):
     logging.debug(f"Evaluate top-{top_k} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
@@ -183,7 +190,8 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
                                              data_label=bfs_result.base_table_label,
                                              join_name=join_name,
                                              algorithms_to_run=hyper_parameters,
-                                             value_ratio=bfs_result.value_ratio)
+                                             value_ratio=bfs_result.value_ratio,
+                                             problem_type=problem_type)
         for result in results:
             result.feature_selection_time = feat_sel_time
             result.total_time += feat_sel_time
@@ -209,27 +217,31 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
 
     logging.debug("FINISHED BFS")
 
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal, top_k=top_k, feat_sel_time=end-start)
+    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
+                                              top_k=top_k,
+                                              feat_sel_time=end - start,
+                                              problem_type=dataset.dataset_type)
     logging.debug(top_k_paths)
 
     logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(
-        RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
-        index=False,
-    )
+    # pd.DataFrame(all_results).to_csv(
+    #     RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
+    #     index=False,
+    # )
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
         f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
 
     return all_results
 
 
-def get_classification_results(
+def get_all_results(
         value_ratio: float,
+        problem_type: Optional[str],
         dataset_labels: Optional[List[str]] = None,
         results_file: str = "all_results_autogluon.csv",
 ):
     all_results = []
-    datasets = filter_datasets(dataset_labels)
+    datasets = filter_datasets(dataset_labels, problem_type)
 
     for dataset in tqdm.tqdm(datasets):
         result_bfs = get_tfd_results(dataset, value_ratio=value_ratio)
@@ -298,7 +310,7 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
 
 def plot(results_file_name: str):
     dataframe = pd.read_csv(
-        RESULTS_FOLDER / results_file_name, header=0, engine="python", encoding="utf8", quotechar='"', escapechar="\\")
+        RESULTS_FOLDER / results_file_name, header=0, sep=";", engine="python", encoding="utf8", quotechar='"', escapechar="\\")
     dataframe = parse_data(dataframe)
     plot_accuracy(dataframe)
     plot_time(dataframe)
