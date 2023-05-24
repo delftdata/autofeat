@@ -12,7 +12,7 @@ from valentine.algorithms import Coma
 
 from feature_discovery.config import CONNECTIONS, DATA_FOLDER, VALENTINE_CONNECTIONS
 from feature_discovery.data_preparation import SIBLING, RELATED
-from feature_discovery.graph_processing.neo4j_transactions import merge_nodes_relation, create_relation, merge_nodes_relation_tables
+from feature_discovery.graph_processing.neo4j_transactions import create_node, merge_nodes_relation, create_relation, merge_nodes_relation_tables
 
 
 def ingest_fabricated_data() -> dict:
@@ -69,6 +69,20 @@ def ingest_unprocessed_data(dataset_folder_name: str = None):
             #                             a_col=row["pk_column"], b_col=row["fk_column"], weight=1)
 
     return mapping
+
+
+def ingest_nodes(dataset_folder_name: str = None) -> None:
+    print("Process the tables ...")
+
+    if dataset_folder_name:
+        files = glob.glob(f"{DATA_FOLDER / dataset_folder_name}/**/*.csv", recursive=True)
+    else:
+        files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
+
+    for f in files:
+        table_path = f.partition(f"{DATA_FOLDER}/")[2]
+        table_name = table_path.split("/")[-1]
+        create_node(table_path, table_name)
 
 
 def ingest_tables() -> dict:

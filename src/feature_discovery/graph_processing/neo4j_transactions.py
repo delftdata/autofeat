@@ -4,6 +4,7 @@ from neo4j import GraphDatabase
 
 from feature_discovery.config import NEO4J_HOST, NEO4J_CREDENTIALS, NEO4J_DATABASE
 from feature_discovery.graph_processing.neo4j_queries import (
+    _create_node,
     _create_relation,
     _merge_nodes_relation_tables,
     _merge_nodes_relation,
@@ -162,3 +163,9 @@ def export_dataset_connections(dataset_label: str) -> List[dict]:
     with driver.session(database=NEO4J_DATABASE) as session:
         results = session.write_transaction(_export_dataset_connections, dataset_label)
     return results
+
+
+def create_node(node_id, node_label):
+    with driver.session(database=NEO4J_DATABASE) as session:
+        result = session.write_transaction(_create_node, node_id, node_label)
+    return result
