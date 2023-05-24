@@ -6,6 +6,7 @@ from typing_extensions import Annotated
 
 from feature_discovery.augmentation.data_preparation_pipeline import ingest_data_with_pk_fk
 from feature_discovery.config import RESULTS_FOLDER
+from feature_discovery.data_preparation.ingest_data import profile_valentine_all
 from feature_discovery.run import (
     filter_datasets,
     get_arda_results,
@@ -164,16 +165,21 @@ def ingest_data(
 
 @app.command()
 def ingest_all_data(
-        data_discovery: Annotated[
-            bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
-        ] = False,
+        data_discovery_threshold: Annotated[
+            float, typer.Option(
+                help="Run dataset discovery to find more connections within the entire data lake with given"
+                     " accuracy rate threshold")
+        ] = None,
 ):
     """
         Ingest all dataset from "data" folder.
     """
     datasets = filter_datasets()
     for dataset in datasets:
-        ingest_data_with_pk_fk(dataset=dataset, profile_valentine=data_discovery, mix_datasets=data_discovery)
+        ingest_data_with_pk_fk(dataset=dataset)
+
+    if data_discovery_threshold:
+        profile_valentine_all(valentine_threshold=data_discovery_threshold)
 
 
 @app.command()
