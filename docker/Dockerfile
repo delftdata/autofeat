@@ -1,5 +1,8 @@
 FROM --platform=amd64 python:3.8-slim-buster
 
+# Install java for valentine
+RUN apt update && apt install -y default-jre
+
 ENV NEO4J_HOST="neo4j://feature-discovery-neo4j:7687"
 ENV NEO4J_USER="neo4j"
 ENV NEO4J_PASSWORD="pass"
@@ -7,6 +10,10 @@ ENV NEO4J_DATABASE="alldatamixed"
 
 ENV EXPERIMENT_TYPE="run_all"
 ENV TFD_ROOT_FOLDER="/app"
+
+COPY requirements.txt /app/requirements.txt
+
+RUN pip install -r /app/requirements.txt
 
 COPY src /app/src
 COPY joined-df /app/joined-df
@@ -17,6 +24,6 @@ COPY results /app/results
 WORKDIR /app
 
 # Install python deps
-RUN pip install .
+RUN pip install -e .
 
 # CMD feature-discovery-cli ${EXPERIMENT_TYPE} --dataset-labels school
