@@ -5,6 +5,8 @@ import os
 from typing import List
 
 import pandas as pd
+from joblib import Parallel, delayed
+from tqdm import tqdm
 from valentine import valentine_match
 from valentine.algorithms import Coma
 
@@ -116,7 +118,7 @@ def profile_valentine_dataset(dataset_name: str, valentine_threshold: float = 0.
 
 
 def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
-    for table_pair in itertools.combinations(files, r=2):
+    def profile(table_pair):
         (tab1, tab2) = table_pair
 
         a_table_path = tab1.partition(f"{DATA_FOLDER}/")[2]
@@ -142,4 +144,8 @@ def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
                                             a_col=col_from,
                                             b_col=col_to,
                                             weight=similarity)
+    
+    Parallel(n_jobs=-1)(delayed(profile)(table_pair) for table_pair in tqdm(itertools.combinations(files, r=2)))
+    # for table_pair in itertools.combinations(files, r=2):
+    #     profile(table_pair)
 
