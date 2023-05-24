@@ -15,6 +15,7 @@ dependencies = [
     "autogluon == 0.7.0",
     "deprecation == 2.1.0",
     "ITMO-FS == 0.3.3",
+    "joblib == 1.2.0",
     "matplotlib == 3.3.4",
     "neo4j == 4.4.0",
     "notebook == 6.4.5",
