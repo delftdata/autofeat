@@ -163,13 +163,17 @@ def ingest_data(
 
 
 @app.command()
-def ingest_all_data():
+def ingest_all_data(
+        data_discovery: Annotated[
+            bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
+        ] = False,
+):
     """
         Ingest all dataset from "data" folder.
     """
     datasets = filter_datasets()
     for dataset in datasets:
-        ingest_data_with_pk_fk(dataset=dataset)
+        ingest_data_with_pk_fk(dataset=dataset, profile_valentine=data_discovery, mix_datasets=data_discovery)
 
 
 @app.command()
