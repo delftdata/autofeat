@@ -147,6 +147,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         return [entry]
 
     logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
+    start_ag = time.time()
     _, results = run_auto_gluon(
         approach=Result.ARDA,
         dataframe=dataframe[features],
@@ -156,9 +157,12 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         algorithms_to_run=hyper_parameters,
         problem_type=dataset.dataset_type
     )
+    end_ag = time.time()
     for result in results:
         result.feature_selection_time = end - start
+        result.train_time = end_ag - start_ag
         result.total_time += result.feature_selection_time
+        result.total_time += result.train_time
 
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 
@@ -184,6 +188,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         features = list(set(features) - set(bfs_result.join_keys[join_name]))
         logging.debug(f"Feature after join_key removal:\n{features}")
 
+        start = time.time()
         best_model, results = run_auto_gluon(approach=Result.TFD,
                                              dataframe=dataframe[features],
                                              target_column=bfs_result.target_column,
@@ -192,9 +197,12 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
                                              algorithms_to_run=hyper_parameters,
                                              value_ratio=bfs_result.value_ratio,
                                              problem_type=problem_type)
+        end = time.time()
         for result in results:
             result.feature_selection_time = feat_sel_time
+            result.train_time = end - start
             result.total_time += feat_sel_time
+            result.total_time += end - start
 
         all_results.extend(results)
 
