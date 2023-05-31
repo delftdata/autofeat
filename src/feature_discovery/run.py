@@ -147,6 +147,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         return [entry]
 
     logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
+    start_ag = time.time()
     _, results = run_auto_gluon(
         approach=Result.ARDA,
         dataframe=dataframe[features],
@@ -156,9 +157,12 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
         algorithms_to_run=hyper_parameters,
         problem_type=dataset.dataset_type
     )
+    end_ag = time.time()
     for result in results:
         result.feature_selection_time = end - start
+        result.train_time = end_ag - start_ag
         result.total_time += result.feature_selection_time
+        result.total_time += result.train_time
 
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 
@@ -184,6 +188,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         features = list(set(features) - set(bfs_result.join_keys[join_name]))
         logging.debug(f"Feature after join_key removal:\n{features}")
 
+        start = time.time()
         best_model, results = run_auto_gluon(approach=Result.TFD,
                                              dataframe=dataframe[features],
                                              target_column=bfs_result.target_column,
@@ -192,9 +197,12 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
                                              algorithms_to_run=hyper_parameters,
                                              value_ratio=bfs_result.value_ratio,
                                              problem_type=problem_type)
+        end = time.time()
         for result in results:
             result.feature_selection_time = feat_sel_time
+            result.train_time = end - start
             result.total_time += feat_sel_time
+            result.total_time += end - start
 
         all_results.extend(results)
 
@@ -202,7 +210,8 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
     return all_results, top_k_paths
 
 
-def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True) -> List:
+def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True,
+                    join_all: bool = False) -> List:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
@@ -212,7 +221,10 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
         value_ratio=value_ratio,
         auto_gluon=auto_gluon,
     )
-    bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
+    if join_all:
+        bfs_traversal.join_all_recursively(queue={str(dataset.base_table_id)})
+    else:
+        bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
     end = time.time()
 
     logging.debug("FINISHED BFS")
@@ -244,7 +256,7 @@ def get_all_results(
     datasets = filter_datasets(dataset_labels, problem_type)
 
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, value_ratio=value_ratio)
+        result_bfs = get_tfd_results(dataset, value_ratio=value_ratio, join_all=True)
         all_results.extend(result_bfs)
         result_base = get_base_results(dataset)
         all_results.extend(result_base)
@@ -310,15 +322,16 @@ def transform_arff_to_csv(dataset_label: str, dataset_name: str):
 
 def plot(results_file_name: str):
     dataframe = pd.read_csv(
-        RESULTS_FOLDER / results_file_name, header=0, sep=";", engine="python", encoding="utf8", quotechar='"', escapechar="\\")
+        RESULTS_FOLDER / results_file_name, header=0, sep=";", engine="python", encoding="utf8", quotechar='"',
+        escapechar="\\")
     dataframe = parse_data(dataframe)
     plot_accuracy(dataframe)
     plot_time(dataframe)
 
 
 if __name__ == "__main__":
-    transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    # dataset = filter_datasets(["yprop"])[0]
-    # get_tfd_results(dataset, value_ratio=0.65)
+    # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
+    dataset = filter_datasets(["credit"])[0]
+    get_tfd_results(dataset, value_ratio=0.65, join_all=True)
     # get_arda_results(dataset)
     # get_base_results(dataset)

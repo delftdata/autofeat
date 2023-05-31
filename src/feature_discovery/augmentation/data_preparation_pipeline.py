@@ -76,9 +76,6 @@ def ingest_data_with_pk_fk(dataset: Dataset, profile_valentine: bool = False, mi
     elif profile_valentine and not mix_datasets:
         profile_valentine_dataset(dataset.base_table_label)
 
-def ingest_normalized_data(dataset: Dataset):
-    
-
 
 if __name__ == "__main__":
     # data_preparation(ingest_data=False, profile_valentine=False)

@@ -70,13 +70,13 @@ def run_tfd(
     ] = None,
     results_file: Annotated[str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
     value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-    auto_gluon: Annotated[bool, typer.Option(help="Whether to use AutoGluon")] = True,
+    join_all: Annotated[bool, typer.Option(help="Whether to use AutoGluon")] = True,
 ):
     """Runs the TFD experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in datasets:
-        all_results.extend(get_tfd_results(dataset, top_k, value_ratio, auto_gluon))
+        all_results.extend(get_tfd_results(dataset, top_k, value_ratio, join_all=join_all))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
