@@ -1,14 +1,14 @@
 import logging
 import time
-from typing import List, Dict, Set, Tuple
 import uuid
+from typing import List, Dict, Set, Tuple, Optional
 
 import pandas as pd
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from joblib import Parallel, delayed
 
 from feature_discovery.augmentation.trial_error import train_test_cart, run_auto_gluon
-from feature_discovery.config import JOIN_RESULT_FOLDER
+from feature_discovery.config import JOIN_RESULT_FOLDER, DATA_FOLDER
 from feature_discovery.data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.feature_selection.join_path_feature_selection import (
@@ -29,12 +29,12 @@ logging.getLogger().setLevel(logging.WARNING)
 
 class BfsAugmentation:
     def __init__(
-        self,
-        base_table_label: str,
-        target_column: str,
-        value_ratio: float,
-        auto_gluon: bool = True,
-        auto_gluon_hyper_parameters: Dict[str, dict] = None,
+            self,
+            base_table_label: str,
+            target_column: str,
+            value_ratio: float,
+            auto_gluon: bool = True,
+            auto_gluon_hyper_parameters: Dict[str, dict] = None,
     ):
         """
 
@@ -59,6 +59,7 @@ class BfsAugmentation:
         self.counter = 0
         # Track the base table accuracy in the final step
         self.base_node_label = None
+        self.partial_path: Optional[str] = None
 
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
@@ -140,15 +141,152 @@ class BfsAugmentation:
             # Remove the paths from the initial queue when we go 1 level deeper
             self.bfs_traverse_join_pipeline(neighbours, previous_queue - initial_queue)
 
+    def join_all_recursively(self, queue: set, previous_queue: set = None):
+        """
+        Recursive function - the pipeline to: 1) traverse the graph given a base node_id, 2) join with the adjacent nodes,
+        3) apply feature selection algorithms, and 4) check the algorithm effectiveness by training CART decision tree model.
+
+        :param queue: Queue with one node, which is the starting point of the traversal.
+        :param previous_queue: Initially empty or None, the queue is used to store the partial join names between the iterations.
+        :return: None
+        """
+
+        if len(queue) == 0:
+            return
+
+        if previous_queue is None:
+            initial_queue = None
+            previous_queue = queue.copy()
+        else:
+            initial_queue = previous_queue.copy()
+
+        # Iterate through all the elements of the queue:
+        # 1) in the first iteration: queue = base_node_id
+        # 2) in all the other iterations: queue = neighbours of the previous node
+        all_neighbours = set()
+        while len(queue) > 0:
+            # Get the current/base node
+            base_node_id = queue.pop()
+            self.discovered.add(base_node_id)
+            base_node_label = get_node_by_id(base_node_id).get("label")
+            if initial_queue is None:
+                initial_queue = {base_node_label}
+            logging.debug(f"New iteration with base node: {base_node_id}")
+
+            # Determine the neighbours (unvisited)
+            neighbours = sorted(set(get_adjacent_nodes(base_node_id)) - set(self.discovered))
+            if len(neighbours) == 0:
+                continue
+
+            all_neighbours.update(neighbours)
+
+            # Process every neighbour - join, determine quality, get features
+            for node in neighbours:
+                self.discovered.add(node)
+                logging.debug(f"Adjacent node: {node}")
+
+                # Get all the possible join keys between the base node and the neighbour node
+                join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
+
+                # Read the neighbour node
+                right_df, right_label = get_df_with_prefix(node)
+                logging.debug(f"\tRight table shape: {right_df.shape}")
+
+                current_queue = set()
+                # Iterate through all the previous paths of the join tree
+                while len(previous_queue) > 0:
+                    # Previous join path name
+                    previous_join_name = previous_queue.pop()
+                    previous_join, previous_join_name = self.get_previous_join(previous_join_name, base_node_id)
+                    logging.debug(f"\tPartial join name: {previous_join_name}")
+
+                    # The current node can only be joined through the base node.
+                    # If the base node doesn't exist in the previous join path, the join can't be performed
+                    if base_node_label not in previous_join_name:
+                        logging.debug(f"\tBase node {base_node_label} not in partial join {previous_join_name}")
+                        continue
+
+                    for prop in join_keys:
+                        join_prop, from_table, to_table = prop
+                        if join_prop['from_label'] != from_table:
+                            continue
+
+                        if join_prop['from_column'] == self.target_column:
+                            continue
+
+                        logging.debug(f"\t\tJoin properties: {join_prop}")
+
+                        # Step - Explore all possible join paths based on the join keys - Compute the name of the join
+                        join_name = compute_join_name(join_key_property=prop, partial_join_name=previous_join_name)
+                        logging.debug(f"\tJoin name: {join_name}")
+
+                        # Step - Join
+                        joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
+                                                                                left_df=previous_join,
+                                                                                right_df=right_df,
+                                                                                right_label=right_label)
+                        if joined_df is None:
+                            continue
+
+                        data_quality = self.step_data_quality(join_key_properties=prop, joined_df=joined_df)
+                        if not data_quality:
+                            continue
+
+                        join_columns.extend(self.join_keys[previous_join_name])
+                        self.join_keys[join_name] = join_columns
+                        self.join_name_mapping[join_name] = join_filename
+
+                        current_queue.add(join_name)
+
+                # Initialise the queue with the old paths (initial_queue) and the new paths (current_queue)
+                previous_queue.update(current_queue)
+
+        if len(all_neighbours) > 0:
+            for initial_path in list(initial_queue):
+                if initial_path == self.base_node_label:
+                    features = list(pd.read_csv(DATA_FOLDER / self.base_table_label / initial_path, header=0, engine="python", encoding="utf8",
+                                                quotechar='"', escapechar='\\', nrows=1).columns)
+                    features = [f"{self.base_node_label}.{feat}" for feat in features]
+                else:
+                    features = list(pd.read_csv(JOIN_RESULT_FOLDER / self.join_name_mapping[initial_path], header=0,
+                                                engine="python", encoding="utf8", quotechar='"', escapechar='\\',
+                                                nrows=1).columns)
+
+                for path in list(previous_queue):
+                    dataframe = pd.read_csv(
+                        JOIN_RESULT_FOLDER / self.join_name_mapping[path],
+                        header=0,
+                        engine="python",
+                        encoding="utf8",
+                        quotechar='"',
+                        escapechar='\\',
+                    )
+
+                    new_features = list(set(dataframe.columns) - set(features))
+
+                    score, current_selected_features = self.step_feature_selection(
+                        joined_df=dataframe,
+                        new_features=new_features,
+                        current_selected_features=self.partial_join_selected_features[initial_path],
+                    )
+
+                    self.ranking[path] = score if score else self.ranking[initial_path]
+                    self.total_paths[path] = len(current_selected_features)
+                    self.partial_join_selected_features[path] = current_selected_features
+
+            # When all the neighbours are visited (breadth), go 1 level deeper in the tree traversal
+            # Remove the paths from the initial queue when we go 1 level deeper
+        self.join_all_recursively(all_neighbours, previous_queue)
+
     def join_neighbour_with_previous_paths(
-        self,
-        base_node_id: str,
-        base_node_label: str,
-        right_df: pd.DataFrame,
-        right_label: str,
-        join_keys: List[tuple],
-        initial_queue: set,
-        previous_queue: set,
+            self,
+            base_node_id: str,
+            base_node_label: str,
+            right_df: pd.DataFrame,
+            right_label: str,
+            join_keys: List[tuple],
+            initial_queue: set,
+            previous_queue: set,
     ) -> set:
         current_queue = set()
         # Iterate through all the previous paths of the join tree
@@ -183,7 +321,7 @@ class BfsAugmentation:
         return current_queue
 
     def compare_join_paths(
-        self, current_queue: set, initial_queue: set, max_parameters: tuple, previous_join_name: str
+            self, current_queue: set, initial_queue: set, max_parameters: tuple, previous_join_name: str
     ):
         if not self.ranking_jk_step or not self.ranking_path_step or not max_parameters:
             return
@@ -236,12 +374,12 @@ class BfsAugmentation:
             ).fit_transform(X=joined_df)
 
         # Step - Feature selection
+        score = None
         if self.feature_selection_step:
             score, current_selected_features = self.step_feature_selection(
                 joined_df=joined_df,
                 new_features=list(new_table_df.columns),
-                current_selected_features=self.partial_join_selected_features[current_join_name],
-                previous_score=self.ranking[current_join_name],
+                current_selected_features=self.partial_join_selected_features[current_join_name]
             )
             # self.ranking[join_name] = score
         else:
@@ -264,12 +402,12 @@ class BfsAugmentation:
         #     continue
 
     def determine_best_join_key_given_constraints(
-        self,
-        join_keys: List[tuple],
-        current_join_name: str,
-        current_join_df: pd.DataFrame,
-        new_table_df: pd.DataFrame,
-        new_table_label: str,
+            self,
+            join_keys: List[tuple],
+            current_join_name: str,
+            current_join_df: pd.DataFrame,
+            new_table_df: pd.DataFrame,
+            new_table_label: str,
     ) -> Tuple[set, tuple or None]:
         """
         Join the same partial join result with the new table on every join column possible
@@ -326,7 +464,7 @@ class BfsAugmentation:
         return current_queue, max_parameters
 
     def is_current_join_key_better(
-        self, ranking_result: Result, join_name: str, current_queue: set, max_accuracy: tuple = None
+            self, ranking_result: Result, join_name: str, current_queue: set, max_accuracy: tuple = None
     ) -> Tuple[bool, tuple]:
         # Step - Compare current accuracy with the accuracy from joining on the other join keys
         if max_accuracy is None:
@@ -390,7 +528,7 @@ class BfsAugmentation:
         return end - start
 
     def step_join(
-        self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame, right_label: str
+            self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame, right_label: str
     ) -> Tuple[pd.DataFrame or None, str, list]:
         logging.debug("\tSTEP Join ... ")
         join_prop, from_table, to_table = join_key_properties
@@ -402,7 +540,6 @@ class BfsAugmentation:
 
         # File naming convention as the filename can be gigantic
         join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{str(uuid.uuid4())}.csv"
-        # self.counter += 1
 
         # Join
         left_on = f"{from_table}.{join_prop['from_column']}"
@@ -431,12 +568,11 @@ class BfsAugmentation:
         return True
 
     def step_feature_selection(
-        self,
-        joined_df: pd.DataFrame,
-        new_features: List[str],
-        current_selected_features: List[str],
-        previous_score: float,
-    ) -> Tuple[float, List[str]]:
+            self,
+            joined_df: pd.DataFrame,
+            new_features: List[str],
+            current_selected_features: List[str]
+    ) -> Tuple[Optional[float], List[str]]:
         logging.debug("\tSTEP Feature selection ... ")
 
         if self.auto_gluon:
@@ -453,7 +589,7 @@ class BfsAugmentation:
         feature_score_rel, relevant_features = measure_relevance(joined_df, new_features, y)
         if len(relevant_features) == 0:
             logging.debug("\t\tNo relevant features. SKIPPED JOIN...")
-            return previous_score, current_selected_features
+            return None, current_selected_features
         logging.debug(f"\t\tRelevant features:\n{relevant_features}")
 
         # 2. Measure conditional redundancy
@@ -472,7 +608,7 @@ class BfsAugmentation:
         if len(non_cond_red_feat) == 0:
             if len(joint_rel_feat) == 0:
                 logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
-                return previous_score, current_selected_features
+                return None, current_selected_features
             else:
                 selected_features = set(joint_rel_feat)
         else:
@@ -485,7 +621,7 @@ class BfsAugmentation:
         )
         if len(non_red_feat) == 0:
             logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
-            return previous_score, current_selected_features
+            return None, current_selected_features
         logging.debug(f"\t\tNon redundant features:\n{non_red_feat}")
 
         m = len(feature_score_rel) if len(feature_score_rel) > 0 else 1
@@ -526,7 +662,7 @@ class BfsAugmentation:
         return result
 
     def step_is_current_accuracy_smaller(
-        self, current_accuracy: float, partial_join_name: str, current_queue: set, initial_queue: set
+            self, current_accuracy: float, partial_join_name: str, current_queue: set, initial_queue: set
     ) -> bool:
         if current_accuracy - self.ranked_paths[partial_join_name].accuracy <= 0:
             return True
@@ -573,22 +709,24 @@ class BfsAugmentation:
         self.join_keys[join_name] = []
 
         if len(self.join_name_mapping.keys()) == 0:
-            if self.ranking_jk_step:
-                if self.auto_gluon:
-                    _, all_results = run_auto_gluon(
-                        approach=Result.TFD,
-                        dataframe=aux_df,
-                        target_column=self.target_column,
-                        data_label=self.base_table_label,
-                        join_name=join_name,
-                        algorithms_to_run=self.hyper_parameters,
-                        value_ratio=self.value_ratio,
-                    )
-                    entry = all_results[0]
-                else:
-                    entry = train_test_cart(train_data=aux_df, target_column=self.target_column)
-                self.ranked_paths[join_name] = entry
             self.base_node_label = join_name
+
+            if not self.ranking_jk_step:
+                return
+            if self.auto_gluon:
+                _, all_results = run_auto_gluon(
+                    approach=Result.TFD,
+                    dataframe=aux_df,
+                    target_column=self.target_column,
+                    data_label=self.base_table_label,
+                    join_name=join_name,
+                    algorithms_to_run=self.hyper_parameters,
+                    value_ratio=self.value_ratio,
+                )
+                entry = all_results[0]
+            else:
+                entry = train_test_cart(train_data=aux_df, target_column=self.target_column)
+            self.ranked_paths[join_name] = entry
 
     def get_relevant_features(self, dataframe: pd.DataFrame) -> Tuple[float, List[str]]:
         logging.debug("Get relevant features ... ")
