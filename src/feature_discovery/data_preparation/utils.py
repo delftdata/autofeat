@@ -62,7 +62,7 @@ def compute_join_name(join_key_property: tuple, partial_join_name: str) -> str:
     :return: The name of the next partial join
     """
     join_prop, _, to_table = join_key_property
-    joined_path = f"{partial_join_name}--{join_prop['to_column'].replace(' ', '')}-{to_table.replace('/', '--')}"
+    joined_path = f"{partial_join_name}--{join_prop['to_column']}-{to_table}"
     return joined_path
 
 

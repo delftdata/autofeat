@@ -5,25 +5,47 @@
 [![Neo4j Desktop](https://img.shields.io/badge/neo4jDesktop-1.4.10-blue.svg)](https://pypi.org/project/pip/)
 ![Neo4J 4.3.19](https://img.shields.io/badge/Neo4j-008CC1?style=for-the-badge&logo=neo4j&logoColor=white)
 
-
-# Run With Docker
-1. Build necessary Docker containers
+# Run on a server with Docker
+1. Download the [data](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) on the server and 
+put it in the [data](data) folder.
+2. Build necessary Docker containers
 ``` bash
    docker-compose up -d --build
 ```
-
-2. Load Data into Neo4J DB 
-``` bash
-   docker exec -it feature-discovery-neo4j /bin/bash -c "/neo4j-db/neo4j-entrypoint.sh"
-```
-
-3. Bash into container and run experiments
-``` bash
+3. Bash into container 
+```bash
    docker exec -it feature-discovery-runner /bin/bash
 ```
-## Setup
+4. Ingest data in the database
+- Option 1 - Without data discovery 
+```bash
+   feature-discovery-cli ingest-all-data 
+```
+- Option 2 - With data discovery
+```bash
+   feature-discovery-cli ingest-all-data --data-discovery-threshold 0.55
+```
+5. Run experiments
+```bash
+   feature-discovery-cli run-all 
+```
 
-### python setup
+
+
+[comment]: <> (2. Load Data into Neo4J DB )
+
+[comment]: <> (``` bash)
+
+[comment]: <> (   docker exec -it feature-discovery-neo4j /bin/bash -c "/neo4j-db/neo4j-entrypoint.sh")
+
+[comment]: <> (```)
+
+
+# Local development
+
+## Python setup 
+Support Python verion 3.8
+
 1. Create virtual environment
 
 `virtualenv {env-name}`
@@ -48,16 +70,17 @@ rm libomp.rb
 ```
 
 
-[comment]: <> (### neo4j databse)
+## Neo4j databse
 
-[comment]: <> (1. Import the database [neo4j-data.dump]&#40;neo4j-db/neo4j-data.dump&#41; in neo4j following these [instructions]&#40;https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/&#41;.)
+1. Import the database [alldatamixed.dump](neo4j-db/alldatamixed.dump) in neo4j 
 
 ## Workflow 
 
 ### Work with our test datasets
 
 1. Download Neo4j Desktop (developed using version: 1.5.6).
-2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0).
+2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0)
+following these [instructions](https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/).
    1. Add the authentication parameters in [config](src/feature_discovery/config.py).
 3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets.
 
@@ -66,7 +89,7 @@ rm libomp.rb
 2. Add your data in <folder_name> folder.
 3. Add a new line in [datasets](data/datasets.csv) to identify the new dataset. 
 
-Example: 
+   Example: 
 
 | base_table_path | base_table_name | base_table_label | target_column | dataset_type |
 | --------------- | --------------- | ---------------- | ------------- | ------------ |
@@ -85,12 +108,14 @@ readable).
 if used for regression problems. 
 
 4. Ingest the new dataset 
-`feature-discovery-cli ingest-data --dataset_label <base_table_label>`
+```bash
+feature-discovery-cli ingest-data --dataset_label <base_table_label>
+```
 
-> Note: `--discover_connections_data_lake` will create even more connections and simulate a real life data lake scenario.
+> **Note**: `--discover_connections_data_lake` will create even more connections and simulate a real life data lake scenario.
 > However, running the experiments with `--discover_connections_data_lake` flag increases the runtime exponentially. 
 > 
-> Best: Let it run overnight when using `--discover_connections_data_lake`
+> **Best**: Let it run overnight when using `--discover_connections_data_lake`
 
 
 ### Run experiments
