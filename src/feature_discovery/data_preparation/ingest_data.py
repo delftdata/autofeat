@@ -80,6 +80,8 @@ def ingest_nodes(dataset_folder_name: str = None) -> None:
         files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
 
     for f in files:
+        if "datasets.csv" in f:
+            continue
         table_path = f.partition(f"{DATA_FOLDER}/")[2]
         table_name = table_path.split("/")[-1]
         create_node(table_path, table_name)

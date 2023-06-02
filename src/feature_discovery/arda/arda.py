@@ -232,11 +232,11 @@ def select_arda_features_budget_join(
     base_node = get_node_by_id(base_node_id)
     left_table = (
         left_table.set_index([target_column])
-        .add_prefix(f"{base_node.get('label')}.")
+        .add_prefix(f"{base_node.get('id')}.")
         .reset_index()
     )
 
-    join_name = base_node.get("label")
+    join_name = base_node.get("id")
 
     join_keys = []
     # Get directly connected nodes
@@ -256,11 +256,11 @@ def select_arda_features_budget_join(
             join_prop, from_table, to_table = join_key
             logging.debug(f"Join properties: {join_prop}")
 
-            if join_prop["from_label"] == base_node.get("label"):
+            if join_prop["from_label"] == base_node.get("id"):
                 if join_prop["from_column"] == target_column:
                     continue
 
-            if join_prop["to_label"] == base_node.get("label"):
+            if join_prop["to_label"] == base_node.get("id"):
                 if join_prop["to_column"] == target_column:
                     continue
 
@@ -286,7 +286,7 @@ def select_arda_features_budget_join(
 
             # Prepend node label to every column for easy identification
             right_node = get_node_by_id(node_id)
-            right_table = right_table.add_prefix(f"{right_node.get('label')}.")
+            right_table = right_table.add_prefix(f"{right_node.get('id')}.")
 
             # Join tables, drop the right key as we don't need it anymore
             if (

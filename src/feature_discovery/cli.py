@@ -17,6 +17,7 @@ from feature_discovery.run import (
     get_results_tune_value_ratio_classification,
     plot,
 )
+from feature_discovery.tfd_datasets.init_datasets import ALL_DATASETS
 
 app = typer.Typer()
 
@@ -70,7 +71,7 @@ def run_tfd(
     ] = None,
     results_file: Annotated[str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
     value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-    join_all: Annotated[bool, typer.Option(help="Whether to use AutoGluon")] = True,
+    join_all: Annotated[bool, typer.Option(help="Whether to use Join-All-Recursively strategy")] = True,
 ):
     """Runs the TFD experiments."""
     all_results = []
@@ -136,24 +137,29 @@ def ingest_data(
     dataset_label: Annotated[
         Optional[str],
         typer.Option(help="The label of the dataset to ingest"),
-    ],
+    ] = None,
     discover_connections_dataset: Annotated[
         bool, typer.Option(help="Run dataset discovery to find more connections within the dataset")
-    ] = True,
+    ] = False,
     discover_connections_data_lake: Annotated[
         bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
     ] = False,
 ):
     """Ingest the new dataset into neo4j database"""
-    datasets = filter_datasets([dataset_label])
+    if not dataset_label:
+        datasets = ALL_DATASETS
+    else:
+        datasets = filter_datasets([dataset_label])
+
     if len(datasets) == 0:
         raise typer.BadParameter(
             "Incorrect dataset label. The label should have the same value with <base_table_label>."
         )
 
-    ingest_data_with_pk_fk(
-        dataset=datasets[0], profile_valentine=discover_connections_dataset, mix_datasets=discover_connections_data_lake
-    )
+    for dataset in datasets:
+        ingest_data_with_pk_fk(
+            dataset=dataset, profile_valentine=discover_connections_dataset, mix_datasets=discover_connections_data_lake
+        )
 
 
 @app.command()

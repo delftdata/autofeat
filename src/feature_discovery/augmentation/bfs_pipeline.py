@@ -168,9 +168,8 @@ class BfsAugmentation:
             # Get the current/base node
             base_node_id = queue.pop()
             self.discovered.add(base_node_id)
-            base_node_label = get_node_by_id(base_node_id).get("label")
             if initial_queue is None:
-                initial_queue = {base_node_label}
+                initial_queue = {base_node_id}
             logging.debug(f"New iteration with base node: {base_node_id}")
 
             # Determine the neighbours (unvisited)
@@ -202,8 +201,8 @@ class BfsAugmentation:
 
                     # The current node can only be joined through the base node.
                     # If the base node doesn't exist in the previous join path, the join can't be performed
-                    if base_node_label not in previous_join_name:
-                        logging.debug(f"\tBase node {base_node_label} not in partial join {previous_join_name}")
+                    if base_node_id not in previous_join_name:
+                        logging.debug(f"\tBase node {base_node_id} not in partial join {previous_join_name}")
                         continue
 
                     for prop in join_keys:
@@ -244,7 +243,7 @@ class BfsAugmentation:
         if len(all_neighbours) > 0:
             for initial_path in list(initial_queue):
                 if initial_path == self.base_node_label:
-                    features = list(pd.read_csv(DATA_FOLDER / self.base_table_label / initial_path, header=0, engine="python", encoding="utf8",
+                    features = list(pd.read_csv(DATA_FOLDER / initial_path, header=0, engine="python", encoding="utf8",
                                                 quotechar='"', escapechar='\\', nrows=1).columns)
                     features = [f"{self.base_node_label}.{feat}" for feat in features]
                 else:
@@ -558,7 +557,7 @@ class BfsAugmentation:
 
     def step_data_quality(self, join_key_properties: tuple, joined_df: pd.DataFrame) -> bool:
         logging.debug("\tSTEP data quality ...")
-        join_prop, from_table, to_table = join_key_properties
+        join_prop, _, to_table = join_key_properties
 
         # Data Quality check - Prune the joins with high null values ratio
         if joined_df[f"{to_table}.{join_prop['to_column']}"].count() / joined_df.shape[0] < self.value_ratio:

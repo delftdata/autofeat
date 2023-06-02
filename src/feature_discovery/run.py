@@ -100,7 +100,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     start = time.time()
     (
         dataframe,
-        dataframe_label,
+        _,
         selected_features,
         join_name,
     ) = select_arda_features_budget_join(
