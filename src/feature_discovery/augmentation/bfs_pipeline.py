@@ -101,7 +101,6 @@ class BfsAugmentation:
             # Get the current/base node
             base_node_id = queue.pop()
             self.discovered.add(base_node_id)
-            base_node_label = get_node_by_id(base_node_id).get("label")
             logging.debug(f"New iteration with base node: {base_node_id}")
 
             # Determine the neighbours (unvisited)
@@ -125,7 +124,6 @@ class BfsAugmentation:
                 # Join the neighbour node with all the previous processed and saved paths
                 current_queue = self.join_neighbour_with_previous_paths(
                     base_node_id=base_node_id,
-                    base_node_label=base_node_label,
                     right_df=right_df,
                     right_label=right_label,
                     join_keys=join_keys,
@@ -280,7 +278,6 @@ class BfsAugmentation:
     def join_neighbour_with_previous_paths(
             self,
             base_node_id: str,
-            base_node_label: str,
             right_df: pd.DataFrame,
             right_label: str,
             join_keys: List[tuple],
@@ -300,8 +297,8 @@ class BfsAugmentation:
 
             # The current node can only be joined through the base node.
             # If the base node doesn't exist in the previous join path, the join can't be performed
-            if base_node_label not in previous_join_name:
-                logging.debug(f"\tBase node {base_node_label} not in partial join {previous_join_name}")
+            if base_node_id not in previous_join_name:
+                logging.debug(f"\tBase node {base_node_id} not in partial join {previous_join_name}")
                 continue
 
             # Determine the best join key (which results in the highest accuracy)
