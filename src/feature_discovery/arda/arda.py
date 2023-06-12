@@ -235,6 +235,8 @@ def select_arda_features_budget_join(
         .add_prefix(f"{base_node.get('id')}.")
         .reset_index()
     )
+    base_table_columns = list(left_table.columns)
+    base_table_columns.remove(target_column)
 
     join_name = base_node.get("id")
 
@@ -318,7 +320,7 @@ def select_arda_features_budget_join(
             logging.debug(f"Feature count: {feature_count}")
 
         # Compute the columns of the batch and create the batch dataset
-        columns = set(left_table.columns) - set(all_columns)
+        columns = set(left_table.columns) - set(all_columns) - set(base_table_columns)
         columns = list(set(columns) - set(join_keys))
 
         logging.debug(f"{len(columns)} columns to select")
@@ -361,4 +363,4 @@ def select_arda_features_budget_join(
         # Save the selected columns of the batch
         final_selected_features.extend(fs_X)
 
-    return left_table, base_node.get("label"), final_selected_features, join_name
+    return left_table, base_table_columns, final_selected_features, join_name

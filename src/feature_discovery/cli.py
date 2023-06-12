@@ -2,6 +2,7 @@ from typing import Optional, List
 
 import pandas as pd
 import typer
+import tqdm
 from typing_extensions import Annotated
 
 from feature_discovery.augmentation.data_preparation_pipeline import ingest_data_with_pk_fk
@@ -35,7 +36,7 @@ def run_arda(
     """Runs the ARDA experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
-    for dataset in datasets:
+    for dataset in tqdm.tqdm(datasets):
         all_results.extend(get_arda_results(dataset))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
@@ -54,7 +55,7 @@ def run_base(
     """Runs the base experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
-    for dataset in datasets:
+    for dataset in tqdm.tqdm(datasets):
         all_results.extend(get_base_results(dataset))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)

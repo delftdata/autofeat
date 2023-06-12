@@ -100,7 +100,7 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     start = time.time()
     (
         dataframe,
-        _,
+        base_table_features,
         selected_features,
         join_name,
     ) = select_arda_features_budget_join(
@@ -112,23 +112,9 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     end = time.time()
     logging.debug(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
-    if len(selected_features) == 0:
-        logging.debug("No selected features ... ")
-        entry = Result(
-            algorithm="",
-            accuracy=0,
-            feature_importance={},
-            feature_selection_time=end - start,
-            approach=Result.ARDA,
-            data_label=dataset.base_table_label,
-            data_path=join_name,
-            join_path_features=selected_features,
-        )
-        entry.total_time += entry.feature_selection_time
-        return [entry]
-
     features = selected_features.copy()
     features.append(dataset.target_column)
+    features.extend(base_table_features)
 
     if not autogluon:
         logging.debug("Running CART on ARDA feature selection ... ")

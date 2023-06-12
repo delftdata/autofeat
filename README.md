@@ -82,7 +82,7 @@ rm libomp.rb
 2. Create neo4j database from dump [neo4j-all-data-mixed.dump](neo4j-all-data-mixed.dump) (developed using version 5.3.0)
 following these [instructions](https://tbgraph.wordpress.com/2020/11/11/dump-and-load-a-database-in-neo4j-desktop/comment-page-1/).
    1. Add the authentication parameters in [config](src/feature_discovery/config.py).
-3. [Download](https://surfdrive.surf.nl/files/index.php/s/P5CIFS5wQWav7LR) test datasets.
+3. [Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) test datasets.
 
 ### (or) add new datasets 
 1. Create a folder <folder_name> in [data](data).
