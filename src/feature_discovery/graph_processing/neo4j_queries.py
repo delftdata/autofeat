@@ -181,7 +181,7 @@ def _get_adjacent_nodes(tx, node_id):
 def _export_all_connections(tx):
     tx_results = tx.run(
         "match (n)-[r]-(m) "
-        "where n.label=r.from_label and m.label=r.to_label "
+        "where n.id=r.from_label and m.id=r.to_label "
         "with n, m, r, "
         "split(n.id, n.label)[0] as from_path, "
         "split(m.id, m.label)[0] as to_path "
