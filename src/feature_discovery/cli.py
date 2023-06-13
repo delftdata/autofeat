@@ -77,7 +77,7 @@ def run_tfd(
     """Runs the TFD experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
-    for dataset in datasets:
+    for dataset in tqdm.tqdm(datasets):
         all_results.extend(get_tfd_results(dataset, top_k, value_ratio, join_all=join_all))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
@@ -157,7 +157,7 @@ def ingest_data(
             "Incorrect dataset label. The label should have the same value with <base_table_label>."
         )
 
-    for dataset in datasets:
+    for dataset in tqdm.tqdm(datasets):
         ingest_data_with_pk_fk(
             dataset=dataset, profile_valentine=discover_connections_dataset, mix_datasets=discover_connections_data_lake
         )
