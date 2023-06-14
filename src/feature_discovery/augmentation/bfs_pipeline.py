@@ -63,6 +63,7 @@ class BfsAugmentation:
 
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
+        self.join_time: Dict[str, float] = {}
 
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
@@ -162,6 +163,7 @@ class BfsAugmentation:
         # 1) in the first iteration: queue = base_node_id
         # 2) in all the other iterations: queue = neighbours of the previous node
         all_neighbours = set()
+        start = time.time()
         while len(queue) > 0:
             # Get the current/base node
             base_node_id = queue.pop()
@@ -206,9 +208,11 @@ class BfsAugmentation:
                     for prop in join_keys:
                         join_prop, from_table, to_table = prop
                         if join_prop['from_label'] != from_table:
+                            current_queue.add(previous_join_name)
                             continue
 
                         if join_prop['from_column'] == self.target_column:
+                            current_queue.add(previous_join_name)
                             continue
 
                         logging.debug(f"\t\tJoin properties: {join_prop}")
@@ -223,10 +227,12 @@ class BfsAugmentation:
                                                                                 right_df=right_df,
                                                                                 right_label=right_label)
                         if joined_df is None:
+                            current_queue.add(previous_join_name)
                             continue
 
                         data_quality = self.step_data_quality(join_key_properties=prop, joined_df=joined_df)
                         if not data_quality:
+                            current_queue.add(previous_join_name)
                             continue
 
                         join_columns.extend(self.join_keys[previous_join_name])
@@ -237,6 +243,7 @@ class BfsAugmentation:
 
                 # Initialise the queue with the old paths (initial_queue) and the new paths (current_queue)
                 previous_queue.update(current_queue)
+        end = time.time()
 
         if len(all_neighbours) > 0:
             for initial_path in list(initial_queue):
@@ -270,6 +277,7 @@ class BfsAugmentation:
                     self.ranking[path] = score if score else self.ranking[initial_path]
                     self.total_paths[path] = len(current_selected_features)
                     self.partial_join_selected_features[path] = current_selected_features
+                    self.join_time[path] = end - start
 
             # When all the neighbours are visited (breadth), go 1 level deeper in the tree traversal
             # Remove the paths from the initial queue when we go 1 level deeper
