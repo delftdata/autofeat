@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-from ITMO_FS.filters.multivariate import CMIM, JMI
+from ITMO_FS.filters.multivariate import CMIM, MRMR
 from ITMO_FS.filters.univariate import information_gain
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information
 
@@ -11,8 +11,14 @@ from feature_discovery.config import ROOT_FOLDER
 from feature_discovery.data_preparation.utils import prepare_data_for_ml
 
 
-def measure_relevance(dataframe: pd.DataFrame, feature_names: List[str], target_column: pd.Series):
+def measure_relevance(dataframe: pd.DataFrame,
+                      feature_names: List[str],
+                      target_column: pd.Series) -> Tuple[Optional[list], list]:
     common_features = list(set(dataframe.columns).intersection(set(feature_names)))
+
+    if len(common_features) == 0:
+        return None, []
+
     features = dataframe[common_features]
     scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
                                                                                  entropy(target_column))
@@ -28,8 +34,11 @@ def measure_relevance(dataframe: pd.DataFrame, feature_names: List[str], target_
     return final_feature_scores, final_features
 
 
-def measure_conditional_redundancy(dataframe: pd.DataFrame, selected_features: List[str], new_features: List[str],
-                                   target_column: pd.Series, conditional_redundancy_threshold: float = 0.5):
+def measure_conditional_redundancy(dataframe: pd.DataFrame,
+                                   selected_features: List[str],
+                                   new_features: List[str],
+                                   target_column: pd.Series,
+                                   conditional_redundancy_threshold: float = 0.5) -> Tuple[Optional[list], list]:
     selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
     new_features_int = [i for i, value in enumerate(dataframe.columns) if value in new_features]
 
@@ -47,18 +56,18 @@ def measure_conditional_redundancy(dataframe: pd.DataFrame, selected_features: L
     return final_feature_scores, final_feature_names
 
 
-def measure_redundancy(dataframe, feature_group: List[str], target_column) -> Tuple[List[float] or None, List[str]]:
+def measure_redundancy(dataframe, feature_group: List[str], target_column) -> Tuple[Optional[list], List[str]]:
     if len(feature_group) == 1 or len(feature_group) == 0:
         return None, feature_group
 
     scores = np.vectorize(lambda feature:
                           np.mean(np.apply_along_axis(lambda x, y, z: conditional_mutual_information(y, z, x), 0,
-                                                     np.array(dataframe[
-                                                                  np.setdiff1d(feature_group,
-                                                                               feature)]),
-                                                     np.array(dataframe[feature]),
-                                                     np.array(target_column)
-                                                     )))(feature_group)
+                                                      np.array(dataframe[
+                                                                   np.setdiff1d(feature_group,
+                                                                                feature)]),
+                                                      np.array(dataframe[feature]),
+                                                      np.array(target_column)
+                                                      )))(feature_group)
     feature_scores = list(zip(np.array(feature_group), scores))
     final_feature_scores = [(name, value) for name, value in feature_scores if value > 0]
     final_feature_names = [feat for feat, _ in final_feature_scores]
@@ -66,13 +75,15 @@ def measure_redundancy(dataframe, feature_group: List[str], target_column) -> Tu
     return final_feature_scores, final_feature_names
 
 
-def measure_joint_mutual_information(dataframe: pd.DataFrame, selected_features: List[str], new_features: List[str],
-                                     target_column: pd.Series):
+def measure_joint_mutual_information(dataframe: pd.DataFrame,
+                                     selected_features: List[str],
+                                     new_features: List[str],
+                                     target_column: pd.Series) -> Tuple[Optional[list], list]:
     selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
     new_features_int = [i for i, value in enumerate(dataframe.columns) if value in new_features]
 
-    scores = JMI(np.array(selected_features_int), np.array(new_features_int), np.array(dataframe),
-                 np.array(target_column))
+    scores = MRMR(np.array(selected_features_int), np.array(new_features_int), np.array(dataframe),
+                  np.array(target_column))
 
     if np.all(np.array(scores) == 0):
         return None, []
@@ -98,7 +109,6 @@ def test_relevance():
     X, y = prepare_data_for_ml(table1, target_column)
     feature_score, selected_features = measure_relevance(table1, X.columns, y)
     print(feature_score)
-
 
     table2 = pd.read_csv(ROOT_FOLDER / "joined-df/titanic/titanic.csv--passenger_info.csv")
     X2, y2 = prepare_data_for_ml(table2, target_column)
