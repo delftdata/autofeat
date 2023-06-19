@@ -43,8 +43,11 @@ put it in the [data](data) folder.
 
 # Local development
 
+## Requirements
+- Python 3.8
+- Java (for data discovery only - [Valentine](https://github.com/delftdata/valentine))
+
 ## Python setup 
-Support Python verion 3.8
 
 1. Create virtual environment
 
