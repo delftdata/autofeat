@@ -98,7 +98,7 @@ feature-discovery-cli ingest-all --data-discovery-threshold=0.55
 ```
 
 ### Normalised dataset
-1. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalise](data/normalised).
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalised](data/normalised).
 2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "normalised"` and `NEO4J_DATABASE = 'normalised'`
 3. Create database `normalised` in neo4j: 
 ```
