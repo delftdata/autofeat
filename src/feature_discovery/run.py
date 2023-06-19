@@ -171,7 +171,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)
         logging.debug(f"Feature before join_key removal:\n{features}")
-        features = list(set(features) - set(bfs_result.join_keys[join_name]))
+        features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
         logging.debug(f"Feature after join_key removal:\n{features}")
 
         start = time.time()
@@ -317,7 +317,8 @@ def plot(results_file_name: str):
 
 if __name__ == "__main__":
     # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    dataset = filter_datasets(["credit"])[0]
+    dataset = filter_datasets(["school"])[0]
     get_tfd_results(dataset, value_ratio=0.65, join_all=True)
     # get_arda_results(dataset)
     # get_base_results(dataset)
+    # export_neo4j_connections()
