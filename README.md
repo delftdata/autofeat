@@ -48,7 +48,7 @@ Support Python verion 3.8
 
 1. Create virtual environment
 
-`virtualenv {env-name}`
+`python -m venv {env-name}`
 
 2. Activate environment 
 
@@ -68,6 +68,45 @@ brew uninstall libomp
 brew install libomp.rb
 rm libomp.rb
 ```
+
+## Data setup
+
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) test datasets and put them in [data/simple](data/simple).
+2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "simple"
+`
+3. Create database `simple` in neo4j: 
+```
+create database simple
+:use simple
+```
+4. Ingest data
+```
+feature-discovery-cli ingest-data
+```
+5. Create database `mixed` in neo4j:
+```
+create database simple
+:use simple
+``` 
+6. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
+7. 4. Ingest data
+```
+feature-discovery-cli ingest-all --data-discovery-threshold=0.55
+```
+8. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalise](data/normalised).
+9. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "normalised"
+10. Create database `normalised` in neo4j: 
+```
+create database normalised
+:use simple
+```
+11. Ingest data
+```
+feature-discovery-cli ingest-data --discover-connections-dataset
+```
+
+
+ 
 
 
 ## Neo4j databse
