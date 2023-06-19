@@ -17,11 +17,11 @@ RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'verify_ranking.csv'
 ALL_PATHS = 'all_paths'
 
-DATASET_TYPE = "normalised"
+DATASET_TYPE = "simple"
 
 DATA = "data"
 MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024'
-JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df'
+JOIN_RESULT_FOLDER = ROOT_FOLDER / 'joined-df' / 'sampled'
 DATA_FOLDER = ROOT_FOLDER / DATA / DATASET_TYPE
 PLOTS_FOLDER = ROOT_FOLDER / "plots"
 RESULTS_FOLDER = ROOT_FOLDER / "results"
