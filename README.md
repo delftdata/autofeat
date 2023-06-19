@@ -71,6 +71,7 @@ rm libomp.rb
 
 ## Data setup
 
+### Simple dataset 
 1. [Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) test datasets and put them in [data/simple](data/simple).
 2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "simple"
 `
@@ -83,22 +84,26 @@ create database simple
 ```
 feature-discovery-cli ingest-data
 ```
-5. Create database `mixed` in neo4j:
+
+### Mixed dataset 
+1. Create database `mixed` in neo4j:
 ```
-create database simple
-:use simple
+create database mixed
+:use mixed
 ``` 
-6. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
-7. 4. Ingest data
+2. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
+3. Ingest data
 ```
 feature-discovery-cli ingest-all --data-discovery-threshold=0.55
 ```
-8. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalise](data/normalised).
-9. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "normalised"
-10. Create database `normalised` in neo4j: 
+
+### Normalised dataset
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalise](data/normalised).
+2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "normalised"` and `NEO4J_DATABASE = 'normalised'`
+3. Create database `normalised` in neo4j: 
 ```
 create database normalised
-:use simple
+:use normalised
 ```
 11. Ingest data
 ```
