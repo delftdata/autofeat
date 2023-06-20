@@ -97,7 +97,7 @@ create database mixed
 2. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
 3. Ingest data
 ```
-feature-discovery-cli ingest-all --data-discovery-threshold=0.55
+feature-discovery-cli ingest-all-data --data-discovery-threshold=0.55
 ```
 
 ### Normalised dataset
