@@ -17,7 +17,7 @@ RANKING_FUNCTION = 'ranking-func.json'
 RANKING_VERIFY = 'verify_ranking.csv'
 ALL_PATHS = 'all_paths'
 
-DATASET_TYPE = "simple"
+DATASET_TYPE = "normalised"
 
 DATA = "data"
 MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024'
@@ -31,8 +31,8 @@ ACCURACY_RESULTS_ALL_PNG = PLOTS_FOLDER / 'accuracy-results-all.png'
 
 ### CREDENTIALS ###
 NEO4J_HOST = os.getenv("NEO4J_HOST", "neo4j://localhost:7687")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASS = os.getenv("NEO4J_PASS", "password")
+NEO4J_USER = os.getenv("NEO4J_USER", "")
+NEO4J_PASS = os.getenv("NEO4J_PASS", "")
 NEO4J_CREDENTIALS = (NEO4J_USER, NEO4J_PASS)
 
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", DATASET_TYPE)

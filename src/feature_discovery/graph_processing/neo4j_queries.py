@@ -170,7 +170,7 @@ def _get_adjacent_nodes_rels(tx, node_id):
 
 def _get_adjacent_nodes(tx, node_id):
     tx_result = tx.run(
-        "match (n:Node {id: $node_id})-[r]->(m:Node) " "return distinct m.id as id order by id asc", node_id=node_id
+        "match (n:Node {id: $node_id})-[r]-(m:Node) " "return distinct m.id as id order by id asc", node_id=node_id
     )
     values = []
     for record in tx_result:
