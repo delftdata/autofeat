@@ -190,6 +190,7 @@ class BfsAugmentation:
 
                 # Get all the possible join keys between the base node and the neighbour node
                 join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
+                highest_ranked_join_keys = [jk for jk in join_keys if jk[0]['weight'] == join_keys[0][0]['weight']]
 
                 # Read the neighbour node
                 right_df, right_label = get_df_with_prefix(node)
@@ -209,7 +210,7 @@ class BfsAugmentation:
                         logging.debug(f"\tBase node {base_node_id} not in partial join {previous_join_name}")
                         continue
 
-                    for prop in join_keys:
+                    for prop in highest_ranked_join_keys:
                         join_prop, from_table, to_table = prop
                         if join_prop['from_label'] != from_table:
                             # current_queue.add(previous_join_name)
