@@ -43,12 +43,15 @@ put it in the [data](data) folder.
 
 # Local development
 
+## Requirements
+- Python 3.8
+- Java (for data discovery only - [Valentine](https://github.com/delftdata/valentine))
+
 ## Python setup 
-Support Python verion 3.8
 
 1. Create virtual environment
 
-`virtualenv {env-name}`
+`python -m venv {env-name}`
 
 2. Activate environment 
 
@@ -68,6 +71,55 @@ brew uninstall libomp
 brew install libomp.rb
 rm libomp.rb
 ```
+
+## Data setup
+
+### Simple dataset 
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) test datasets and put them in [data/simple](data/simple).
+2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "simple"
+`
+3. Create database `simple` in neo4j: 
+```
+create database simple
+:use simple
+```
+4. Ingest data
+```
+feature-discovery-cli ingest-kfk-data
+```
+5. (Optional - Instead of step 4) If you want to discover more connections besides
+the provided KFK, run: 
+```
+feature-discovery-cli ingest-kfk-data --discover-connections-dataset
+```
+
+### Mixed dataset 
+1. Create database `mixed` in neo4j:
+```
+create database mixed
+:use mixed
+``` 
+2. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
+3. Ingest data
+```
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
+```
+
+### Normalised dataset
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/YD4CFv4dgfrZEOO) test datasets and put them in [data/normalised](data/normalised).
+2. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "normalised"` and `NEO4J_DATABASE = 'normalised'`
+3. Create database `normalised` in neo4j: 
+```
+create database normalised
+:use normalised
+```
+11. Ingest data
+```
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 
+```
+
+
+ 
 
 
 ## Neo4j databse

@@ -15,7 +15,7 @@ from feature_discovery.feature_selection.join_path_feature_selection import (
     measure_relevance,
     measure_conditional_redundancy,
     measure_joint_mutual_information,
-    measure_redundancy,
+    measure_redundancy, RelevanceRedundancy,
 )
 from feature_discovery.graph_processing.neo4j_transactions import (
     get_node_by_id,
@@ -64,6 +64,7 @@ class BfsAugmentation:
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
         self.join_time: Dict[str, float] = {}
+        self.rel_red = RelevanceRedundancy(target_column)
 
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
@@ -208,7 +209,7 @@ class BfsAugmentation:
                     for prop in join_keys:
                         join_prop, from_table, to_table = prop
                         if join_prop['from_label'] != from_table:
-                            current_queue.add(previous_join_name)
+                            # current_queue.add(previous_join_name)
                             continue
 
                         if join_prop['from_column'] == self.target_column:
@@ -580,6 +581,9 @@ class BfsAugmentation:
         logging.debug("\tSTEP Feature selection ... ")
 
         if self.auto_gluon:
+            joined_df = AutoMLPipelineFeatureGenerator(
+                enable_text_special_features=False, enable_text_ngram_features=False
+            ).fit_transform(X=joined_df)
             X = joined_df.drop(columns=[self.target_column])
             y = joined_df[self.target_column]
         else:
@@ -590,59 +594,76 @@ class BfsAugmentation:
 
         # 1. Measure relevance of the new features (right_features) to the target column (y)
         logging.debug("\t\tMeasure relevance ... ")
-        feature_score_rel, relevant_features = measure_relevance(joined_df, new_features, y)
+        start = time.time()
+        # feature_score_rel, relevant_features = measure_relevance(joined_df, new_features, y)
+        feature_score_rel, relevant_features, feature_score_jmi, joint_rel_feat = \
+            self.rel_red.measure_relevance_and_redundancy(X, current_selected_features, new_features, y)
+        end = time.time()
+        # print(f"Relevance time: {end - start}")
         if len(relevant_features) == 0:
             logging.debug("\t\tNo relevant features. SKIPPED JOIN...")
             return None, current_selected_features
         logging.debug(f"\t\tRelevant features:\n{relevant_features}")
 
-        # 2. Measure conditional redundancy
-        logging.debug("\t\tMeasure conditional redundancy ...")
-        feature_score_cr, non_cond_red_feat = measure_conditional_redundancy(
-            dataframe=X, selected_features=current_selected_features, new_features=relevant_features, target_column=y
-        )
-        logging.debug(f"\t\tNon conditional redundant features:\n{non_cond_red_feat}")
+        # # 2. Measure conditional redundancy
+        # logging.debug("\t\tMeasure conditional redundancy ...")
+        # feature_score_cr, non_cond_red_feat = measure_conditional_redundancy(
+        #     dataframe=X, selected_features=current_selected_features, new_features=relevant_features, target_column=y
+        # )
+        # logging.debug(f"\t\tNon conditional redundant features:\n{non_cond_red_feat}")
 
         # 3. Measure join mutual information
-        logging.debug("\t\tMeasure joint mutual information")
-        feature_score_jmi, joint_rel_feat = measure_joint_mutual_information(
-            dataframe=X, selected_features=current_selected_features, new_features=relevant_features, target_column=y
-        )
-        logging.debug(f"\t\tJoint relevant features:\n{joint_rel_feat}")
-        if len(non_cond_red_feat) == 0:
-            if len(joint_rel_feat) == 0:
-                logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
-                return None, current_selected_features
-            else:
-                selected_features = set(joint_rel_feat)
-        else:
-            selected_features = set(non_cond_red_feat).intersection(set(joint_rel_feat))
+        # logging.debug("\t\tMeasure joint mutual information")
+        # feature_score_jmi, joint_rel_feat = measure_joint_mutual_information(
+        #     dataframe=X, selected_features=current_selected_features, new_features=relevant_features, target_column=y
+        # )
+        # logging.debug(f"\t\tJoint relevant features:\n{joint_rel_feat}")
+        # if len(non_cond_red_feat) == 0:
+        #     if len(joint_rel_feat) == 0:
+        #         logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
+        #         return None, current_selected_features
+        #     else:
+        #         selected_features = set(joint_rel_feat)
+        # else:
+        #     selected_features = set(non_cond_red_feat).intersection(set(joint_rel_feat))
 
-        # 4. Measure redundancy in the dataset
-        logging.debug("\t\tMeasure redundancy in the dataset ... ")
-        feature_score_redundancy, non_red_feat = measure_redundancy(
-            dataframe=X, feature_group=list(selected_features), target_column=y
-        )
-        if len(non_red_feat) == 0:
+        if len(joint_rel_feat) == 0:
             logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
             return None, current_selected_features
-        logging.debug(f"\t\tNon redundant features:\n{non_red_feat}")
+        else:
+            selected_features = set(joint_rel_feat)
+
+
+        # 4. Measure redundancy in the dataset
+        # logging.debug("\t\tMeasure redundancy in the dataset ... ")
+        # feature_score_redundancy, non_red_feat = measure_redundancy(
+        #     dataframe=X, feature_group=list(selected_features), target_column=y
+        # )
+        # if len(non_red_feat) == 0:
+        #     logging.debug("\t\tAll relevant features are redundant. SKIPPED JOIN...")
+        #     return None, current_selected_features
+        # logging.debug(f"\t\tNon redundant features:\n{non_red_feat}")
 
         m = len(feature_score_rel) if len(feature_score_rel) > 0 else 1
         sum_m = sum(list(map(lambda x: x[1], feature_score_rel)))
 
-        n = len(feature_score_cr) if feature_score_cr else 1
-        sum_n = sum(list(map(lambda x: x[1], feature_score_cr))) if feature_score_cr else 0
+        # n = len(feature_score_cr) if feature_score_cr else 1
+        # sum_n = sum(list(map(lambda x: x[1], feature_score_cr))) if feature_score_cr else 0
+        n = 1
+        sum_n = 0
 
         o = len(feature_score_jmi) if feature_score_jmi else 1
         sum_o = sum(list(map(lambda x: x[1], feature_score_jmi))) if feature_score_jmi else 0
 
-        p = len(feature_score_redundancy) if feature_score_redundancy else 1
-        sum_p = sum(list(map(lambda x: x[1], feature_score_redundancy))) if feature_score_redundancy else 0
+        # p = len(feature_score_redundancy) if feature_score_redundancy else 1
+        # sum_p = sum(list(map(lambda x: x[1], feature_score_redundancy))) if feature_score_redundancy else 0
+        p = 1
+        sum_p = 0
 
         score = (n * o * p * sum_m + m * o * p * sum_n + m * n * p * sum_o + m * n * o * sum_p) / (m * n * o * p)
 
-        selected_features = non_red_feat.copy()
+        # selected_features = non_red_feat.copy()
+        selected_features = list(selected_features)
         selected_features.extend(current_selected_features)
         return score, selected_features
 
@@ -684,9 +705,11 @@ class BfsAugmentation:
                 initial_queue.remove(partial_join_name)
         return False
 
-    def get_previous_join(self, partial_join_name: str, base_node_id: str) -> Tuple[pd.DataFrame, str]:
+    def get_previous_join(self, partial_join_name: str, base_node_id: str, sample_size: int = 3000) -> Tuple[pd.DataFrame, str]:
         if partial_join_name == base_node_id:
             partial_join, partial_join_name = get_df_with_prefix(base_node_id, self.target_column)
+            if sample_size < partial_join.shape[0]:
+                partial_join = partial_join.sample(sample_size, random_state=42)
             logging.debug("Initialise first node ... ")
             self.initialise_ranks_features(join_name=partial_join_name, dataframe=partial_join)
         else:

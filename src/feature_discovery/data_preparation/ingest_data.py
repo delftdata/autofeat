@@ -160,6 +160,14 @@ def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
                                             a_col=col_from,
                                             b_col=col_to,
                                             weight=similarity)
+
+                merge_nodes_relation_tables(a_table_name=b_table_name,
+                                            b_table_name=a_table_name,
+                                            a_table_path=b_table_path,
+                                            b_table_path=a_table_path,
+                                            a_col=col_to,
+                                            b_col=col_from,
+                                            weight=similarity)
     
     Parallel(n_jobs=-1)(delayed(profile)(table_pair) for table_pair in tqdm(itertools.combinations(files, r=2)))
     # for table_pair in itertools.combinations(files, r=2):

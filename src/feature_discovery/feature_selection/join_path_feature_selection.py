@@ -2,13 +2,162 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-from ITMO_FS.filters.multivariate import CMIM, MRMR
-from ITMO_FS.filters.univariate import information_gain
-from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information
+from ITMO_FS.filters.multivariate import CMIM, JMI, MRMR
+from ITMO_FS.filters.univariate import spearman_corr
+from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
 
 from feature_discovery.augmentation.trial_error import train_test_cart
 from feature_discovery.config import ROOT_FOLDER
 from feature_discovery.data_preparation.utils import prepare_data_for_ml
+
+
+class RelevanceRedundancy:
+    def __init__(self, target_column: str):
+        self.target_column = target_column
+        self.target_entropy = None
+        self.dataframe_entropy = {}
+        self.dataframe_conditional_entropy = {}
+
+    def measure_relevance_and_redundancy(self,
+                                         dataframe: pd.DataFrame,
+                                         selected_features: List[str],
+                                         new_features: List[str],
+                                         target_column: pd.Series):
+
+        # Relevance
+        if self.target_entropy is None:
+            self.target_entropy = entropy(target_column)
+
+        new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
+        if len(new_common_features) == 0:
+            return None, []
+
+        new_dataframe = dataframe[new_common_features]
+
+        # h = hash(str(new_common_features))
+        # if h in self.dataframe_entropy:
+        #     entropy_x = self.dataframe_entropy[h]
+        # else:
+        #     entropy_x = entropy(new_dataframe)
+        #     self.dataframe_entropy[h] = entropy_x
+        #
+        # hash_cond_entropy = hash(str((np.array(new_dataframe), np.array(target_column))))
+        # if hash_cond_entropy in self.dataframe_conditional_entropy:
+        #     cond_entropy = self.dataframe_conditional_entropy[hash_cond_entropy]
+        # else:
+        #     cond_entropy = np.apply_along_axis(conditional_entropy, 0, np.array(new_dataframe), np.array(target_column))
+        #     self.dataframe_conditional_entropy[hash_cond_entropy] = cond_entropy
+
+        # Normalised information gain
+        # information_gain_score = (self.target_entropy - cond_entropy) / max(entropy_x, self.target_entropy)
+        information_gain_score = abs(spearman_corr(np.array(new_dataframe), np.array(target_column)))
+
+        final_feature_scores_rel = []
+        final_features_rel = []
+        for value, name in list(zip(information_gain_score, new_common_features)):
+            # value 0 means that the features are completely redundant
+            # value 1 means that the features are perfectly correlated, which is still undesirable
+            if 0 < value < 1:
+                final_feature_scores_rel.append((name, value))
+                final_features_rel.append(name)
+
+        if len(final_features_rel) == 0:
+            return None, []
+
+        # # Conditional redundancy
+        selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
+        new_features_int = [i for i, value in enumerate(dataframe.columns) if value in final_features_rel]
+        # vectorized_function = lambda free_feature: \
+        #     min(np.vectorize(
+        #         lambda selected_feature:
+        #         self.cached_conditional_mutual_information(np.array(dataframe)[:, free_feature], target_column,
+        #                                                    np.array(dataframe)[:, selected_feature]), otypes=[float])(
+        #         selected_features_int))
+        # cmim_scores = np.vectorize(vectorized_function, otypes=[float])(np.array(new_features_int))
+        # if np.all(np.array(cmim_scores) == 0):
+        #     return final_feature_scores_rel, final_features_rel, None, []
+        #
+        # # normalise
+        # normalised_scores = (cmim_scores - np.min(cmim_scores)) / (np.max(cmim_scores) - np.min(cmim_scores))
+        # feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
+        # final_feature_scores_cmim = [(name, value) for name, value in feature_scores if value > 0]
+        # final_features_cmim = [feat for feat, _ in final_feature_scores_cmim]
+
+        # Joint mutual information
+
+        relevance = np.apply_along_axis(self.cached_mutual_information, 0,
+                                        np.array(dataframe)[:, np.array(new_features_int)], target_column)
+        redundancy = np.vectorize(
+            lambda free_feature: np.sum(np.apply_along_axis(self.cached_mutual_information, 0,
+                                                            np.array(dataframe)[:, np.array(selected_features_int)],
+                                                            np.array(dataframe)[:, free_feature])))(new_features_int)
+        # cond_dependency = np.vectorize(
+        #     lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
+        #                                                     np.array(dataframe)[:, np.array(selected_features_int)],
+        #                                                     np.array(dataframe)[:, free_feature],
+        #                                                     target_column)))(np.array(new_features_int))
+        mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
+                      # + (1 / np.array(selected_features_int).size) * cond_dependency
+        if np.all(np.array(mrmr_scores) == 0):
+            return final_feature_scores_rel, final_features_rel, None, []
+
+        if np.max(mrmr_scores) == np.min(mrmr_scores):
+            normalised_scores = (mrmr_scores - np.min(mrmr_scores)) / np.max(mrmr_scores)
+        else:
+            normalised_scores = (mrmr_scores - np.min(mrmr_scores)) / (np.max(mrmr_scores) - np.min(mrmr_scores))
+
+        feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
+        final_feature_scores_mrmr = [(name, value) for name, value in feature_scores if value > 0]
+        final_feature_names_mrmr = [feat for feat, _ in final_feature_scores_mrmr]
+
+        return final_feature_scores_rel, final_features_rel, final_feature_scores_mrmr, final_feature_names_mrmr
+
+    def cached_mutual_information(self, x, y):
+        h = hash(str((x, y)))
+        if h in self.dataframe_conditional_entropy:
+            cond_entropy = self.dataframe_conditional_entropy[h]
+        else:
+            cond_entropy = conditional_entropy(x, y)
+            self.dataframe_conditional_entropy[h] = cond_entropy
+
+        h_entropy = hash(str(y))
+        if h_entropy in self.dataframe_entropy:
+            entr = self.dataframe_entropy[h_entropy]
+        else:
+            entr = entropy(y)
+            self.dataframe_entropy[h_entropy] = entr
+        return entr - cond_entropy
+
+    def cached_conditional_mutual_information(self, x, y, z):
+        h1 = hash(str(list(zip(x, z))))
+        if h1 in self.dataframe_entropy:
+            entropy_xz = self.dataframe_entropy[h1]
+        else:
+            entropy_xz = entropy(list(zip(x, z)))
+            self.dataframe_entropy[h1] = entropy_xz
+
+        h2 = hash(str(list(zip(y, z))))
+        if h2 in self.dataframe_entropy:
+            entropy_yz = self.dataframe_entropy[h2]
+        else:
+            entropy_yz = entropy(list(zip(y, z)))
+            self.dataframe_entropy[h2] = entropy_yz
+
+        h3 = hash(str(list(zip(x, y, z))))
+        if h3 in self.dataframe_entropy:
+            entropy_xyz = self.dataframe_entropy[h3]
+        else:
+            entropy_xyz = entropy(list(zip(x, y, z)))
+            self.dataframe_entropy[h3] = entropy_xyz
+
+        h4 = hash(str(z))
+        if h4 in self.dataframe_entropy:
+            entropy_z = self.dataframe_entropy[h4]
+        else:
+            entropy_z = entropy(z)
+            self.dataframe_entropy[h4] = entropy_z
+
+        return entropy_xz + entropy_yz - entropy_xyz - entropy_z
 
 
 def measure_relevance(dataframe: pd.DataFrame,
@@ -20,8 +169,10 @@ def measure_relevance(dataframe: pd.DataFrame,
         return None, []
 
     features = dataframe[common_features]
-    scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
-                                                                                 entropy(target_column))
+    # scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
+    #                                                                              entropy(target_column))
+    scores = abs(spearman_corr(np.array(features), np.array(target_column)))
+
     final_feature_scores = []
     final_features = []
     for value, name in list(zip(scores, common_features)):
