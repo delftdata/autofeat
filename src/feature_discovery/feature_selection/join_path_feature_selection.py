@@ -6,9 +6,7 @@ from ITMO_FS.filters.multivariate import CMIM, JMI, MRMR
 from ITMO_FS.filters.univariate import spearman_corr
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
 
-from feature_discovery.augmentation.trial_error import train_test_cart
-from feature_discovery.config import ROOT_FOLDER
-from feature_discovery.data_preparation.utils import prepare_data_for_ml
+from sklearn.preprocessing import KBinsDiscretizer
 
 
 class RelevanceRedundancy:
@@ -18,40 +16,20 @@ class RelevanceRedundancy:
         self.dataframe_entropy = {}
         self.dataframe_conditional_entropy = {}
 
-    def measure_relevance_and_redundancy(self,
-                                         dataframe: pd.DataFrame,
-                                         selected_features: List[str],
-                                         new_features: List[str],
-                                         target_column: pd.Series) -> Tuple[
-        Optional[List[float]], List[str], Optional[List[float]], List[str]]:
+    def measure_relevance(self,
+                          dataframe: pd.DataFrame,
+                          new_features: List[str],
+                          target_column: pd.Series) -> Tuple[Optional[List[tuple]], List[str]]:
 
-        # Relevance
         if self.target_entropy is None:
             self.target_entropy = entropy(target_column)
 
         new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
         if len(new_common_features) == 0:
-            return None, [], None, []
+            return None, []
 
-        new_dataframe = dataframe[new_common_features]
-
-        # h = hash(str(new_common_features))
-        # if h in self.dataframe_entropy:
-        #     entropy_x = self.dataframe_entropy[h]
-        # else:
-        #     entropy_x = entropy(new_dataframe)
-        #     self.dataframe_entropy[h] = entropy_x
-        #
-        # hash_cond_entropy = hash(str((np.array(new_dataframe), np.array(target_column))))
-        # if hash_cond_entropy in self.dataframe_conditional_entropy:
-        #     cond_entropy = self.dataframe_conditional_entropy[hash_cond_entropy]
-        # else:
-        #     cond_entropy = np.apply_along_axis(conditional_entropy, 0, np.array(new_dataframe), np.array(target_column))
-        #     self.dataframe_conditional_entropy[hash_cond_entropy] = cond_entropy
-
-        # Normalised information gain
-        # information_gain_score = (self.target_entropy - cond_entropy) / max(entropy_x, self.target_entropy)
-        information_gain_score = abs(spearman_corr(np.array(new_dataframe), np.array(target_column)))
+        information_gain_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
+                                                   np.array(target_column)))
 
         final_feature_scores_rel = []
         final_features_rel = []
@@ -63,35 +41,31 @@ class RelevanceRedundancy:
                 final_features_rel.append(name)
 
         if len(final_features_rel) == 0:
-            return None, [], None, []
+            return None, []
 
-        # # Conditional redundancy
+        return final_feature_scores_rel, final_features_rel
+
+    def measure_redundancy(self,
+                           dataframe: pd.DataFrame,
+                           selected_features: List[str],
+                           relevant_features: List[str],
+                           target_column: pd.Series) -> Tuple[Optional[List[tuple]], List[str]]:
+
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
-        new_features_int = [i for i, value in enumerate(dataframe.columns) if value in final_features_rel]
-        # vectorized_function = lambda free_feature: \
-        #     min(np.vectorize(
-        #         lambda selected_feature:
-        #         self.cached_conditional_mutual_information(np.array(dataframe)[:, free_feature], target_column,
-        #                                                    np.array(dataframe)[:, selected_feature]), otypes=[float])(
-        #         selected_features_int))
-        # cmim_scores = np.vectorize(vectorized_function, otypes=[float])(np.array(new_features_int))
-        # if np.all(np.array(cmim_scores) == 0):
-        #     return final_feature_scores_rel, final_features_rel, None, []
-        #
-        # # normalise
-        # normalised_scores = (cmim_scores - np.min(cmim_scores)) / (np.max(cmim_scores) - np.min(cmim_scores))
-        # feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
-        # final_feature_scores_cmim = [(name, value) for name, value in feature_scores if value > 0]
-        # final_features_cmim = [feat for feat, _ in final_feature_scores_cmim]
+        new_features_int = [i for i, value in enumerate(dataframe.columns) if value in relevant_features]
 
-        # Joint mutual information
+        est = KBinsDiscretizer(n_bins=5, encode='ordinal')
+        try:
+            discr_dataframe = est.fit_transform(dataframe)
+        except ValueError:
+            discr_dataframe = dataframe
 
         relevance = np.apply_along_axis(self.cached_mutual_information, 0,
-                                        np.array(dataframe)[:, np.array(new_features_int)], target_column)
+                                        np.array(discr_dataframe)[:, np.array(new_features_int)], target_column)
         redundancy = np.vectorize(
             lambda free_feature: np.sum(np.apply_along_axis(self.cached_mutual_information, 0,
-                                                            np.array(dataframe)[:, np.array(selected_features_int)],
-                                                            np.array(dataframe)[:, free_feature])))(new_features_int)
+                                                            np.array(discr_dataframe)[:, np.array(selected_features_int)],
+                                                            np.array(discr_dataframe)[:, free_feature])))(new_features_int)
         # cond_dependency = np.vectorize(
         #     lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
         #                                                     np.array(dataframe)[:, np.array(selected_features_int)],
@@ -100,16 +74,30 @@ class RelevanceRedundancy:
         mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
         # + (1 / np.array(selected_features_int).size) * cond_dependency
         if np.all(np.array(mrmr_scores) == 0):
-            return final_feature_scores_rel, final_features_rel, None, []
+            return None, []
 
-        if np.max(mrmr_scores) == np.min(mrmr_scores):
-            normalised_scores = (mrmr_scores - np.min(mrmr_scores)) / np.max(mrmr_scores)
+        max_mrmr = np.max(mrmr_scores)
+        min_mrmr = np.min(mrmr_scores)
+        if max_mrmr == min_mrmr:
+            normalised_scores = (mrmr_scores - min_mrmr) / min_mrmr
         else:
-            normalised_scores = (mrmr_scores - np.min(mrmr_scores)) / (np.max(mrmr_scores) - np.min(mrmr_scores))
+            normalised_scores = (mrmr_scores - min_mrmr) / (max_mrmr - min_mrmr)
 
         feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
         final_feature_scores_mrmr = [(name, value) for name, value in feature_scores if value > 0]
         final_feature_names_mrmr = [feat for feat, _ in final_feature_scores_mrmr]
+
+        return final_feature_scores_mrmr, final_feature_names_mrmr
+
+    def measure_relevance_and_redundancy(self,
+                                         dataframe: pd.DataFrame,
+                                         selected_features: List[str],
+                                         new_features: List[str],
+                                         target_column: pd.Series) -> Tuple[
+        Optional[List[float]], List[str], Optional[List[float]], List[str]]:
+
+        final_feature_scores_rel, final_features_rel = self.measure_relevance(dataframe, new_features, target_column)
+        final_feature_scores_mrmr, final_feature_names_mrmr = self.measure_redundancy(dataframe, selected_features, final_features_rel, target_column)
 
         return final_feature_scores_rel, final_features_rel, final_feature_scores_mrmr, final_feature_names_mrmr
 
@@ -251,63 +239,3 @@ def measure_joint_mutual_information(dataframe: pd.DataFrame,
 
     return final_feature_scores, final_feature_names
 
-
-def test_relevance():
-    target_column = "Survived"
-    # target_column = "classification"
-    # titanic_df = pd.read_csv(ROOT_FOLDER / "other-data/original/titanic-og.csv")
-    # titanic_df = pd.read_csv(ROOT_FOLDER / "other-data/original/kidney_disease.csv")
-    table1 = pd.read_csv(ROOT_FOLDER / "other-data/synthetic/titanic/titanic.csv")
-    X, y = prepare_data_for_ml(table1, target_column)
-    feature_score, selected_features = measure_relevance(table1, X.columns, y)
-    print(feature_score)
-
-    table2 = pd.read_csv(ROOT_FOLDER / "joined-df/titanic/titanic.csv--passenger_info.csv")
-    X2, y2 = prepare_data_for_ml(table2, target_column)
-    table2_columns = [col for col in X2.columns if col not in X.columns]
-    feature_score2 = measure_relevance(table2, table2_columns, y2)
-    print(feature_score2)
-
-    feature_score_cr = measure_conditional_redundancy(dataframe=table2,
-                                                      selected_features=selected_features,
-                                                      new_features=table2_columns,
-                                                      target_column=y2)
-    print(feature_score_cr)
-
-    new_selected_features = [feat for feat, val in feature_score_cr]
-    # selected_features.extend(new_selected_features)
-    #
-    feature_score_jmi = measure_joint_mutual_information(dataframe=table2,
-                                                         selected_features=selected_features,
-                                                         new_features=table2_columns,
-                                                         target_column=y2)
-    print(feature_score_jmi)
-    features_jmi = [feat for feat, value in feature_score_jmi]
-    #
-    # # feature_group_1 = ['PassengerId', 'Name', 'Ticket', 'Fare']
-    # feature_group_2 = ['Ticket', 'Fare', 'Age', 'Sex', 'SibSp', 'Cabin']
-    # # measure_redundancy(X, feature_group_1, y)
-    feature_score_redundancy = measure_redundancy(table2, features_jmi, y2)
-    print(feature_score_redundancy)
-
-
-def test_features():
-    target_column = "Survived"
-    # target_column = "classification"
-    # titanic_df = pd.read_csv(ROOT_FOLDER / "other-data/original/titanic-og.csv")
-    # titanic_df = pd.read_csv(ROOT_FOLDER / "other-data/original/kidney_disease.csv")
-    titanic_df = pd.read_csv(ROOT_FOLDER / "other-data/synthetic/titanic/titanic.csv")
-    titanic_passenger = pd.read_csv(ROOT_FOLDER / "joined-df/titanic/titanic.csv--passenger_info.csv")
-
-    entry2 = train_test_cart(dataframe=titanic_df,
-                             target_column=target_column)
-
-    entry1 = train_test_cart(dataframe=titanic_passenger[['TicketId', 'Age', 'Sex', 'SibSp', 'Survived']],
-                             target_column=target_column)
-    print(entry1)
-    print(entry2)
-
-
-if __name__ == "__main__":
-    # test_relevance()
-    test_features()
