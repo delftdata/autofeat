@@ -209,7 +209,7 @@ class BfsAugmentation:
                     for prop in join_keys:
                         join_prop, from_table, to_table = prop
                         if join_prop['from_label'] != from_table:
-                            current_queue.add(previous_join_name)
+                            # current_queue.add(previous_join_name)
                             continue
 
                         if join_prop['from_column'] == self.target_column:

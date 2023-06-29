@@ -162,7 +162,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
 
     all_results = []
     for path in tqdm.tqdm(top_k_paths):
-        join_name, _ = path
+        join_name, rank = path
         if join_name == bfs_result.base_node_label:
             continue
 
@@ -189,6 +189,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
             result.train_time = end - start
             result.total_time += feat_sel_time
             result.total_time += end - start
+            result.rank = rank
 
         all_results.extend(results)
 
@@ -317,7 +318,7 @@ def plot(results_file_name: str):
 
 if __name__ == "__main__":
     # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    dataset = filter_datasets(["school"])[0]
+    dataset = filter_datasets(["miniboone"])[0]
     get_tfd_results(dataset, value_ratio=0.65, join_all=True)
     # get_arda_results(dataset)
     # get_base_results(dataset)

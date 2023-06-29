@@ -115,7 +115,7 @@ create database normalised
 ```
 11. Ingest data
 ```
-feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-dataset
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 
 ```
 
 
