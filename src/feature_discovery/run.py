@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import List, Optional
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -166,7 +167,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         if join_name == bfs_result.base_node_label:
             continue
 
-        dataframe = pd.read_csv(JOIN_RESULT_FOLDER / bfs_result.join_name_mapping[join_name], header=0,
+        dataframe = pd.read_csv(Path(bfs_result.temp_dir.name) / bfs_result.join_name_mapping[join_name], header=0,
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)

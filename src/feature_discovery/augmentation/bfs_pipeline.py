@@ -1,14 +1,16 @@
 import logging
 import time
 import uuid
+import tempfile
 from typing import List, Dict, Set, Tuple, Optional
 
 import pandas as pd
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from joblib import Parallel, delayed
+from pathlib import Path
 
 from feature_discovery.augmentation.trial_error import train_test_cart, run_auto_gluon
-from feature_discovery.config import JOIN_RESULT_FOLDER, DATA_FOLDER
+from feature_discovery.config import DATA_FOLDER
 from feature_discovery.data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.feature_selection.join_path_feature_selection import (
@@ -65,6 +67,7 @@ class BfsAugmentation:
         self.join_keys: Dict[str, list] = {}
         self.join_time: Dict[str, float] = {}
         self.rel_red = RelevanceRedundancy(target_column)
+        self.temp_dir: str = tempfile.TemporaryDirectory()
 
         # Ablation study parameters
         self.total_paths: Dict[str, int] = {}
@@ -253,13 +256,13 @@ class BfsAugmentation:
                                                 quotechar='"', escapechar='\\', nrows=1).columns)
                     features = [f"{self.base_node_label}.{feat}" for feat in features]
                 else:
-                    features = list(pd.read_csv(JOIN_RESULT_FOLDER / self.join_name_mapping[initial_path], header=0,
+                    features = list(pd.read_csv(Path(self.temp_dir.name) / self.join_name_mapping[initial_path], header=0,
                                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\',
                                                 nrows=1).columns)
 
                 for path in list(previous_queue):
                     dataframe = pd.read_csv(
-                        JOIN_RESULT_FOLDER / self.join_name_mapping[path],
+                        Path(self.temp_dir.name) / self.join_name_mapping[path],
                         header=0,
                         engine="python",
                         encoding="utf8",
@@ -554,7 +557,7 @@ class BfsAugmentation:
             right_df=sampled_right_df,
             left_column_name=left_on,
             right_column_name=right_on,
-            join_path=JOIN_RESULT_FOLDER / join_filename,
+            join_path=Path(self.temp_dir.name) / join_filename,
         )
         if joined_df is None:
             return None, join_filename, []
@@ -714,7 +717,7 @@ class BfsAugmentation:
             self.initialise_ranks_features(join_name=partial_join_name, dataframe=partial_join)
         else:
             partial_join = pd.read_csv(
-                JOIN_RESULT_FOLDER / self.join_name_mapping[partial_join_name],
+                Path(self.temp_dir.name) / self.join_name_mapping[partial_join_name],
                 header=0,
                 engine="python",
                 encoding="utf8",

@@ -22,7 +22,8 @@ class RelevanceRedundancy:
                                          dataframe: pd.DataFrame,
                                          selected_features: List[str],
                                          new_features: List[str],
-                                         target_column: pd.Series):
+                                         target_column: pd.Series) -> Tuple[
+        Optional[List[float]], List[str], Optional[List[float]], List[str]]:
 
         # Relevance
         if self.target_entropy is None:
@@ -30,7 +31,7 @@ class RelevanceRedundancy:
 
         new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
         if len(new_common_features) == 0:
-            return None, []
+            return None, [], None, []
 
         new_dataframe = dataframe[new_common_features]
 
@@ -62,7 +63,7 @@ class RelevanceRedundancy:
                 final_features_rel.append(name)
 
         if len(final_features_rel) == 0:
-            return None, []
+            return None, [], None, []
 
         # # Conditional redundancy
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
@@ -97,7 +98,7 @@ class RelevanceRedundancy:
         #                                                     np.array(dataframe)[:, free_feature],
         #                                                     target_column)))(np.array(new_features_int))
         mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
-                      # + (1 / np.array(selected_features_int).size) * cond_dependency
+        # + (1 / np.array(selected_features_int).size) * cond_dependency
         if np.all(np.array(mrmr_scores) == 0):
             return final_feature_scores_rel, final_features_rel, None, []
 
