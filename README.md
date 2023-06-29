@@ -85,7 +85,12 @@ create database simple
 ```
 4. Ingest data
 ```
-feature-discovery-cli ingest-data
+feature-discovery-cli ingest-kfk-data
+```
+5. (Optional - Instead of step 4) If you want to discover more connections besides
+the provided KFK, run: 
+```
+feature-discovery-cli ingest-kfk-data --discover-connections-dataset
 ```
 
 ### Mixed dataset 
@@ -97,7 +102,7 @@ create database mixed
 2. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'mixed'`
 3. Ingest data
 ```
-feature-discovery-cli ingest-all-data --data-discovery-threshold=0.55
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
 ```
 
 ### Normalised dataset
@@ -110,7 +115,7 @@ create database normalised
 ```
 11. Ingest data
 ```
-feature-discovery-cli ingest-data --discover-connections-dataset
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-dataset
 ```
 
 

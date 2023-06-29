@@ -7,7 +7,8 @@ from typing_extensions import Annotated
 
 from feature_discovery.augmentation.data_preparation_pipeline import ingest_data_with_pk_fk
 from feature_discovery.config import RESULTS_FOLDER
-from feature_discovery.data_preparation.ingest_data import ingest_nodes, profile_valentine_all
+from feature_discovery.data_preparation.ingest_data import ingest_nodes, profile_valentine_all, \
+    profile_valentine_dataset
 from feature_discovery.run import (
     filter_datasets,
     get_arda_results,
@@ -134,16 +135,13 @@ def run_tune_value_ratio(
 
 
 @app.command()
-def ingest_data(
+def ingest_kfk_data(
     dataset_label: Annotated[
         Optional[str],
         typer.Option(help="The label of the dataset to ingest"),
     ] = None,
     discover_connections_dataset: Annotated[
         bool, typer.Option(help="Run dataset discovery to find more connections within the dataset")
-    ] = False,
-    discover_connections_data_lake: Annotated[
-        bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
     ] = False,
 ):
     """Ingest the new dataset into neo4j database"""
@@ -159,12 +157,12 @@ def ingest_data(
 
     for dataset in tqdm.tqdm(datasets):
         ingest_data_with_pk_fk(
-            dataset=dataset, profile_valentine=discover_connections_dataset, mix_datasets=discover_connections_data_lake
+            dataset=dataset, profile_valentine=discover_connections_dataset
         )
 
 
 @app.command()
-def ingest_all_data(
+def ingest_data(
     data_discovery_threshold: Annotated[
         float,
         typer.Option(
@@ -172,14 +170,22 @@ def ingest_all_data(
             " accuracy rate threshold"
         ),
     ] = None,
+    discover_connections_data_lake: Annotated[
+        bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
+    ] = False,
 ):
     """
-    Ingest all dataset from "data" folder.
+    Ingest all dataset from specified "data" folder.
     """
     ingest_nodes()
 
-    if data_discovery_threshold:
+    if data_discovery_threshold and discover_connections_data_lake:
         profile_valentine_all(valentine_threshold=data_discovery_threshold)
+        return
+
+    if data_discovery_threshold and not discover_connections_data_lake:
+        for dataset in ALL_DATASETS:
+            profile_valentine_dataset(dataset.base_table_label, valentine_threshold=data_discovery_threshold)
 
 
 @app.command()
