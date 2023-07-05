@@ -19,37 +19,38 @@ class RelevanceRedundancy:
     def measure_relevance(self,
                           dataframe: pd.DataFrame,
                           new_features: List[str],
-                          target_column: pd.Series) -> Tuple[Optional[List[tuple]], List[str]]:
+                          target_column: pd.Series) -> List[tuple]:
 
-        if self.target_entropy is None:
-            self.target_entropy = entropy(target_column)
+        # if self.target_entropy is None:
+        #     self.target_entropy = entropy(target_column)
+        if self.target_column in new_features:
+            new_features.remove(self.target_column)
 
         new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
         if len(new_common_features) == 0:
-            return None, []
+            return []
 
-        information_gain_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
-                                                   np.array(target_column)))
+        correlation_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
+                                              np.array(target_column)))
 
         final_feature_scores_rel = []
         final_features_rel = []
-        for value, name in list(zip(information_gain_score, new_common_features)):
+        for value, name in list(zip(correlation_score, new_common_features)):
             # value 0 means that the features are completely redundant
             # value 1 means that the features are perfectly correlated, which is still undesirable
             if 0 < value < 1:
                 final_feature_scores_rel.append((name, value))
-                final_features_rel.append(name)
 
-        if len(final_features_rel) == 0:
-            return None, []
+        if len(final_feature_scores_rel) == 0:
+            return []
 
-        return final_feature_scores_rel, final_features_rel
+        return sorted(final_feature_scores_rel, key=lambda s: s[1], reverse=True)
 
     def measure_redundancy(self,
                            dataframe: pd.DataFrame,
                            selected_features: List[str],
                            relevant_features: List[str],
-                           target_column: pd.Series) -> Tuple[Optional[List[tuple]], List[str]]:
+                           target_column: pd.Series) -> List[tuple]:
 
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
         new_features_int = [i for i, value in enumerate(dataframe.columns) if value in relevant_features]
@@ -64,8 +65,10 @@ class RelevanceRedundancy:
                                         np.array(discr_dataframe)[:, np.array(new_features_int)], target_column)
         redundancy = np.vectorize(
             lambda free_feature: np.sum(np.apply_along_axis(self.cached_mutual_information, 0,
-                                                            np.array(discr_dataframe)[:, np.array(selected_features_int)],
-                                                            np.array(discr_dataframe)[:, free_feature])))(new_features_int)
+                                                            np.array(discr_dataframe)[:,
+                                                            np.array(selected_features_int)],
+                                                            np.array(discr_dataframe)[:, free_feature])))(
+            new_features_int)
         # cond_dependency = np.vectorize(
         #     lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
         #                                                     np.array(dataframe)[:, np.array(selected_features_int)],
@@ -74,7 +77,7 @@ class RelevanceRedundancy:
         mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
         # + (1 / np.array(selected_features_int).size) * cond_dependency
         if np.all(np.array(mrmr_scores) == 0):
-            return None, []
+            return []
 
         max_mrmr = np.max(mrmr_scores)
         min_mrmr = np.min(mrmr_scores)
@@ -85,21 +88,20 @@ class RelevanceRedundancy:
 
         feature_scores = list(zip(np.array(dataframe.columns)[np.array(new_features_int)], normalised_scores))
         final_feature_scores_mrmr = [(name, value) for name, value in feature_scores if value > 0]
-        final_feature_names_mrmr = [feat for feat, _ in final_feature_scores_mrmr]
 
-        return final_feature_scores_mrmr, final_feature_names_mrmr
+        return sorted(final_feature_scores_mrmr, key=lambda s: s[1], reverse=True)
 
     def measure_relevance_and_redundancy(self,
                                          dataframe: pd.DataFrame,
                                          selected_features: List[str],
                                          new_features: List[str],
-                                         target_column: pd.Series) -> Tuple[
-        Optional[List[float]], List[str], Optional[List[float]], List[str]]:
+                                         target_column: pd.Series) -> Tuple[list, list]:
 
-        final_feature_scores_rel, final_features_rel = self.measure_relevance(dataframe, new_features, target_column)
-        final_feature_scores_mrmr, final_feature_names_mrmr = self.measure_redundancy(dataframe, selected_features, final_features_rel, target_column)
-
-        return final_feature_scores_rel, final_features_rel, final_feature_scores_mrmr, final_feature_names_mrmr
+        final_feature_scores_rel = self.measure_relevance(dataframe, new_features, target_column)
+        final_feature_scores_mrmr = self.measure_redundancy(dataframe, selected_features,
+                                                            list(dict(final_feature_scores_rel).keys()),
+                                                            target_column)
+        return final_feature_scores_rel, final_feature_scores_mrmr
 
     def cached_mutual_information(self, x, y):
         h = hash(str((x, y)))
@@ -238,4 +240,3 @@ def measure_joint_mutual_information(dataframe: pd.DataFrame,
     final_feature_names = [feat for feat, _ in final_feature_scores]
 
     return final_feature_scores, final_feature_names
-

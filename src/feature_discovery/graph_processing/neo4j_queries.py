@@ -117,9 +117,7 @@ def _get_relation_properties(tx, from_id, to_id):
 
 def _get_relation_properties_node_name(tx, from_id, to_id):
     tx_result = tx.run(
-        "match (n {id: $from_id})-[r:RELATED]-(m {id: $to_id}) "
-        "return properties(r) as props, n.id as from_label, m.id as to_label "
-        "order by r.weight desc",
+        "match (n {id: $from_id})-[r:RELATED]-(m {id: $to_id}) return properties(r) as props, n.id as from_label, m.id as to_label order by r.weight desc",
         from_id=from_id,
         to_id=to_id,
     )
@@ -170,7 +168,8 @@ def _get_adjacent_nodes_rels(tx, node_id):
 
 def _get_adjacent_nodes(tx, node_id):
     tx_result = tx.run(
-        "match (n:Node {id: $node_id})-[r]-(m:Node) " "return distinct m.id as id order by id asc", node_id=node_id
+        "match (n:Node {id: $node_id})-[r]-(m:Node) with r, m order by r.weight desc return distinct m.id as id",
+        node_id=node_id
     )
     values = []
     for record in tx_result:

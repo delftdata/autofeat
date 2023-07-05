@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 
+from feature_discovery.augmentation.autofeat import AutoFeat
 from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
 from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, JOIN_RESULT_FOLDER
@@ -175,6 +176,10 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
         logging.debug(f"Feature after join_key removal:\n{features}")
 
+        if len(features) < 2:
+            features = bfs_result.partial_join_selected_features[bfs_result.base_node_label]
+            features.append(bfs_result.target_column)
+
         start = time.time()
         best_model, results = run_auto_gluon(approach=Result.TFD,
                                              dataframe=dataframe[features],
@@ -203,15 +208,26 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
-    bfs_traversal = BfsAugmentation(
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        auto_gluon=auto_gluon,
-    )
+    bfs_traversal = None
     if join_all:
-        bfs_traversal.join_all_recursively(queue={str(dataset.base_table_id)})
+        # bfs_traversal.join_all_recursively(queue={str(dataset.base_table_id)})
+        # bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
+        bfs_traversal = AutoFeat(
+            base_table_id=str(dataset.base_table_id),
+            base_table_label=dataset.base_table_label,
+            target_column=dataset.target_column,
+            value_ratio=value_ratio,
+            top_k=top_k,
+            task=dataset.dataset_type
+        )
+        bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
     else:
+        bfs_traversal = BfsAugmentation(
+            base_table_label=dataset.base_table_label,
+            target_column=dataset.target_column,
+            value_ratio=value_ratio,
+            auto_gluon=auto_gluon,
+        )
         bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
     end = time.time()
 
