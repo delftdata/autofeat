@@ -2,6 +2,7 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from ITMO_FS.filters.multivariate import CMIM, JMI, MRMR
 from ITMO_FS.filters.univariate import spearman_corr
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
@@ -23,14 +24,19 @@ class RelevanceRedundancy:
 
         # if self.target_entropy is None:
         #     self.target_entropy = entropy(target_column)
+
+        df = AutoMLPipelineFeatureGenerator(
+            enable_text_special_features=False, enable_text_ngram_features=False
+        ).fit_transform(X=dataframe)
+
         if self.target_column in new_features:
             new_features.remove(self.target_column)
 
-        new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
+        new_common_features = list(set(df.columns).intersection(set(new_features)))
         if len(new_common_features) == 0:
             return []
 
-        correlation_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
+        correlation_score = abs(spearman_corr(np.array(df[new_common_features]),
                                               np.array(target_column)))
 
         final_feature_scores_rel = []

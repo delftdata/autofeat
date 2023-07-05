@@ -106,14 +106,6 @@ class AutoFeat:
 
     def streaming_feature_selection(self, queue: set, previous_queue: set = None):
 
-        # First try with streaming feature selection pipeline
-
-        # Get the neighbours in order based on the join column score - highest first - DONE
-
-        # Compute the set of relevant features
-
-        # Compute the set of redundant features
-
         # Then try with recurssive join
 
         # Join all neighbours while # feat < # samples
