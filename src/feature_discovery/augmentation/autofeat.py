@@ -318,16 +318,3 @@ class AutoFeat:
 
         return True
 
-    def get_relevant_features(self, dataframe: pd.DataFrame) -> Tuple[float, List[str]]:
-        logging.debug("Get relevant features ... ")
-
-        X = dataframe.drop(columns=[self.target_column])
-        y = dataframe[self.target_column]
-
-        feature_score = self.rel_red.measure_relevance(
-            dataframe=X, new_features=list(X.columns), target_column=y
-        )[:self.top_k]
-        m = len(feature_score) if len(feature_score) > 0 else 1
-        score = sum(list(map(lambda x: x[1], feature_score))) / m
-
-        return score, list(dict(feature_score).keys())

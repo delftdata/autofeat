@@ -162,6 +162,8 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
 
+    base_features = bfs_result.partial_join_selected_features[bfs_result.base_node_label]
+
     all_results = []
     for path in tqdm.tqdm(top_k_paths):
         join_name, rank = path
@@ -172,8 +174,10 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
                                 engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)
+        features.extend(base_features)
         logging.debug(f"Feature before join_key removal:\n{features}")
-        features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
+        features = list(set(features).intersection(set(dataframe.columns)))
+        # features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
         logging.debug(f"Feature after join_key removal:\n{features}")
 
         if len(features) < 2:
