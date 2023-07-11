@@ -60,21 +60,15 @@ class AutoFeat:
         self.discovered: Set[str] = set()
         # Save the selected features of the previous join path (used for conditional redundancy)
         self.partial_join_selected_features: Dict[str, List] = {}
-        # Track the base table accuracy in the final step
-        self.base_node_label = None
 
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
         self.rel_red = RelevanceRedundancy(target_column)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.previous_join_name = None
-        self.init = False
+        self.partial_join = self.initialisation()
 
         # Ablation study parameters
-        self.join_step = True
         self.sample_data_step = True
-        self.data_quality_step = True
-        self.feature_selection_step = True
 
     def initialisation(self):
         from sklearn.model_selection import train_test_split
@@ -100,46 +94,24 @@ class AutoFeat:
         self.partial_join_selected_features[partial_join_name] = features
         self.ranking[partial_join_name] = 0
         self.join_keys[partial_join_name] = []
-        self.base_node_label = partial_join_name
 
-        return X_train, partial_join_name
+        return X_train
 
-    def streaming_feature_selection(self, queue: set, previous_queue: set = None):
-
-        # Then try with recurssive join
-
-        # Join all neighbours while # feat < # samples
-
-        # Compute the relevant features
-
-        # Compute the redundant features
-
+    def streaming_feature_selection(self, queue: set, previous_queue: set = None, prev_node_id: str = None):
         if len(queue) == 0:
             return
 
-        partial_join_name = None
-        partial_join = None
-        if not self.init:
-            partial_join, partial_join_name = self.initialisation()
-            self.init = ~self.init
-
         if previous_queue is None:
-            initial_queue = None
             previous_queue = queue.copy()
-        else:
-            initial_queue = previous_queue.copy()
 
         # Iterate through all the elements of the queue:
         # 1) in the first iteration: queue = base_node_id
         # 2) in all the other iterations: queue = neighbours of the previous node
         all_neighbours = set()
-        start = time.time()
         while len(queue) > 0:
             # Get the current/base node
             base_node_id = queue.pop()
             self.discovered.add(base_node_id)
-            if initial_queue is None:
-                initial_queue = {base_node_id}
             logging.debug(f"New iteration with base node: {base_node_id}")
 
             # Determine the neighbours (unvisited)
@@ -156,25 +128,27 @@ class AutoFeat:
 
                 # Get the join keys with the highest score
                 join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
-                highest_ranked_join_keys = []
-                for jk in join_keys:
-                    if jk[0]['weight'] == join_keys[0][0]['weight']:
-                        highest_ranked_join_keys.append(jk)
-                    else:
-                        break
+                if len(join_keys) == 1:
+                    highest_ranked_join_keys = join_keys
+                else:
+                    highest_ranked_join_keys = []
+                    for jk in join_keys:
+                        if jk[0]['weight'] == join_keys[0][0]['weight']:
+                            highest_ranked_join_keys.append(jk)
+                        else:
+                            break
 
                 # Read the neighbour node
                 right_df, right_label = get_df_with_prefix(node)
                 logging.debug(f"\tRight table shape: {right_df.shape}")
 
                 current_queue = set()
-
                 while len(previous_queue) > 0:
                     previous_join_name = previous_queue.pop()
 
                     if previous_join_name == self.base_table_id:
-                        previous_join_name = partial_join_name
-                        previous_join = partial_join.copy()
+                        previous_join_name = self.base_table_label
+                        previous_join = self.partial_join.copy()
                     else:
                         previous_join = pd.read_csv(
                             Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
@@ -227,7 +201,10 @@ class AutoFeat:
                                                                          previous_join_name])
                         if result is not None:
                             self.ranking[join_name] = result[0]
-                            self.partial_join_selected_features[join_name] = result[1]
+                            all_selected_features = self.partial_join_selected_features[
+                                previous_join_name]
+                            all_selected_features.extend(result[1])
+                            self.partial_join_selected_features[join_name] = all_selected_features
                         else:
                             self.partial_join_selected_features[join_name] = self.partial_join_selected_features[
                                 previous_join_name]
@@ -237,11 +214,8 @@ class AutoFeat:
                         self.join_name_mapping[join_name] = join_filename
 
                         current_queue.add(join_name)
-
-                # Initialise the queue with the old paths (initial_queue) and the new paths (current_queue)
+                # Initialise the queue with the new paths (current_queue)
                 previous_queue.update(current_queue)
-        end = time.time()
-
         self.streaming_feature_selection(all_neighbours, previous_queue)
 
     def streaming_relevance_redundancy(self, dataframe, new_features, selected_features) -> Optional[

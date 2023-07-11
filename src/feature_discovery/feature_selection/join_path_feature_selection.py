@@ -22,9 +22,6 @@ class RelevanceRedundancy:
                           new_features: List[str],
                           target_column: pd.Series) -> List[tuple]:
 
-        # if self.target_entropy is None:
-        #     self.target_entropy = entropy(target_column)
-
         df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
         ).fit_transform(X=dataframe)
