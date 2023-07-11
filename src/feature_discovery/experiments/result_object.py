@@ -26,6 +26,7 @@ class Result:
     cutoff_threshold: Optional[float] = None
     redundancy_threshold: Optional[float] = None
     rank: Optional[int] = None
+    top_k: int = None
 
     def __post_init__(self):
         if self.join_time is not None:

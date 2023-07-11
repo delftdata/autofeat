@@ -19,6 +19,7 @@ services:
     hostname: feature-discovery-neo4j
     volumes:
       - ./neo4j-db:/neo4j-db
+      - ./neo4j-data:/data
     ports:
       - "7474:7474"
       - "7687:7687"

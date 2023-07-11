@@ -17,6 +17,7 @@ from feature_discovery.run import (
     get_all_results,
     get_results_ablation_classification,
     get_results_tune_value_ratio_classification,
+    get_results_tune_k,
     plot,
 )
 from feature_discovery.tfd_datasets.init_datasets import ALL_DATASETS
@@ -26,13 +27,15 @@ app = typer.Typer()
 
 @app.command()
 def run_arda(
-    dataset_labels: Annotated[
-        Optional[List[str]], typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels")
-    ] = None,
-    problem_type: Annotated[
-        str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
-    ] = None,
-    results_file: Annotated[str, typer.Option(help="CSV file where the results will be written")] = "results_arda.csv",
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_arda.csv",
 ):
     """Runs the ARDA experiments."""
     all_results = []
@@ -45,13 +48,15 @@ def run_arda(
 
 @app.command()
 def run_base(
-    dataset_labels: Annotated[
-        Optional[List[str]], typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels")
-    ] = None,
-    problem_type: Annotated[
-        str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
-    ] = None,
-    results_file: Annotated[str, typer.Option(help="CSV file where the results will be written")] = "results_base.csv",
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_base.csv",
 ):
     """Runs the base experiments."""
     all_results = []
@@ -64,16 +69,18 @@ def run_base(
 
 @app.command()
 def run_tfd(
-    top_k: Annotated[int, typer.Option(help="Number of results (paths)")] = 10,
-    dataset_labels: Annotated[
-        Optional[List[str]], typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels")
-    ] = None,
-    problem_type: Annotated[
-        str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
-    ] = None,
-    results_file: Annotated[str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
-    value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-    join_all: Annotated[bool, typer.Option(help="Whether to use Join-All-Recursively strategy")] = True,
+        top_k: Annotated[int, typer.Option(help="Number of results (paths)")] = 15,
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
+        join_all: Annotated[bool, typer.Option(help="Whether to use Join-All-Recursively strategy")] = True,
 ):
     """Runs the TFD experiments."""
     all_results = []
@@ -86,17 +93,17 @@ def run_tfd(
 
 @app.command()
 def run_all(
-    dataset_labels: Annotated[
-        Optional[List[str]],
-        typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
-    ] = None,
-    problem_type: Annotated[
-        str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
-    ] = None,
-    results_file: Annotated[
-        str, typer.Option(help="CSV file where the results will be written")
-    ] = "all_results_autogluon.csv",
-    value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
+        dataset_labels: Annotated[
+            Optional[List[str]],
+            typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
+        ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")
+        ] = "all_results_autogluon.csv",
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
     """Runs all experiments (ARDA + base + TFD)."""
     get_all_results(value_ratio, problem_type, dataset_labels, results_file)
@@ -104,15 +111,15 @@ def run_all(
 
 @app.command()
 def run_ablation(
-    value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-    dataset_labels: Annotated[
-        Optional[List[str]],
-        typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
-    ] = None,
-    results_file: Annotated[
-        str, typer.Option(help="CSV file where the results will be written")
-    ] = "ablation_study_autogluon.csv",
-    ml_model: Annotated[str, typer.Option(help="Model name from AutoGluon ML Hyper-parameters")] = 'GBM',
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
+        dataset_labels: Annotated[
+            Optional[List[str]],
+            typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")
+        ] = "ablation_study_autogluon.csv",
+        ml_model: Annotated[str, typer.Option(help="Model name from AutoGluon ML Hyper-parameters")] = 'GBM',
 ):
     """Run all the ablation study experiments"""
     datasets = filter_datasets(dataset_labels)
@@ -121,13 +128,13 @@ def run_ablation(
 
 @app.command()
 def run_tune_value_ratio(
-    dataset_labels: Annotated[
-        Optional[List[str]],
-        typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
-    ] = None,
-    results_file: Annotated[
-        str, typer.Option(help="CSV file where the results will be written")
-    ] = "all_results_value_ratio_tuning.csv",
+        dataset_labels: Annotated[
+            Optional[List[str]],
+            typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")
+        ] = "all_results_value_ratio_tuning.csv",
 ):
     """Run experiment on the sensitivity of value_ratio hyper-parameter"""
     datasets = filter_datasets(dataset_labels)
@@ -135,14 +142,29 @@ def run_tune_value_ratio(
 
 
 @app.command()
+def run_tune_top_k(
+        dataset_labels: Annotated[
+            Optional[List[str]],
+            typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")
+        ] = "all_results_top_k_features_tuning.csv",
+):
+    """Run experiment on the sensitivity of value_ratio hyper-parameter"""
+    datasets = filter_datasets(dataset_labels)
+    get_results_tune_k(datasets, results_file)
+
+
+@app.command()
 def ingest_kfk_data(
-    dataset_label: Annotated[
-        Optional[str],
-        typer.Option(help="The label of the dataset to ingest"),
-    ] = None,
-    discover_connections_dataset: Annotated[
-        bool, typer.Option(help="Run dataset discovery to find more connections within the dataset")
-    ] = False,
+        dataset_label: Annotated[
+            Optional[str],
+            typer.Option(help="The label of the dataset to ingest"),
+        ] = None,
+        discover_connections_dataset: Annotated[
+            bool, typer.Option(help="Run dataset discovery to find more connections within the dataset")
+        ] = False,
 ):
     """Ingest the new dataset into neo4j database"""
     if not dataset_label:
@@ -163,16 +185,16 @@ def ingest_kfk_data(
 
 @app.command()
 def ingest_data(
-    data_discovery_threshold: Annotated[
-        float,
-        typer.Option(
-            help="Run dataset discovery to find more connections within the entire data lake with given"
-            " accuracy rate threshold"
-        ),
-    ] = None,
-    discover_connections_data_lake: Annotated[
-        bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
-    ] = False,
+        data_discovery_threshold: Annotated[
+            float,
+            typer.Option(
+                help="Run dataset discovery to find more connections within the entire data lake with given"
+                     " accuracy rate threshold"
+            ),
+        ] = None,
+        discover_connections_data_lake: Annotated[
+            bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
+        ] = False,
 ):
     """
     Ingest all dataset from specified "data" folder.
@@ -190,9 +212,9 @@ def ingest_data(
 
 @app.command()
 def plot_data(
-    results_filename: Annotated[
-        str, typer.Option(help="The name of the file with results which is in result folder")
-    ] = "all_results_autogluon.csv",
+        results_filename: Annotated[
+            str, typer.Option(help="The name of the file with results which is in result folder")
+        ] = "all_results_autogluon.csv",
 ):
     """
     Plots the accuracy and time given the results.

@@ -119,21 +119,21 @@ def ingest_connections():
             create_relation(node_id_source, node_id_target, RELATED)
 
 
-def profile_valentine_all(valentine_threshold: float = 0.8):
+def profile_valentine_all(valentine_threshold: float = 0.55):
     files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
     profile_valentine_logic(files, valentine_threshold)
 
 
-def profile_valentine_dataset(dataset_name: str, valentine_threshold: float = 0.8):
+def profile_valentine_dataset(dataset_name: str, valentine_threshold: float = 0.55):
     files = glob.glob(f"{DATA_FOLDER / dataset_name}/**/*.csv", recursive=True)
     files = [f for f in files if CONNECTIONS not in f]
 
     profile_valentine_logic(files, valentine_threshold)
 
 
-def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.8):
+def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.55):
     def profile(table_pair):
         (tab1, tab2) = table_pair
 
