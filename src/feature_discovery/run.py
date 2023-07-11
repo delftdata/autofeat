@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from typing import List, Optional
@@ -157,17 +158,16 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000, autogluon: bool 
     return results
 
 
-def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float, problem_type: str):
-    logging.debug(f"Evaluate top-{top_k} paths ... ")
+def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str, top_k_paths: int=15):
+    logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
-    top_k_paths = sorted_paths if len(sorted_paths) < top_k else sorted_paths[:top_k]
-
-    base_features = bfs_result.partial_join_selected_features[bfs_result.base_node_label]
+    top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
+    base_features = bfs_result.partial_join_selected_features[bfs_result.base_table_label]
 
     all_results = []
-    for path in tqdm.tqdm(top_k_paths):
+    for path in tqdm.tqdm(top_k_path_list):
         join_name, rank = path
-        if join_name == bfs_result.base_node_label:
+        if join_name == bfs_result.base_table_label:
             continue
 
         dataframe = pd.read_csv(Path(bfs_result.temp_dir.name) / bfs_result.join_name_mapping[join_name], header=0,
@@ -181,7 +181,7 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
         logging.debug(f"Feature after join_key removal:\n{features}")
 
         if len(features) < 2:
-            features = bfs_result.partial_join_selected_features[bfs_result.base_node_label]
+            features = bfs_result.partial_join_selected_features[bfs_result.base_table_label]
             features.append(bfs_result.target_column)
 
         start = time.time()
@@ -200,15 +200,16 @@ def evaluate_paths(bfs_result: BfsAugmentation, top_k: int, feat_sel_time: float
             result.total_time += feat_sel_time
             result.total_time += end - start
             result.rank = rank
+            result.top_k = top_k
 
         all_results.extend(results)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{bfs_result.base_table_label}_tfd.csv", index=False)
-    return all_results, top_k_paths
+    return all_results, top_k_path_list
 
 
 def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True,
-                    join_all: bool = False) -> List:
+                    join_all: bool = True) -> List:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
@@ -302,11 +303,27 @@ def get_results_ablation_classification(value_ratio: float, dataset_labels: List
 
 def get_results_tune_value_ratio_classification(datasets: List[Dataset], results_filename: str):
     all_results = []
-    value_ratio_threshold = np.arange(0.15, 1.05, 0.05)
+    value_ratio_threshold = np.arange(1, 1.05, 0.05)
     for threshold in value_ratio_threshold:
+        print(f"==== value_ratio = {threshold} ==== ")
         for dataset in datasets:
-            result_bfs = get_tfd_results(dataset, value_ratio=threshold)
+            print(f"\tDataset = {dataset.base_table_label} ==== ")
+            result_bfs = get_tfd_results(dataset, value_ratio=threshold, top_k=15)
             all_results.extend(result_bfs)
+        pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"value_ratio_{threshold}_{results_filename}", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
+
+
+def get_results_tune_k(datasets: List[Dataset], results_filename: str):
+    all_results = []
+    top_k = np.arange(1, 21, 1)
+    for k in top_k:
+        print(f"==== k = {k} ==== ")
+        for dataset in datasets:
+            print(f"\tDataset = {dataset.base_table_label} ==== ")
+            result_bfs = get_tfd_results(dataset, value_ratio=0.65, top_k=k)
+            all_results.extend(result_bfs)
+        # pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"k_{k}_{results_filename}", index=False)
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_filename, index=False)
 
 
@@ -316,7 +333,7 @@ def export_neo4j_connections(dataset_label: str = None):
     else:
         result = export_all_connections()
 
-    pd.DataFrame(result).to_csv("all_connections.csv", index=False)
+    pd.DataFrame(result).to_csv(RESULTS_FOLDER / "all_connections-basicdd.csv", index=False)
 
 
 def transform_arff_to_csv(dataset_label: str, dataset_name: str):
@@ -339,8 +356,8 @@ def plot(results_file_name: str):
 
 if __name__ == "__main__":
     # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    dataset = filter_datasets(["miniboone"])[0]
-    get_tfd_results(dataset, value_ratio=0.65, join_all=True)
+    dataset = filter_datasets(["school"])[0]
+    get_tfd_results(dataset, value_ratio=1, join_all=True, top_k=15)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()
