@@ -23,6 +23,7 @@ from feature_discovery.experiments.ablation_experiments import (
 )
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
+from feature_discovery.helpers.util_functions import get_df_with_prefix
 from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets, ALL_DATASETS, \
     REGRESSION_DATASETS
 from feature_discovery.visualisations.plot_data import parse_data, plot_accuracy, plot_time
@@ -162,26 +163,45 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
     logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
-    base_features = bfs_result.partial_join_selected_features[bfs_result.base_table_label]
+    base_features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
 
     all_results = []
     for path in tqdm.tqdm(top_k_path_list):
         join_name, rank = path
-        if join_name == bfs_result.base_table_label:
+        if join_name == bfs_result.base_table_id:
             continue
 
-        dataframe = pd.read_csv(Path(bfs_result.temp_dir.name) / bfs_result.join_name_mapping[join_name], header=0,
-                                engine="python", encoding="utf8", quotechar='"', escapechar='\\')
         features = bfs_result.partial_join_selected_features[join_name]
         features.append(bfs_result.target_column)
         features.extend(base_features)
         logging.debug(f"Feature before join_key removal:\n{features}")
-        features = list(set(features).intersection(set(dataframe.columns)))
         # features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
-        logging.debug(f"Feature after join_key removal:\n{features}")
+        # logging.debug(f"Feature after join_key removal:\n{features}")
+
+        features_tables = [f"{feat.split('.csv')[0]}.csv" for feat in features]
+        features_tables.sort()
+        features_tables = set(features_tables)
+
+        path_tables = {}
+        for p in join_name.split("--"):
+            aux = p.split("-")
+            if len(aux) == 4:
+                path_tables[aux[3]] = (aux[0], aux[1], aux[2], aux[3])
+
+        path = []
+        for table in features_tables:
+            if path and table in path:
+                continue
+            path_aux = create_join_tree(table, path_tables)
+            if not (type(path_aux) is list) and (path_aux not in path_tables.keys()):
+                continue
+            path.append(path_aux)
+
+        dataframe = join_from_path(path, bfs_result.target_column, bfs_result.base_table_id)
+        features = list(set(features).intersection(set(dataframe.columns)))
 
         if len(features) < 2:
-            features = bfs_result.partial_join_selected_features[bfs_result.base_table_label]
+            features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
             features.append(bfs_result.target_column)
 
         start = time.time()
@@ -201,11 +221,66 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             result.total_time += end - start
             result.rank = rank
             result.top_k = top_k
+            result.data_path = path
 
         all_results.extend(results)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{bfs_result.base_table_label}_tfd.csv", index=False)
     return all_results, top_k_path_list
+
+
+def join_from_path(path, target, base_node):
+    join_path = ''
+    step = 3
+    joined_df = None
+    for p in path:
+        if ".".join(p) in join_path:
+            continue
+        for i, el in enumerate(p[::step]):
+            if (i * step) + 1 == len(p):
+                continue
+
+            aux = ".".join([p[i], p[i + 1], p[i + 2], p[(i + 1) * step]])
+            if aux in join_path:
+                continue
+
+            if p[i * step] not in join_path:
+                if p[i * step] == base_node:
+                    left_table, _ = get_df_with_prefix(p[i * step], target)
+                else:
+                    left_table, _ = get_df_with_prefix(p[i * step])
+            else:
+                left_table = joined_df
+
+            right_table, _ = get_df_with_prefix(p[(i + 1) * step])
+
+            joined_df = pd.merge(
+                left_table,
+                right_table,
+                how="left",
+                left_on=f"{p[i * step]}.{p[i * step + 1]}",
+                right_on=f"{p[(i+1) * step]}.{p[i * step + 2]}",
+            )
+
+            join_path += aux
+
+    return joined_df
+
+
+def create_join_tree(table, path_tables):
+    # print(f"\t{table}")
+    if table in path_tables.keys():
+        value = path_tables[table]
+        result = create_join_tree(value[0], path_tables)
+        if type(result) is not list:
+            result = [result]
+
+        result.append(value[1])
+        result.append(value[2])
+        result.append(value[3])
+        return result
+
+    return table
 
 
 def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True,
@@ -356,8 +431,8 @@ def plot(results_file_name: str):
 
 if __name__ == "__main__":
     # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    dataset = filter_datasets(["school"])[0]
-    get_tfd_results(dataset, value_ratio=1, join_all=True, top_k=15)
+    dataset = filter_datasets(["covertype"])[0]
+    get_tfd_results(dataset, value_ratio=0.65, join_all=True, top_k=15)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()
