@@ -167,6 +167,8 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
 
     all_results = []
     for path in tqdm.tqdm(top_k_path_list):
+        print(path)
+        dataframe = None
         join_name, rank = path
         if join_name == bfs_result.base_table_id:
             continue
@@ -188,16 +190,17 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             if len(aux) == 4:
                 path_tables[aux[3]] = (aux[0], aux[1], aux[2], aux[3])
 
-        path = []
+        path_list = []
         for table in features_tables:
-            if path and table in path:
+            if table in path_list:
                 continue
             path_aux = create_join_tree(table, path_tables)
             if not (type(path_aux) is list) and (path_aux not in path_tables.keys()):
                 continue
-            path.append(path_aux)
+            path_list.append(path_aux)
 
-        dataframe = join_from_path(path, bfs_result.target_column, bfs_result.base_table_id)
+        dataframe = join_from_path(path_list, bfs_result.target_column, bfs_result.base_table_id)
+        print(dataframe.shape)
         features = list(set(features).intersection(set(dataframe.columns)))
 
         if len(features) < 2:
@@ -221,7 +224,7 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             result.total_time += end - start
             result.rank = rank
             result.top_k = top_k
-            result.data_path = path
+            result.data_path = path_list
 
         all_results.extend(results)
 
@@ -253,6 +256,8 @@ def join_from_path(path, target, base_node):
                 left_table = joined_df
 
             right_table, _ = get_df_with_prefix(p[(i + 1) * step])
+            to_column = f"{p[(i+1) * step]}.{p[i * step + 2]}"
+            right_table = right_table.groupby(to_column).sample(n=1, random_state=42)
 
             joined_df = pd.merge(
                 left_table,
