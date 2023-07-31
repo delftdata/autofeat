@@ -147,7 +147,7 @@ class AutoFeat:
                     previous_join_name = previous_queue.pop()
 
                     if previous_join_name == self.base_table_id:
-                        previous_join_name = self.base_table_label
+                        previous_join_name = self.base_table_id
                         previous_join = self.partial_join.copy()
                     else:
                         previous_join = pd.read_csv(
