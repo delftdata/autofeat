@@ -170,6 +170,4 @@ def profile_valentine_logic(files: List[str], valentine_threshold: float = 0.55)
                                             weight=similarity)
     
     Parallel(n_jobs=-1)(delayed(profile)(table_pair) for table_pair in tqdm(itertools.combinations(files, r=2)))
-    # for table_pair in itertools.combinations(files, r=2):
-    #     profile(table_pair)
 
