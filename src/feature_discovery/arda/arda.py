@@ -10,17 +10,17 @@ import tqdm as tqdm
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
+from feature_discovery.autofeat_pipeline.join_data import join_directly_connected
+from feature_discovery.autofeat_pipeline.join_path_utils import compute_join_name
 from feature_discovery.config import DATA_FOLDER
-from feature_discovery.data_preparation.join_data import join_directly_connected
-from feature_discovery.data_preparation.utils import (
-    prepare_data_for_ml,
-    compute_join_name,
-)
+
 from feature_discovery.graph_processing.neo4j_transactions import (
     get_relation_properties_node_name,
     get_adjacent_nodes,
     get_node_by_id,
 )
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -176,38 +176,6 @@ def wrapper_algo(
     return last_indices
 
 
-@deprecation.deprecated(details="Use select_arda_features_budget_join instead")
-def select_arda_features(base_table_id, target_column, base_table_features):
-    logging.debug("ARDA - Join directly connected tables ... ")
-    start = time.time()
-    dataset_df = join_directly_connected(base_table_id)
-    end = time.time()
-    join_time = end - start
-
-    logging.debug("ARDA - Prepare data for ML ... ")
-    X, y = prepare_data_for_ml(dataframe=dataset_df, target_column=target_column)
-    logging.debug(X.shape)
-    if X.shape[0] > 10000:
-        _, X, _, y = train_test_split(X, y, test_size=10000, shuffle=True, stratify=y)
-    logging.debug(X.shape)
-
-    logging.debug("ARDA Feature selection - Started ... ")
-    start = time.time()
-    T = np.arange(0.0, 1.0, 0.1)
-    indices = wrapper_algo(X, y, T)
-    fs_X = X.iloc[:, indices].columns
-    end = time.time()
-    fs_time = end - start
-    logging.debug("ARDA Feature selection - Ended ... ")
-
-    columns_to_drop = [
-        c for c in list(X.columns) if (c not in base_table_features) and (c not in fs_X)
-    ]
-    X.drop(columns=columns_to_drop, inplace=True)
-
-    return X, y, join_time, fs_time, fs_X
-
-
 def select_arda_features_budget_join(
     base_node_id: str, target_column: str, sample_size: int, regression: bool = False
 ):
@@ -350,9 +318,10 @@ def select_arda_features_budget_join(
         all_columns.remove(target_column)
 
         # Prepare data
-        X, y = prepare_data_for_ml(
-            dataframe=joined_tables_batch, target_column=target_column
-        )
+        X = AutoMLPipelineFeatureGenerator(
+            enable_text_special_features=False, enable_text_ngram_features=False
+        ).fit_transform(X=joined_tables_batch)
+        y = joined_tables_batch[target_column]
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
         T = np.arange(0.0, 1.0, 0.1)

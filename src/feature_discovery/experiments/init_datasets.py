@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from feature_discovery.config import DATA_FOLDER
-from feature_discovery.data_preparation.dataset_base import Dataset
+from feature_discovery.experiments.dataset_object import Dataset
 
 CLASSIFICATION_DATASETS = []
 REGRESSION_DATASETS = []

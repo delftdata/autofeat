@@ -1,31 +1,20 @@
 import logging
-import time
-import uuid
 import tempfile
+import uuid
+from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 
 import pandas as pd
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from joblib import Parallel, delayed
-from pathlib import Path
 
-from feature_discovery.augmentation.trial_error import train_test_cart, run_auto_gluon
-from feature_discovery.config import DATA_FOLDER
-from feature_discovery.data_preparation.dataset_base import CLASSIFICATION
-from feature_discovery.data_preparation.utils import compute_join_name, join_and_save, prepare_data_for_ml
-from feature_discovery.experiments.result_object import Result
-from feature_discovery.feature_selection.join_path_feature_selection import (
-    measure_relevance,
-    measure_conditional_redundancy,
-    measure_joint_mutual_information,
-    measure_redundancy, RelevanceRedundancy,
-)
+from feature_discovery.autofeat_pipeline.join_data import join_and_save
+from feature_discovery.autofeat_pipeline.join_path_feature_selection import RelevanceRedundancy
+from feature_discovery.autofeat_pipeline.join_path_utils import compute_join_name
+from feature_discovery.experiments.dataset_object import CLASSIFICATION
 from feature_discovery.graph_processing.neo4j_transactions import (
-    get_node_by_id,
     get_adjacent_nodes,
     get_relation_properties_node_name,
 )
-from feature_discovery.helpers.util_functions import get_df_with_prefix
+from feature_discovery.helpers.read_data import get_df_with_prefix
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -291,4 +280,3 @@ class AutoFeat:
             return False
 
         return True
-

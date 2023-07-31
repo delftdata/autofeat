@@ -1,44 +1,26 @@
 import logging
 import time
 from typing import List, Optional
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import tqdm
 
-from feature_discovery.augmentation.autofeat import AutoFeat
-from feature_discovery.augmentation.bfs_pipeline import BfsAugmentation
-from feature_discovery.augmentation.trial_error import run_auto_gluon, train_test_cart
+from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER
-from feature_discovery.data_preparation.dataset_base import Dataset, REGRESSION, CLASSIFICATION
-from feature_discovery.data_preparation.utils import get_path_length
+from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
+from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
+from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
+from feature_discovery.experiments.train_autogluon import run_auto_gluon
+from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
-from feature_discovery.helpers.util_functions import get_df_with_prefix
-from feature_discovery.tfd_datasets.init_datasets import CLASSIFICATION_DATASETS, init_datasets, ALL_DATASETS, \
-    REGRESSION_DATASETS
 
 logging.getLogger().setLevel(logging.WARNING)
 
 hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
-# hyper_parameters = {"GBM": {}}
 
 init_datasets()
-
-
-def filter_datasets(dataset_labels: Optional[List[str]] = None, problem_type: Optional[str] = None) -> List[Dataset]:
-    # `is None` is missing on purpose, because typer cannot return None default values for lists, only []
-    if problem_type == CLASSIFICATION:
-        return CLASSIFICATION_DATASETS if not dataset_labels else [dataset for dataset in CLASSIFICATION_DATASETS if
-                                                                   dataset.base_table_label in dataset_labels]
-    if problem_type == REGRESSION:
-        return REGRESSION_DATASETS if not dataset_labels else [dataset for dataset in REGRESSION_DATASETS if
-                                                               dataset.base_table_label in dataset_labels]
-    if not problem_type and dataset_labels:
-        return [dataset for dataset in ALL_DATASETS if dataset.base_table_label in dataset_labels]
-
-    return ALL_DATASETS
 
 
 def get_base_results(dataset: Dataset):
@@ -118,164 +100,22 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
     return results
 
 
-def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str, top_k_paths: int = 15):
-    logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
-    sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
-    top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
-    base_features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
-
-    all_results = []
-    for path in tqdm.tqdm(top_k_path_list):
-        print(path)
-        dataframe = None
-        join_name, rank = path
-        if join_name == bfs_result.base_table_id:
-            continue
-
-        features = bfs_result.partial_join_selected_features[join_name]
-        features.append(bfs_result.target_column)
-        features.extend(base_features)
-        logging.debug(f"Feature before join_key removal:\n{features}")
-        # features = list((set(features) - set(bfs_result.join_keys[join_name])).intersection(set(dataframe.columns)))
-        # logging.debug(f"Feature after join_key removal:\n{features}")
-
-        features_tables = [f"{feat.split('.csv')[0]}.csv" for feat in features]
-        features_tables.sort()
-        features_tables = set(features_tables)
-
-        path_tables = {}
-        for p in join_name.split("--"):
-            aux = p.split("-")
-            if len(aux) == 4:
-                path_tables[aux[3]] = (aux[0], aux[1], aux[2], aux[3])
-
-        path_list = []
-        for table in features_tables:
-            if table in path_list:
-                continue
-            path_aux = create_join_tree(table, path_tables)
-            if not (type(path_aux) is list) and (path_aux not in path_tables.keys()):
-                continue
-            path_list.append(path_aux)
-
-        dataframe = join_from_path(path_list, bfs_result.target_column, bfs_result.base_table_id)
-        print(dataframe.shape)
-        features = list(set(features).intersection(set(dataframe.columns)))
-
-        if len(features) < 2:
-            features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
-            features.append(bfs_result.target_column)
-
-        start = time.time()
-        best_model, results = run_auto_gluon(approach=Result.TFD,
-                                             dataframe=dataframe[features],
-                                             target_column=bfs_result.target_column,
-                                             data_label=bfs_result.base_table_label,
-                                             join_name=join_name,
-                                             algorithms_to_run=hyper_parameters,
-                                             value_ratio=bfs_result.value_ratio,
-                                             problem_type=problem_type)
-        end = time.time()
-        for result in results:
-            result.feature_selection_time = feat_sel_time
-            result.train_time = end - start
-            result.total_time += feat_sel_time
-            result.total_time += end - start
-            result.rank = rank
-            result.top_k = top_k
-            result.data_path = path_list
-
-        all_results.extend(results)
-
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{bfs_result.base_table_label}_tfd.csv", index=False)
-    return all_results, top_k_path_list
-
-
-def join_from_path(path, target, base_node):
-    join_path = ''
-    step = 3
-    joined_df = None
-    for p in path:
-        if ".".join(p) in join_path:
-            continue
-        for i, el in enumerate(p[::step]):
-            if (i * step) + 1 == len(p):
-                continue
-
-            aux = ".".join([p[i], p[i + 1], p[i + 2], p[(i + 1) * step]])
-            if aux in join_path:
-                continue
-
-            if p[i * step] not in join_path:
-                if p[i * step] == base_node:
-                    left_table, _ = get_df_with_prefix(p[i * step], target)
-                else:
-                    left_table, _ = get_df_with_prefix(p[i * step])
-            else:
-                left_table = joined_df
-
-            right_table, _ = get_df_with_prefix(p[(i + 1) * step])
-            to_column = f"{p[(i+1) * step]}.{p[i * step + 2]}"
-            right_table = right_table.groupby(to_column).sample(n=1, random_state=42)
-
-            joined_df = pd.merge(
-                left_table,
-                right_table,
-                how="left",
-                left_on=f"{p[i * step]}.{p[i * step + 1]}",
-                right_on=f"{p[(i+1) * step]}.{p[i * step + 2]}",
-            )
-
-            join_path += aux
-
-    return joined_df
-
-
-def create_join_tree(table, path_tables):
-    # print(f"\t{table}")
-    if table in path_tables.keys():
-        value = path_tables[table]
-        result = create_join_tree(value[0], path_tables)
-        if type(result) is not list:
-            result = [result]
-
-        result.append(value[1])
-        result.append(value[2])
-        result.append(value[3])
-        return result
-
-    return table
-
-
-def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55, auto_gluon: bool = True,
-                    join_all: bool = True) -> List:
+def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65) -> List:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
-    bfs_traversal = None
-    if join_all:
-        # bfs_traversal.join_all_recursively(queue={str(dataset.base_table_id)})
-        # bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-        bfs_traversal = AutoFeat(
-            base_table_id=str(dataset.base_table_id),
-            base_table_label=dataset.base_table_label,
-            target_column=dataset.target_column,
-            value_ratio=value_ratio,
-            top_k=top_k,
-            task=dataset.dataset_type
-        )
-        bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    else:
-        bfs_traversal = BfsAugmentation(
-            base_table_label=dataset.base_table_label,
-            target_column=dataset.target_column,
-            value_ratio=value_ratio,
-            auto_gluon=auto_gluon,
-        )
-        bfs_traversal.bfs_traverse_join_pipeline(queue={str(dataset.base_table_id)})
+    bfs_traversal = AutoFeat(
+        base_table_id=str(dataset.base_table_id),
+        base_table_label=dataset.base_table_label,
+        target_column=dataset.target_column,
+        value_ratio=value_ratio,
+        top_k=top_k,
+        task=dataset.dataset_type
+    )
+    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
     end = time.time()
 
-    logging.debug("FINISHED BFS")
+    logging.debug("FINISHED TFD")
 
     all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
                                               top_k=top_k,
@@ -284,10 +124,6 @@ def get_tfd_results(dataset: Dataset, top_k: int = 10, value_ratio: float = 0.55
     logging.debug(top_k_paths)
 
     logging.debug("Save results ... ")
-    # pd.DataFrame(all_results).to_csv(
-    #     RESULTS_FOLDER / f"results_{dataset.base_table_label}_bfs_{value_ratio}_autogluon_all_mixed.csv",
-    #     index=False,
-    # )
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
         f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
 
