@@ -166,3 +166,14 @@ Main [source](https://huggingface.co/datasets/inria-soda/tabular-benchmark#sourc
 | [school](data/school) | [ARDA Paper](http://www.vldb.org/pvldb/vol13/p1373-chepurko.pdf) | None | 
 | [steel](data/steel) | [openml](https://www.openml.org/search?type=data&sort=runs&status=active&qualities.NumberOfClasses=%3D_2&id=1504) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) |
 | [credit](data/credit) | [openml](https://www.openml.org/search?type=data&sort=runs&status=active&qualities.NumberOfClasses=%3D_2&id=31) | [short_reverse_correlation](https://github.com/kirilvasilev16/PythonTableDivider) |
+
+## Plots
+
+To create the plots using the experiment results:
+1. Run 
+```bash
+jupyter notebook
+```
+
+2. Open the file [Visualisations.ipynb](Visualisations.ipynb).
+3. Run every cell. 

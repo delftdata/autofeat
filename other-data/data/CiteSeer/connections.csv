@@ -1,2 +1,0 @@
-pk_table,pk_column,fk_table,fk_column
-content.csv,paper_id,paper.csv,paper_id

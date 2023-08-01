@@ -1,3 +1,0 @@
-pk_table,pk_column,fk_table,fk_column
-content.csv,webpage_id,webpage.csv,webpage_id
-webpage.csv,webpage_id,cites.csv,cited_paper_id
