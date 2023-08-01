@@ -1,8 +1,0 @@
-pk_table,pk_column,fk_table,fk_column
-steel_plate_fault.csv,index,type_of_fault.csv,spf_id
-steel_plate_fault.csv,index,luminosity.csv,spf_id
-steel_plate_fault.csv,index,indices.csv,spf_id
-indices.csv,index,edges.csv,i_id
-indices.csv,index,log_measurements.csv,i_id
-luminosity.csv,index,max_measurements.csv,l_id
-luminosity.csv,index,min_measurements.csv,l_id

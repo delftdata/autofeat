@@ -1,26 +1,24 @@
 from typing import Optional, List
 
 import pandas as pd
-import typer
 import tqdm
+import typer
 from typing_extensions import Annotated
 
-from feature_discovery.augmentation.data_preparation_pipeline import ingest_data_with_pk_fk
 from feature_discovery.config import RESULTS_FOLDER
-from feature_discovery.data_preparation.ingest_data import ingest_nodes, profile_valentine_all, \
-    profile_valentine_dataset
+from feature_discovery.dataset_relation_graph.dataset_discovery import profile_valentine_dataset, profile_valentine_all
+from feature_discovery.dataset_relation_graph.ingest_data import ingest_nodes, ingest_data_with_pk_fk
+from feature_discovery.experiments.init_datasets import ALL_DATASETS
+from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.run import (
-    filter_datasets,
     get_arda_results,
     get_base_results,
     get_tfd_results,
     get_all_results,
-    get_results_ablation_classification,
     get_results_tune_value_ratio_classification,
     get_results_tune_k,
-    plot,
 )
-from feature_discovery.tfd_datasets.init_datasets import ALL_DATASETS
+
 
 app = typer.Typer()
 
@@ -69,7 +67,7 @@ def run_base(
 
 @app.command()
 def run_tfd(
-        top_k: Annotated[int, typer.Option(help="Number of results (paths)")] = 15,
+        top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
@@ -80,13 +78,12 @@ def run_tfd(
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-        join_all: Annotated[bool, typer.Option(help="Whether to use Join-All-Recursively strategy")] = True,
 ):
     """Runs the TFD experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_tfd_results(dataset, top_k, value_ratio, join_all=join_all))
+        all_results.extend(get_tfd_results(dataset, top_k, value_ratio))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -107,23 +104,6 @@ def run_all(
 ):
     """Runs all experiments (ARDA + base + TFD)."""
     get_all_results(value_ratio, problem_type, dataset_labels, results_file)
-
-
-@app.command()
-def run_ablation(
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-        dataset_labels: Annotated[
-            Optional[List[str]],
-            typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
-        ] = None,
-        results_file: Annotated[
-            str, typer.Option(help="CSV file where the results will be written")
-        ] = "ablation_study_autogluon.csv",
-        ml_model: Annotated[str, typer.Option(help="Model name from AutoGluon ML Hyper-parameters")] = 'GBM',
-):
-    """Run all the ablation study experiments"""
-    datasets = filter_datasets(dataset_labels)
-    get_results_ablation_classification(value_ratio, datasets, results_file, {ml_model: {}})
 
 
 @app.command()
@@ -208,18 +188,6 @@ def ingest_data(
     if data_discovery_threshold and not discover_connections_data_lake:
         for dataset in ALL_DATASETS:
             profile_valentine_dataset(dataset.base_table_label, valentine_threshold=data_discovery_threshold)
-
-
-@app.command()
-def plot_data(
-        results_filename: Annotated[
-            str, typer.Option(help="The name of the file with results which is in result folder")
-        ] = "all_results_autogluon.csv",
-):
-    """
-    Plots the accuracy and time given the results.
-    """
-    plot(results_filename)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,0 @@
-pk_table,pk_column,fk_table,fk_column
-titanic.csv,PassengerId,passenger_info.csv,PassengerId
-ticket_info.csv,TicketId,titanic.csv,TicketId
-ticket_info.csv,TicketId,cabin.csv,TicketId

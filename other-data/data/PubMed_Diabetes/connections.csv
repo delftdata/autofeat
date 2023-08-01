@@ -1,3 +1,0 @@
-pk_table,pk_column,fk_table,fk_column
-paper.csv,paper_id,cites.csv,cites_paper_id
-paper.csv,paper_id,content.csv,paper_id
