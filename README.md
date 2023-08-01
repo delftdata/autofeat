@@ -15,7 +15,7 @@ This repo contains the development and experimental codebase of AutoFeat.
 ### Requirements
 - Python 3.8
 - Java (for data discovery only - [Valentine](https://github.com/delftdata/valentine))
-- neo4j 
+- neo4j 5.1.0 or 5.3.0
 
 ### Python setup 
 
