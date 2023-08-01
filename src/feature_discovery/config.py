@@ -6,12 +6,10 @@ ROOT_FOLDER = Path(
 ).resolve()
 
 CONNECTIONS = "connections.csv"
-ENUMERATED_PATHS = "enumerated-paths.json"
 
 DATASET_TYPE = "benchmark"
 
 DATA = "data"
-MAPPING_FOLDER = ROOT_FOLDER / 'mappings' / '2024'
 DATA_FOLDER = ROOT_FOLDER / DATA / DATASET_TYPE
 RESULTS_FOLDER = ROOT_FOLDER / "results"
 AUTO_GLUON_FOLDER = ROOT_FOLDER / "AutogluonModels"
