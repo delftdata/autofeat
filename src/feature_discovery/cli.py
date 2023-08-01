@@ -67,7 +67,7 @@ def run_base(
 
 @app.command()
 def run_tfd(
-        top_k: Annotated[int, typer.Option(help="Number of results (paths)")] = 15,
+        top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")

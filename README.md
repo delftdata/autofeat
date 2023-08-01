@@ -8,72 +8,14 @@ This repo contains the development and experimental codebase of AutoFeat.
 ![Neo4J 4.3.19](https://img.shields.io/badge/Neo4j-008CC1?style=for-the-badge&logo=neo4j&logoColor=white)
 
 
-# 1. Data setup
-[Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) datasets and put them in [data/benchmark](data/benchmark).
-
-To evaluate AutoFeat, we have two data settings: [benchmark setting](#benchmark-setting) and [data lake setting](#data-lake-setting). 
-
-### Benchmark setting
-1. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "benchmark"
-`
-3. Create database `benchmark` in neo4j: 
-```
-create database benchmark
-:use benchmark
-```
-4. Ingest data
-```
-feature-discovery-cli ingest-kfk-data
-```
-5. (Optional - Instead of step 4) If you want to discover more connections besides
-the provided KFK, run: 
-```
-feature-discovery-cli ingest-kfk-data --discover-connections-dataset
-```
-
-### Data Lake setting
-1. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'lake'`
-2. Create database `lake` in neo4j:
-```
-create database lake
-:use lake
-```  
-3. Ingest data - depending on how many cores you have, this step can take up to 1-2h.
-```
-feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
-```
-
-# Experiments
-
-The experiments can be run in Docker, or in locally. 
-To run with Docker, follow [Run With Docker](#run-with-docker) instructions. 
-To run locally, follow [Local Development](#local-development) instructions.
-
-## Run with Docker
-0. Before starting Docker, decide which [data setup](#1-data-setup) you want to run 
-and modify [config](/src/feature_discovery/config.py) accordingly. Then continue with the following steps:
-
-1. Build necessary Docker containers
-``` bash
-   docker-compose up -d --build
-```
-2. Bash into container 
-```bash
-   docker exec -it feature-discovery-runner /bin/bash
-```
-4. Ingest data in the database following the steps from your preferred [data setup](#1-data-setup)
-
-5. Run experiments
-```bash
-   feature-discovery-cli run-all 
-```
-
+# 1. Development 
 
 ## Local development
 
 ### Requirements
 - Python 3.8
 - Java (for data discovery only - [Valentine](https://github.com/delftdata/valentine))
+- neo4j 
 
 ### Python setup 
 
@@ -100,17 +42,79 @@ brew install libomp.rb
 rm libomp.rb
 ```
 
+
+## Docker
+The Docker image already contains all the necesarry for development.
+
+1. Build necessary Docker containers (Note: This step takes a while)
+``` bash
+   docker-compose up -d --build
+```
+
+
+# 2. Data setup
+[Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) our experimental datasets and put them in [data/benchmark](data/benchmark).
+
+To evaluate AutoFeat, we have two data settings: [benchmark setting](#benchmark-setting) and [data lake setting](#data-lake-setting). 
+
+## Benchmark setting
+1. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "benchmark"
+`
+3. Create database `benchmark` in neo4j: 
+```
+create database benchmark
+:use benchmark
+```
+4. Ingest data
+```
+feature-discovery-cli ingest-kfk-data
+```
+
+
+## Data Lake setting
+1. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'lake'`
+2. Create database `lake` in neo4j:
+```
+create database lake
+:use lake
+```  
+3. Ingest data - depending on how many cores you have, this step can take up to 1-2h.
+```
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
+```
+
+## Ingest data in Docker
+
+1. Bash into container 
+```bash
+   docker exec -it feature-discovery-runner /bin/bash
+```
+2. Ingest data in the database following the steps from your preferred scenario ([benchmark setting](#benchmark-setting) 
+or [data lake setting](#data-lake-setting)).
+   1. You can acess neo4j UI at [localhost:7474](localhost:7474) (no credentials needed). 
+
+
+
+
+# Experiments
+
+To run the experiments in Docker, first bash into the container: 
+```bash
+   docker exec -it feature-discovery-runner /bin/bash
+```
+
 ## Run AutoFeat
 `feature-discovery-cli --help` will show the commands for running experiments: 
 
-1. `run-all` Runs all experiments (ARDA + base + TFD).
+1. `run-all` Runs all experiments (ARDA + base + AutoFeat).
 
 ` feature-discovery-cli run-all --help ` will show you the parameters needed for running 
+
 2. `run-arda` Runs the ARDA experiments
 
 ` feature-discovery-cli run-arda --help ` will show you the parameters needed for running 
 
-`--dataset-labels` has to be the label of one of the datasets from [data](data)
+`--dataset-labels` has to be the label of one of the datasets from `datasets.csv` file which resides in [data/benchmark](data/benchmark).
 
 `--results-file` by default the experiments are saved as CSV with a predefined filename in [results](/results)
 
@@ -124,7 +128,7 @@ are saved in [results folder](results)
 
 ` feature-discovery-cli run-base --help ` will show you the parameters needed for running 
 
-`--dataset-labels` has to be the label of one of the datasets from [data](data)
+`--dataset-labels` has to be the label of one of the datasets from `datasets.csv` file which resides in [data/benchmark](data/benchmark).
 
 `--results-file` by default the experiments are saved as CSV with a predefined filename.
 
@@ -133,24 +137,24 @@ Example:
 `feature-discovery-cli run-base --dataset-labels steel` Will run the experiments on the _steel_ dataset and the results 
 are saved in [results folder](results)
 
-4. `run-tfd` Runs the TFD experiments.   
+4. `run-tfd` Runs the AutoFeat experiments.   
 
 ` feature-discovery-cli run-tfd --help ` will show you the parameters needed for running 
 
-`--dataset-labels` has to be the label of one of the datasets from [tfd_datasets](src/feature_discovery/tfd_datasets)
+`--dataset-labels` has to be the label of one of the datasets from `datasets.csv` file which resides in [data/benchmark](data/benchmark).
 
 `--results-file` by default the experiments are saved as CSV with a predefined filename.
 
 `--value-ratio` one of the hyper-parameters of our approach, it represents a data quality metric - the percentage of 
-null values (1-value_ratio) allowed in the datasets. Default: 0.55
+null values allowed in the datasets. Default: 0.55
 
-`--auto-gluon` Runs the experiments using AutoGluon framework. Default True. 
+`--top-k` one of the hyper-parameters of our approach, 
+it represents the number of features to select from each dataset and the number of paths. Default: 15 
 
 Example: 
 
-`feature-discovery-cli run-tfd --dataset-labels steel --value-ratio 0.65` Will run the experiments on the _steel_ 
+`feature-discovery-cli run-tfd --dataset-labels steel` Will run the experiments on the _steel_ 
 dataset and the results are saved in [results folder](results)
-
 
 ## Datasets 
 
@@ -169,11 +173,16 @@ Main [source](https://huggingface.co/datasets/inria-soda/tabular-benchmark#sourc
 
 ## Plots
 
-To create the plots using the experiment results:
-1. Run 
+1. To recreate our plots, first download the results from [here](https://surfdrive.surf.nl/files/index.php/s/fIhQNikpFbemozv).
+ 
+2. Then, open the jupyter notebook. Run in the root folder of the project: 
 ```bash
 jupyter notebook
 ```
 
 2. Open the file [Visualisations.ipynb](Visualisations.ipynb).
 3. Run every cell. 
+
+
+### Maintainer
+Created and maintained by [Andra Ionescu](https://andraionescu.github.io)
