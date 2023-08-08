@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from feature_discovery.experiments.dataset_object import CLASSIFICATION, REGRESSION
+from feature_discovery.experiments.dataset_object import CLASSIFICATION, REGRESSION, Dataset
 from feature_discovery.experiments.init_datasets import CLASSIFICATION_DATASETS, REGRESSION_DATASETS, ALL_DATASETS
 
 

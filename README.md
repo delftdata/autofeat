@@ -8,6 +8,7 @@ This repo contains the development and experimental codebase of AutoFeat.
 
 
 # 1. Development 
+The code is available for local development, or using Docker. 
 
 ## Local development
 
@@ -41,58 +42,100 @@ brew install libomp.rb
 rm libomp.rb
 ```
 
+### Neo4j Desktop setup
+Working with neo4j is easier using neo4j desktop application. 
+1. First, download [neo4j Desktop](https://neo4j.com/download/)
+2. Open the app
+   1. "Add" > "Local DBMS"
+   ![Screenshot 2023-08-08 at 14.41.56.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.41.56.png)
+   2. Give a name to the DBMS, add a password, and choose Version 5.1.0. 
+   ![Screenshot 2023-08-08 at 14.42.34.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.42.34.png)
+   3. Change the "password" in [config](src/feature_discovery/config.py)
+`NEO4J_PASS = os.getenv("NEO4J_PASS", "password")`
+   3. "Start" the DBMS
+   ![Screenshot 2023-08-08 at 14.47.34.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.47.34.png)
+   4. Once it started, "Open"
+   ![Screenshot 2023-08-08 at 14.49.31.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.49.31.png)
+   5. Now you can see the neo4j browser, where you can query the database or create new ones, as we will do in the next steps. 
+
 
 ## Docker
 The Docker image already contains all the necesarry for development.
 
-1. Build necessary Docker containers (Note: This step takes a while)
+1. Open a terminal and go to the project root (where the docker-compose.yml is located). 
+2. Build necessary Docker containers (Note: This step takes a while)
 ``` bash
    docker-compose up -d --build
 ```
 
-
 # 2. Data setup
-[Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) our experimental datasets and put them in [data/benchmark](data/benchmark).
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/1t1MTW8s8cfTDwc) our experimental datasets and put them in [data/benchmark](data/benchmark).
 
-To evaluate AutoFeat, we have two data settings: [benchmark setting](#benchmark-setting) and [data lake setting](#data-lake-setting). 
+To ingest the data in the local development, it is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+
+For Docker, Neo4j browser is available at [localhost:7474](localhost:7474). No user or password is required.
+
+
 
 ## Benchmark setting
-1. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "benchmark"
-`
-3. Create database `benchmark` in neo4j: 
+
+1. Create database `benchmark` in neo4j.
+   1. Local development - It is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+   2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
+
+Input in neo4j browser console: 
+![Screenshot 2023-08-08 at 16.24.46.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2016.24.46.png)
+
 ```
-create database benchmark
+create database benchmark 
+```
+Wait 1 minute until the database becomes available.
+```
 :use benchmark
 ```
-4. Ingest data
+2. Ingest data
+
+-  (Docker) Bash into container 
+```bash
+   docker exec -it feature-discovery-runner /bin/bash
 ```
-feature-discovery-cli ingest-kfk-data
+-  (Local development) Open a terminal and go to the project root. 
+
+- Ingest the data using the following command:
+
+```bash
+ feature-discovery-cli ingest-kfk-data
 ```
 
 
 ## Data Lake setting
 1. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'lake'`
+   2. If Docker is running, restart it. 
 2. Create database `lake` in neo4j:
+   1. Local development - It is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+   2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
+
+Input in neo4j browser console: 
+![Screenshot 2023-08-08 at 16.24.46.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2016.24.46.png)
+
 ```
 create database lake
+```
+Wait 1 minute until the database becomes available.
+```
 :use lake
 ```  
 3. Ingest data - depending on how many cores you have, this step can take up to 1-2h.
-```
-feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
-```
 
-## Ingest data in Docker
-
-1. Bash into container 
+i. (Docker ONLY) Bash into container: 
 ```bash
    docker exec -it feature-discovery-runner /bin/bash
 ```
-2. Ingest data in the database following the steps from your preferred scenario ([benchmark setting](#benchmark-setting) 
-or [data lake setting](#data-lake-setting)).
-   1. You can acess neo4j UI at [localhost:7474](localhost:7474) (no credentials needed). 
+ii. Ingest the data using the following command:
 
-
+```
+feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
+```
 
 
 # Experiments
