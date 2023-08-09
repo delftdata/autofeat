@@ -138,7 +138,7 @@ feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-con
 ```
 
 
-# Experiments
+# 3. Experiments
 
 To run the experiments in Docker, first bash into the container: 
 ```bash
@@ -225,6 +225,12 @@ jupyter notebook
 2. Open the file [Visualisations.ipynb](Visualisations.ipynb).
 3. Run every cell. 
 
+# 4. Empirical analysis of feature selection strategies
+
+We conducted an empirical analysis of the most popular feature selection 
+strategies based on relevance and redundancy.
+
+These experiments are documented at: https://github.com/delftdata/bsc_research_project_q4_2023/tree/main/autofeat_experimental_analysis 
 
 ### Maintainer
-Created and maintained by [Andra Ionescu](https://andraionescu.github.io)
+This repository is created and maintained by [Andra Ionescu](https://andraionescu.github.io)
