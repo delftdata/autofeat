@@ -47,15 +47,15 @@ Working with neo4j is easier using neo4j desktop application.
 1. First, download [neo4j Desktop](https://neo4j.com/download/)
 2. Open the app
    1. "Add" > "Local DBMS"
-   ![Screenshot 2023-08-08 at 14.41.56.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.41.56.png)
+   ![neo4j-create-dbms.png](assets%2Fneo4j-create-dbms.png)
    2. Give a name to the DBMS, add a password, and choose Version 5.1.0. 
-   ![Screenshot 2023-08-08 at 14.42.34.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.42.34.png)
+   ![neo4j-create-db.png](assets%2Fneo4j-create-db.png)
    3. Change the "password" in [config](src/feature_discovery/config.py)
 `NEO4J_PASS = os.getenv("NEO4J_PASS", "password")`
    3. "Start" the DBMS
-   ![Screenshot 2023-08-08 at 14.47.34.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.47.34.png)
+   ![neo4j-open-database.png](assets%2Fneo4j-open-database.png)
    4. Once it started, "Open"
-   ![Screenshot 2023-08-08 at 14.49.31.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2014.49.31.png)
+   ![neo4j-browser-open.png](assets%2Fneo4j-browser-open.png)
    5. Now you can see the neo4j browser, where you can query the database or create new ones, as we will do in the next steps. 
 
 
@@ -84,7 +84,7 @@ For Docker, Neo4j browser is available at [localhost:7474](localhost:7474). No u
    2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
 
 Input in neo4j browser console: 
-![Screenshot 2023-08-08 at 16.24.46.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2016.24.46.png)
+![neo4j-console.png](assets%2Fneo4j-console.png)
 
 ```
 create database benchmark 
@@ -116,7 +116,7 @@ Wait 1 minute until the database becomes available.
    2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
 
 Input in neo4j browser console: 
-![Screenshot 2023-08-08 at 16.24.46.png](..%2F..%2FDesktop%2FScreenshot%202023-08-08%20at%2016.24.46.png)
+![neo4j-console.png](assets%2Fneo4j-console.png)
 
 ```
 create database lake
