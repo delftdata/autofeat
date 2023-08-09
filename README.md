@@ -127,11 +127,13 @@ Wait 1 minute until the database becomes available.
 ```  
 3. Ingest data - depending on how many cores you have, this step can take up to 1-2h.
 
-i. (Docker ONLY) Bash into container: 
+-  (Docker) Bash into container 
 ```bash
    docker exec -it feature-discovery-runner /bin/bash
 ```
-ii. Ingest the data using the following command:
+-  (Local development) Open a terminal and go to the project root. 
+
+- Ingest the data using the following command:
 
 ```
 feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
@@ -216,8 +218,9 @@ Main [source](https://huggingface.co/datasets/inria-soda/tabular-benchmark#sourc
 ## Plots
 
 1. To recreate our plots, first download the results from [here](https://surfdrive.surf.nl/files/index.php/s/fIhQNikpFbemozv).
+2. Add the results in the [results](results) folder.
  
-2. Then, open the jupyter notebook. Run in the root folder of the project: 
+2. Then, open the jupyter notebook: run in the root folder of the project: 
 ```bash
 jupyter notebook
 ```
