@@ -1,29 +1,3 @@
-import json
-import os
-
-from feature_discovery.config import (
-    MAPPING_FOLDER,
-    ENUMERATED_PATHS,
-)
-
-folder_name = os.path.abspath(os.path.dirname(__file__))
-
-
-def get_paths():
-    with open(MAPPING_FOLDER / ENUMERATED_PATHS, "r") as fp:
-        all_paths = json.load(fp)
-    return all_paths
-
-
-def get_join_path(path: str) -> str:
-    # Path looks like table_source/table_name/key--table_source...
-    # Join path looks like table_source--table_name--table_source...
-
-    path_tokens = path.split("--")
-    join_path_tokens = ["--".join(token.split("/")[:-1]) for token in path_tokens]
-    return "--".join(join_path_tokens)
-
-
 def get_path_length(path: str) -> int:
     # Path looks like table_source/table_name/key--table_source...
     path_tokens = path.split("--")

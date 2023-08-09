@@ -5,10 +5,10 @@ This repo contains the development and experimental codebase of AutoFeat.
 [![Python 3.7+](https://img.shields.io/badge/python-3.8.2-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![pip](https://img.shields.io/badge/pip-20.0.2-blue.svg)](https://pypi.org/project/pip/)
 [![Neo4j Desktop](https://img.shields.io/badge/neo4jDesktop-1.4.10-blue.svg)](https://pypi.org/project/pip/)
-![Neo4J 4.3.19](https://img.shields.io/badge/Neo4j-008CC1?style=for-the-badge&logo=neo4j&logoColor=white)
 
 
 # 1. Development 
+The code is available for local development, or using Docker. 
 
 ## Local development
 
@@ -42,61 +42,105 @@ brew install libomp.rb
 rm libomp.rb
 ```
 
+### Neo4j Desktop setup
+Working with neo4j is easier using neo4j desktop application. 
+1. First, download [neo4j Desktop](https://neo4j.com/download/)
+2. Open the app
+   1. "Add" > "Local DBMS"
+   ![neo4j-create-dbms.png](assets%2Fneo4j-create-dbms.png)
+   2. Give a name to the DBMS, add a password, and choose Version 5.1.0. 
+   ![neo4j-create-db.png](assets%2Fneo4j-create-db.png)
+   3. Change the "password" in [config](src/feature_discovery/config.py)
+`NEO4J_PASS = os.getenv("NEO4J_PASS", "password")`
+   3. "Start" the DBMS
+   ![neo4j-open-database.png](assets%2Fneo4j-open-database.png)
+   4. Once it started, "Open"
+   ![neo4j-browser-open.png](assets%2Fneo4j-browser-open.png)
+   5. Now you can see the neo4j browser, where you can query the database or create new ones, as we will do in the next steps. 
+
 
 ## Docker
 The Docker image already contains all the necesarry for development.
 
-1. Build necessary Docker containers (Note: This step takes a while)
+1. Open a terminal and go to the project root (where the docker-compose.yml is located). 
+2. Build necessary Docker containers (Note: This step takes a while)
 ``` bash
    docker-compose up -d --build
 ```
 
-
 # 2. Data setup
-[Download](https://surfdrive.surf.nl/files/index.php/s/vdlZIT70hZuoO8f) our experimental datasets and put them in [data/benchmark](data/benchmark).
+1. [Download](https://surfdrive.surf.nl/files/index.php/s/1t1MTW8s8cfTDwc) our experimental datasets and put them in [data/benchmark](data/benchmark).
 
-To evaluate AutoFeat, we have two data settings: [benchmark setting](#benchmark-setting) and [data lake setting](#data-lake-setting). 
+To ingest the data in the local development, it is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+
+For Docker, Neo4j browser is available at [localhost:7474](localhost:7474). No user or password is required.
+
+
 
 ## Benchmark setting
-1. Go to [config.py](src/feature_discovery/config.py) and set `DATASET_TYPE = "benchmark"
-`
-3. Create database `benchmark` in neo4j: 
+
+1. Create database `benchmark` in neo4j.
+   1. Local development - It is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+   2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
+
+Input in neo4j browser console: 
+![neo4j-console.png](assets%2Fneo4j-console.png)
+
 ```
-create database benchmark
+create database benchmark 
+```
+Wait 1 minute until the database becomes available.
+```
 :use benchmark
 ```
-4. Ingest data
+2. Ingest data
+
+-  (Docker) Bash into container 
+```bash
+   docker exec -it feature-discovery-runner /bin/bash
 ```
-feature-discovery-cli ingest-kfk-data
+-  (Local development) Open a terminal and go to the project root. 
+
+- Ingest the data using the following command:
+
+```bash
+ feature-discovery-cli ingest-kfk-data
 ```
 
 
 ## Data Lake setting
 1. Go to [config.py](src/feature_discovery/config.py) and set `NEO4J_DATABASE = 'lake'`
+   2. If Docker is running, restart it. 
 2. Create database `lake` in neo4j:
+   1. Local development - It is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
+   2. Docker - Go to [localhost:7474](localhost:7474) to access neo4j browser.
+
+Input in neo4j browser console: 
+![neo4j-console.png](assets%2Fneo4j-console.png)
+
 ```
 create database lake
+```
+Wait 1 minute until the database becomes available.
+```
 :use lake
 ```  
 3. Ingest data - depending on how many cores you have, this step can take up to 1-2h.
+
+-  (Docker) Bash into container 
+```bash
+   docker exec -it feature-discovery-runner /bin/bash
+```
+-  (Local development) Open a terminal and go to the project root. 
+
+- Ingest the data using the following command:
+
 ```
 feature-discovery-cli ingest-data --data-discovery-threshold=0.55 --discover-connections-data-lake
 ```
 
-## Ingest data in Docker
 
-1. Bash into container 
-```bash
-   docker exec -it feature-discovery-runner /bin/bash
-```
-2. Ingest data in the database following the steps from your preferred scenario ([benchmark setting](#benchmark-setting) 
-or [data lake setting](#data-lake-setting)).
-   1. You can acess neo4j UI at [localhost:7474](localhost:7474) (no credentials needed). 
-
-
-
-
-# Experiments
+# 3. Experiments
 
 To run the experiments in Docker, first bash into the container: 
 ```bash
@@ -174,8 +218,9 @@ Main [source](https://huggingface.co/datasets/inria-soda/tabular-benchmark#sourc
 ## Plots
 
 1. To recreate our plots, first download the results from [here](https://surfdrive.surf.nl/files/index.php/s/fIhQNikpFbemozv).
+2. Add the results in the [results](results) folder.
  
-2. Then, open the jupyter notebook. Run in the root folder of the project: 
+2. Then, open the jupyter notebook: run in the root folder of the project: 
 ```bash
 jupyter notebook
 ```
@@ -183,6 +228,12 @@ jupyter notebook
 2. Open the file [Visualisations.ipynb](Visualisations.ipynb).
 3. Run every cell. 
 
+# 4. Empirical analysis of feature selection strategies
+
+We conducted an empirical analysis of the most popular feature selection 
+strategies based on relevance and redundancy.
+
+These experiments are documented at: https://github.com/delftdata/bsc_research_project_q4_2023/tree/main/autofeat_experimental_analysis 
 
 ### Maintainer
-Created and maintained by [Andra Ionescu](https://andraionescu.github.io)
+This repository is created and maintained by [Andra Ionescu](https://andraionescu.github.io)

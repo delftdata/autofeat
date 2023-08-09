@@ -6,24 +6,14 @@ RUN apt update && apt install -y default-jre
 ENV NEO4J_HOST="neo4j://feature-discovery-neo4j:7687"
 ENV NEO4J_USER="neo4j"
 ENV NEO4J_PASSWORD="pass"
-ENV NEO4J_DATABASE="alldatamixed"
+ENV NEO4J_DATABASE="benchmark"
 
-ENV EXPERIMENT_TYPE="run_all"
-ENV TFD_ROOT_FOLDER="/app"
+COPY requirements.txt /requirements.txt
 
-COPY requirements.txt /app/requirements.txt
+RUN pip install -r /requirements.txt
 
-RUN pip install -r /app/requirements.txt
-
-COPY src /app/src
-COPY joined-df /app/joined-df
-COPY pyproject.toml /app/pyproject.toml
-COPY data /app/data
-COPY results /app/results
-
-WORKDIR /app
+COPY src /src
+COPY pyproject.toml /pyproject.toml
 
 # Install python deps
 RUN pip install -e .
-
-# CMD feature-discovery-cli ${EXPERIMENT_TYPE} --dataset-labels school
