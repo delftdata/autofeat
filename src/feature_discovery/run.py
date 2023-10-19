@@ -7,7 +7,7 @@ import pandas as pd
 import tqdm
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
-from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER
+from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
 from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
 from feature_discovery.experiments.init_datasets import init_datasets
@@ -185,19 +185,19 @@ def export_neo4j_connections(dataset_label: str = None):
     pd.DataFrame(result).to_csv(RESULTS_FOLDER / "all_connections-basicdd.csv", index=False)
 
 
-def transform_arff_to_csv(dataset_label: str, dataset_name: str):
+def transform_arff_to_csv(save_path: str, dataset_path: str):
     from scipy.io import arff
-    data = arff.loadarff(DATA_FOLDER / dataset_label / dataset_name)
+    data = arff.loadarff(ROOT_FOLDER / dataset_path)
     dataframe = pd.DataFrame(data[0])
     catCols = [col for col in dataframe.columns if dataframe[col].dtype == "O"]
     dataframe[catCols] = dataframe[catCols].apply(lambda x: x.str.decode('utf8'))
-    dataframe.to_csv(DATA_FOLDER / dataset_label / f"{dataset_label}_original.csv", index=False)
+    dataframe.to_csv(ROOT_FOLDER / save_path, index=False)
 
 
 if __name__ == "__main__":
-    # transform_arff_to_csv("superconduct", "superconduct_dataset.arff")
-    dataset = filter_datasets(["covertype"])[0]
-    get_tfd_results(dataset, value_ratio=0.65, join_all=True, top_k=15)
+    transform_arff_to_csv("original_data/original/miniboone_dataset.csv", "original_data/originals/miniboone_dataset.arff")
+    # dataset = filter_datasets(["covertype"])[0]
+    # get_tfd_results(dataset, value_ratio=0.65, join_all=True, top_k=15)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()
