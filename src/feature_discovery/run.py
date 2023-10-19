@@ -10,9 +10,9 @@ from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
 from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
+from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
-from feature_discovery.experiments.train_autogluon import run_auto_gluon
 from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 
@@ -37,15 +37,18 @@ def get_base_results(dataset: Dataset):
 
     features = list(dataframe.columns)
 
-    _, results = run_auto_gluon(
-        approach=Result.BASE,
+    runtime, results = run_auto_gluon(
         dataframe=dataframe[features],
         target_column=dataset.target_column,
-        data_label=dataset.base_table_label,
-        join_name=dataset.base_table_label,
         algorithms_to_run=hyper_parameters,
         problem_type=dataset.dataset_type,
     )
+
+    for res in results:
+        res.approach = Result.BASE
+        res.data_label = dataset.base_table_label
+        res.data_path = dataset.base_table_label
+        res.train_time = runtime
 
     # Save intermediate results
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
@@ -78,20 +81,18 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
     features.extend(base_table_features)
 
     logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
-    start_ag = time.time()
-    _, results = run_auto_gluon(
-        approach=Result.ARDA,
+    runtime, results = run_auto_gluon(
         dataframe=dataframe[features],
         target_column=dataset.target_column,
-        data_label=dataset.base_table_label,
-        join_name=join_name,
         algorithms_to_run=hyper_parameters,
         problem_type=dataset.dataset_type
     )
-    end_ag = time.time()
     for result in results:
+        result.approach = Result.ARDA
+        result.data_label = dataset.base_table_label
+        result.data_path = join_name
         result.feature_selection_time = end - start
-        result.train_time = end_ag - start_ag
+        result.train_time = runtime
         result.total_time += result.feature_selection_time
         result.total_time += result.train_time
 
@@ -195,9 +196,10 @@ def transform_arff_to_csv(save_path: str, dataset_path: str):
 
 
 if __name__ == "__main__":
-    transform_arff_to_csv("original_data/original/miniboone_dataset.csv", "original_data/originals/miniboone_dataset.arff")
-    # dataset = filter_datasets(["covertype"])[0]
-    # get_tfd_results(dataset, value_ratio=0.65, join_all=True, top_k=15)
+    # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
+    #                       "original_data/originals/miniboone_dataset.arff")
+    dataset = filter_datasets(["credit"])[0]
+    get_tfd_results(dataset, value_ratio=0.65, top_k=15)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()

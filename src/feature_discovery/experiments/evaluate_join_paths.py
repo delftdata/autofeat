@@ -1,17 +1,43 @@
 import logging
-import time
 
 import pandas as pd
 import tqdm
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.autofeat_pipeline.join_path_utils import get_path_length
 from feature_discovery.config import RESULTS_FOLDER
+from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon, run_svm, run_naive_bayes
 from feature_discovery.experiments.result_object import Result
-from feature_discovery.experiments.train_autogluon import run_auto_gluon
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+hyper_parameters = {
+    "RF": [
+        {"criterion": "gini", "ag_args": {"name_suffix": "Gini", "problem_types": ["binary", "multiclass"]}},
+        {"criterion": "entropy", "ag_args": {"name_suffix": "Entr", "problem_types": ["binary", "multiclass"]}},
+        {"criterion": "squared_error", "ag_args": {"name_suffix": "MSE", "problem_types": ["regression"]}}
+    ],
+    "GBM": [
+        {"extra_trees": True, "ag_args": {"name_suffix": "XT"}},
+        {},
+        "GBMLarge",
+    ],
+    "XT": [
+        {"criterion": "gini", "ag_args": {"name_suffix": "Gini", "problem_types": ["binary", "multiclass"]}},
+        {"criterion": "entropy", "ag_args": {"name_suffix": "Entr", "problem_types": ["binary", "multiclass"]}},
+        {"criterion": "squared_error", "ag_args": {"name_suffix": "MSE", "problem_types": ["regression"]}},
+    ],
+    "KNN": [
+        {"weights": "uniform", "ag_args": {"name_suffix": "Unif"}},
+        {"weights": "distance", "ag_args": {"name_suffix": "Dist"}},
+    ],
+    "XGB": {},
+    "CAT": {},
+    "LR": [
+        {"penalty": "L1"},
+        {"penalty": "L2"},
+    ]
+}
 
 
 def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str, top_k_paths: int = 15):
@@ -61,26 +87,43 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
             features.append(bfs_result.target_column)
 
-        start = time.time()
-        best_model, results = run_auto_gluon(approach=Result.TFD,
-                                             dataframe=dataframe[features],
-                                             target_column=bfs_result.target_column,
-                                             data_label=bfs_result.base_table_label,
-                                             join_name=join_name,
-                                             algorithms_to_run=hyper_parameters,
-                                             value_ratio=bfs_result.value_ratio,
-                                             problem_type=problem_type)
-        end = time.time()
-        for result in results:
+        def fill_in_result_object(result: Result, runtime: float):
             result.feature_selection_time = feat_sel_time
-            result.train_time = end - start
+            result.train_time = runtime
             result.total_time += feat_sel_time
-            result.total_time += end - start
+            result.total_time += runtime
             result.rank = rank
             result.top_k = top_k
             result.data_path = path_list
+            result.approach = Result.TFD
+            result.data_label = bfs_result.base_table_label
+            result.cutoff_threshold = bfs_result.value_ratio
 
-        all_results.extend(results)
+        dataframe = AutoMLPipelineFeatureGenerator(
+            enable_text_special_features=False, enable_text_ngram_features=False
+        ).fit_transform(X=dataframe[features])
+
+        # AutoGluon: Run LightGBM, XGBoost, Extreme Randomised Trees, Random Forest, CatBoost, KNN, Linear Classifier
+        runtime_ag, results_ag = run_auto_gluon(dataframe=dataframe,
+                                                target_column=bfs_result.target_column,
+                                                algorithms_to_run=hyper_parameters,
+                                                problem_type=problem_type)
+        for res in results_ag:
+            fill_in_result_object(res, runtime_ag)
+        all_results.extend(results_ag)
+
+        # sklearn: Run SVM
+        runtime_svm, results_svm = run_svm(dataframe=dataframe,
+                                           target_column=bfs_result.target_column)
+        fill_in_result_object(results_svm, runtime_svm)
+        all_results.append(results_svm)
+
+        # sklearn: Run Naive Bayes
+        runtime_nb, results_nb = run_naive_bayes(dataframe=dataframe,
+                                                 target_column=bfs_result.target_column)
+        fill_in_result_object(results_nb, runtime_nb)
+        all_results.append(results_nb)
+
         dataframe = None
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{bfs_result.base_table_label}_tfd.csv", index=False)
