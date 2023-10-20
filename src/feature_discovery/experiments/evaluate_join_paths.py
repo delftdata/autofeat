@@ -171,7 +171,6 @@ def join_from_path(path, target, base_node):
 
 
 def create_join_tree(table, path_tables):
-    # print(f"\t{table}")
     if table in path_tables.keys():
         value = path_tables[table]
         result = create_join_tree(value[0], path_tables)

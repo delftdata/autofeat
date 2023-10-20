@@ -86,7 +86,7 @@ class AutoFeat:
 
         return X_train
 
-    def streaming_feature_selection(self, queue: set, previous_queue: set = None, prev_node_id: str = None):
+    def streaming_feature_selection(self, queue: set, previous_queue: set = None):
         if len(queue) == 0:
             return
 

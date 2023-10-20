@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 
 from feature_discovery.graph_processing.neo4j_transactions import (
@@ -37,7 +39,7 @@ def join_and_save(
         right_df: pd.DataFrame,
         left_column_name: str,
         right_column_name: str,
-        join_path: str,
+        join_path: Path,
 ) -> pd.DataFrame or None:
     """
     Join two dataframes and save the result on disk.
