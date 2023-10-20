@@ -57,7 +57,7 @@ def get_base_results(dataset: Dataset):
 
 
 def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
-    from feature_discovery.arda.arda import select_arda_features_budget_join
+    from feature_discovery.baselines.arda import select_arda_features_budget_join
 
     logging.debug(f"ARDA result on table {dataset.base_table_id}")
 

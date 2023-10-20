@@ -1,5 +1,5 @@
 import unittest
-import feature_discovery.arda.arda as arda
+import feature_discovery.baselines.arda as arda
 import numpy as np
 import logging
 import sys
