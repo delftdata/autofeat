@@ -3,12 +3,12 @@ import time
 
 import numpy as np
 import pandas as pd
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+from sklearn.model_selection import cross_validate
 
 from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
-
-from sklearn.model_selection import cross_validate
 
 
 def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: str, algorithms_to_run: dict):
@@ -58,16 +58,31 @@ def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: st
 
     end = time.time()
 
-    return end-start, results
+    return end - start, results
 
 
-def run_svm(dataframe: pd.DataFrame, target_column: str):
+def run_svm(dataframe: pd.DataFrame, target_column: str, backward_sel=False, forward_sel=False):
     from sklearn.svm import LinearSVC
+    from sklearn.feature_selection import RFECV, SequentialFeatureSelector
+
+    df = AutoMLPipelineFeatureGenerator(
+        enable_text_special_features=False, enable_text_ngram_features=False
+    ).fit_transform(X=dataframe)
 
     start = time.time()
 
-    X = dataframe.drop(columns=[target_column])
-    y = dataframe[[target_column]].values.ravel()
+    X = df.drop(columns=[target_column])
+    y = df[[target_column]].values.ravel()
+
+    if backward_sel:
+        selector = RFECV(LinearSVC(dual=False), cv=10)
+        new_X = selector.fit_transform(X, y)
+        X = pd.DataFrame(new_X, columns=selector.get_feature_names_out())
+
+    if forward_sel:
+        selector = SequentialFeatureSelector(LinearSVC(dual=False))
+        new_X = selector.fit_transform(X, y)
+        X = pd.DataFrame(new_X, columns=selector.get_feature_names_out())
 
     scores = cross_validate(LinearSVC(dual=False), X, y, cv=10, scoring="accuracy", return_estimator=True)
     estimator = scores["estimator"][np.argmax(scores['test_score'])]

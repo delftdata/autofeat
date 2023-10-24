@@ -12,31 +12,13 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
 hyper_parameters = {
-    "RF": [
-        {"criterion": "gini", "ag_args": {"name_suffix": "Gini", "problem_types": ["binary", "multiclass"]}},
-        {"criterion": "entropy", "ag_args": {"name_suffix": "Entr", "problem_types": ["binary", "multiclass"]}},
-        {"criterion": "squared_error", "ag_args": {"name_suffix": "MSE", "problem_types": ["regression"]}}
-    ],
-    "GBM": [
-        {"extra_trees": True, "ag_args": {"name_suffix": "XT"}},
-        {},
-        "GBMLarge",
-    ],
-    "XT": [
-        {"criterion": "gini", "ag_args": {"name_suffix": "Gini", "problem_types": ["binary", "multiclass"]}},
-        {"criterion": "entropy", "ag_args": {"name_suffix": "Entr", "problem_types": ["binary", "multiclass"]}},
-        {"criterion": "squared_error", "ag_args": {"name_suffix": "MSE", "problem_types": ["regression"]}},
-    ],
-    "KNN": [
-        {"weights": "uniform", "ag_args": {"name_suffix": "Unif"}},
-        {"weights": "distance", "ag_args": {"name_suffix": "Dist"}},
-    ],
+    "RF": {},
+    "GBM": {},
+    "XT": {},
     "XGB": {},
+    "KNN": {},
     "CAT": {},
-    "LR": [
-        {"penalty": "L1"},
-        {"penalty": "L2"},
-    ]
+    "LR": {}
 }
 
 

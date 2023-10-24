@@ -7,8 +7,12 @@ class Result:
     TFD_PATH = "TFD_PATH"
     TFD = "TFD_BFS"
     ARDA = "ARDA"
-    JOIN_ALL = "TFD_JOIN_ALL"
-    JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
+    JOIN_ALL_BFS = "Join_All_BFS"
+    JOIN_ALL_BFS_BWD = "Join_All_BFS_Back"
+    JOIN_ALL_BFS_FWD = "Join_All_BFS_Forward"
+    JOIN_ALL_DFS = "Join_All_DFS"
+    JOIN_ALL_DFS_BWD = "TJoin_All_DFS_Back"
+    JOIN_ALL_DFS_FWD = "TJoin_All_DFS_Forward"
     BASE = "BASE"
 
     algorithm: str
