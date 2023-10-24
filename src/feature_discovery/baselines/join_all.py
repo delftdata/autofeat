@@ -1,3 +1,4 @@
+import itertools
 import logging
 import tempfile
 import uuid
@@ -44,7 +45,94 @@ class JoinAll:
 
         return base_table_df
 
-    def join_all_bfs(self, queue: set):
+    def join_all_dfs(self):
+        self.discovered.add(self.base_table_id)
+
+        neighbours = sorted(set(get_adjacent_nodes(self.base_table_id)) - set(self.discovered))
+        if len(neighbours) == 0:
+            return
+
+        neighbours_with_source = list(zip(itertools.repeat(self.base_table_id), neighbours))
+
+        node = neighbours_with_source.pop()
+        self._join_all_dfs_recursive(node, neighbours_with_source)
+
+    def _join_all_dfs_recursive(self, node_with_source: str, queue: list):
+        base_node_id, node = node_with_source
+        # Because of the source, the node can get duplicated
+        if node in self.discovered:
+            if len(queue) > 0:
+                return self._join_all_dfs_recursive(queue.pop(), queue)
+            else:
+                return
+
+        self.discovered.add(node)
+        join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
+
+        # Read the neighbour node
+        right_df, right_label = get_df_with_prefix(node)
+        logging.debug(f"\tRight table shape: {right_df.shape}")
+
+        # Get the data which has been joined so far
+        if self.partial_join_name == self.base_table_id:
+            previous_join = self.partial_join.copy()
+        else:
+            previous_join = pd.read_csv(
+                Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
+                header=0,
+                engine="python",
+                encoding="utf8",
+                quotechar='"',
+                escapechar='\\',
+            )
+
+        join_name = None
+        for prop in join_keys:
+            join_prop, from_table, to_table = prop
+            if join_prop['from_label'] != from_table:
+                if join_prop['to_label'] == from_table:
+                    join_prop['from_label'] = to_table
+                    join_prop['to_label'] = from_table
+                else:
+                    continue
+
+            if join_prop['from_column'] == self.target_column:
+                continue
+
+            logging.debug(f"\t\tJoin properties: {join_prop}")
+
+            # Step - Explore all possible join paths based on the join keys - Compute the name of the join
+            join_name = compute_join_name(join_key_property=prop, partial_join_name=self.partial_join_name)
+            logging.debug(f"\tJoin name: {join_name}")
+
+            # Step - Join
+            joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
+                                                                    left_df=previous_join,
+                                                                    right_df=right_df,
+                                                                    right_label=right_label)
+            if joined_df is None:
+                continue
+
+            join_columns.extend(self.join_keys[self.partial_join_name])
+            self.join_keys[join_name] = list(set(join_columns))
+            self.join_name_mapping[join_name] = join_filename
+            self.partial_join_name = join_name
+            break
+
+        # If the
+        if join_name and self.partial_join_name != join_name:
+            return self._join_all_dfs_recursive(queue.pop(), queue)
+
+        neighbours = sorted(set(get_adjacent_nodes(node)) - set(self.discovered))
+        neighbours_with_source = list(zip(itertools.repeat(node), neighbours))
+        queue.extend(neighbours_with_source)
+
+        if len(queue) == 0:
+            return
+
+        return self._join_all_dfs_recursive(queue.pop(), queue)
+
+    def join_all_bfs(self, queue: set) -> pd.DataFrame:
         if len(queue) == 0:
             previous_join = pd.read_csv(
                 Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
