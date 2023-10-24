@@ -22,7 +22,8 @@ hyper_parameters = {
 }
 
 
-def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str, top_k_paths: int = 15):
+def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str,
+                   approach: str = Result.TFD, top_k_paths: int = 15):
     logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
@@ -77,7 +78,7 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             result.rank = rank
             result.top_k = top_k
             result.data_path = path_list
-            result.approach = Result.TFD
+            result.approach = approach
             result.data_label = bfs_result.base_table_label
             result.cutoff_threshold = bfs_result.value_ratio
 
@@ -108,7 +109,6 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
 
         dataframe = None
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{bfs_result.base_table_label}_tfd.csv", index=False)
     return all_results, top_k_path_list
 
 

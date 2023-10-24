@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 
 import pandas as pd
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+
 
 from feature_discovery.autofeat_pipeline.join_data import join_and_save
 from feature_discovery.autofeat_pipeline.join_path_feature_selection import RelevanceRedundancy
@@ -29,6 +31,8 @@ class AutoFeat:
             value_ratio: float = 0.65,
             top_k: int = 5,
             sample_size: int = 3000,
+            pearson: bool = False,
+            jmi: bool = False,
     ):
         """
 
@@ -58,6 +62,8 @@ class AutoFeat:
 
         # Ablation study parameters
         self.sample_data_step = True
+        self.pearson = pearson
+        self.jmi = jmi
 
     def initialisation(self):
         from sklearn.model_selection import train_test_split
@@ -209,24 +215,30 @@ class AutoFeat:
 
     def streaming_relevance_redundancy(self, dataframe, new_features, selected_features) -> Optional[
         Tuple[float, List[dict]]]:
-        X = dataframe.drop(columns=[self.target_column])
-        y = dataframe[self.target_column]
+
+        df = AutoMLPipelineFeatureGenerator(
+            enable_text_special_features=False, enable_text_ngram_features=False
+        ).fit_transform(X=dataframe)
+
+        X = df.drop(columns=[self.target_column])
+        y = df[self.target_column]
 
         features = list(set(X.columns).intersection(set(new_features)))
         top_feat = len(features) if len(features) < self.top_k else self.top_k
 
         feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
                                                                  new_features=features,
-                                                                 target_column=y)[:top_feat]
+                                                                 target_column=y,
+                                                                 pearson=self.pearson)[:top_feat]
         if len(feature_score_relevance) == 0:
             return None
 
         feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
                                                                    selected_features=selected_features,
-                                                                   # selected_features=self.partial_join_selected_features[join_name],
                                                                    relevant_features=list(
                                                                        dict(feature_score_relevance).keys()),
-                                                                   target_column=y)
+                                                                   target_column=y,
+                                                                   jmi=self.jmi)
 
         if len(feature_score_redundancy) == 0:
             return None

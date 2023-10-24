@@ -5,7 +5,10 @@ from typing import Dict, Optional, List
 @dataclass
 class Result:
     TFD_PATH = "TFD_PATH"
-    TFD = "TFD_BFS"
+    TFD = "AutoFeat"
+    TFD_Pearson = "AutoFeat-Pearson-MRMR"
+    TFD_Pearson_JMI = "AutoFeat-Pearson-JMI"
+    TFD_JMI = "AutoFeat-Spearman-JMI"
     ARDA = "ARDA"
     JOIN_ALL_BFS = "Join_All_BFS"
     JOIN_ALL_BFS_BWD = "Join_All_BFS_Back"

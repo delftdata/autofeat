@@ -2,11 +2,9 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from ITMO_FS.filters.multivariate import CMIM, JMI, MRMR
-from ITMO_FS.filters.univariate import spearman_corr
+from ITMO_FS.filters.multivariate import CMIM, MRMR
+from ITMO_FS.filters.univariate import spearman_corr, pearson_corr
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
-
 from sklearn.preprocessing import KBinsDiscretizer
 
 
@@ -20,24 +18,24 @@ class RelevanceRedundancy:
     def measure_relevance(self,
                           dataframe: pd.DataFrame,
                           new_features: List[str],
-                          target_column: pd.Series) -> List[tuple]:
-
-        df = AutoMLPipelineFeatureGenerator(
-            enable_text_special_features=False, enable_text_ngram_features=False
-        ).fit_transform(X=dataframe)
+                          target_column: pd.Series,
+                          pearson=False) -> List[tuple]:
 
         if self.target_column in new_features:
             new_features.remove(self.target_column)
 
-        new_common_features = list(set(df.columns).intersection(set(new_features)))
+        new_common_features = list(set(dataframe.columns).intersection(set(new_features)))
         if len(new_common_features) == 0:
             return []
 
-        correlation_score = abs(spearman_corr(np.array(df[new_common_features]),
-                                              np.array(target_column)))
+        if pearson:
+            correlation_score = abs(pearson_corr(np.array(dataframe[new_common_features]),
+                                                 np.array(target_column)))
+        else:
+            correlation_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
+                                                  np.array(target_column)))
 
         final_feature_scores_rel = []
-        final_features_rel = []
         for value, name in list(zip(correlation_score, new_common_features)):
             # value 0 means that the features are completely redundant
             # value 1 means that the features are perfectly correlated, which is still undesirable
@@ -53,7 +51,8 @@ class RelevanceRedundancy:
                            dataframe: pd.DataFrame,
                            selected_features: List[str],
                            relevant_features: List[str],
-                           target_column: pd.Series) -> List[tuple]:
+                           target_column: pd.Series,
+                           jmi: bool = False) -> List[tuple]:
 
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
         new_features_int = [i for i, value in enumerate(dataframe.columns) if value in relevant_features]
@@ -72,13 +71,18 @@ class RelevanceRedundancy:
                                                             np.array(selected_features_int)],
                                                             np.array(discr_dataframe)[:, free_feature])))(
             new_features_int)
-        # cond_dependency = np.vectorize(
-        #     lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
-        #                                                     np.array(dataframe)[:, np.array(selected_features_int)],
-        #                                                     np.array(dataframe)[:, free_feature],
-        #                                                     target_column)))(np.array(new_features_int))
-        mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
-        # + (1 / np.array(selected_features_int).size) * cond_dependency
+
+        if jmi:
+            cond_dependency = np.vectorize(
+                lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
+                                                                np.array(dataframe)[:, np.array(selected_features_int)],
+                                                                np.array(dataframe)[:, free_feature],
+                                                                target_column)))(np.array(new_features_int))
+            mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy + (
+                        1 / np.array(selected_features_int).size) * cond_dependency
+        else:
+            mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
+
         if np.all(np.array(mrmr_scores) == 0):
             return []
 
