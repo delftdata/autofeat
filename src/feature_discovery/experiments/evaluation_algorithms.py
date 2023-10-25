@@ -128,7 +128,7 @@ def run_logistic_regression(dataframe: pd.DataFrame, target_column: str):
         test_size=0.2,
         random_state=10,
     )
-    clf = LogisticRegressionCV(cv=10, random_state=0).fit(X_train, y_train)
+    clf = LogisticRegressionCV(cv=10, random_state=0).fit(X_train, y_train.values.ravel())
     entry = Result(
         algorithm="LogisticRegression",
         accuracy=clf.score(X_test, y_test),
