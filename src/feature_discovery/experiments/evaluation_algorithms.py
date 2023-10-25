@@ -67,14 +67,10 @@ def run_svm(dataframe: pd.DataFrame, target_column: str, backward_sel=False, for
     from sklearn.svm import LinearSVC
     from sklearn.feature_selection import RFECV, SequentialFeatureSelector
 
-    df = AutoMLPipelineFeatureGenerator(
-        enable_text_special_features=False, enable_text_ngram_features=False
-    ).fit_transform(X=dataframe)
-
     start = time.time()
 
-    X = df.drop(columns=[target_column])
-    y = df[[target_column]].values.ravel()
+    X = dataframe.drop(columns=[target_column])
+    y = dataframe[[target_column]].values.ravel()
 
     if backward_sel:
         selector = RFECV(LinearSVC(dual=False), cv=10)
@@ -145,10 +141,14 @@ def run_logistic_regression(dataframe: pd.DataFrame, target_column: str):
 
 
 def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem_tye: str = None):
+    df = AutoMLPipelineFeatureGenerator(
+        enable_text_special_features=False, enable_text_ngram_features=False
+    ).fit_transform(X=dataframe)
+
     # Run LightGBM, XGBoost, Random Forest, Extreme Randomised Trees
     logging.debug(f"Training AutoGluon ... ")
     runtime, results = run_auto_gluon(
-        dataframe=dataframe,
+        dataframe=df,
         target_column=target_column,
         algorithms_to_run=hyper_parameters,
         problem_type=problem_tye,
@@ -159,21 +159,21 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem
 
     # sklearn: Run SVM
     logging.debug(f"Training SVM ... ")
-    runtime_svm, result_svm = run_svm(dataframe=dataframe,
+    runtime_svm, result_svm = run_svm(dataframe=df,
                                       target_column=target_column)
     result_svm.train_time = runtime_svm
     results.append(result_svm)
 
     # sklearn: Run Naive Bayes
     logging.debug(f"Training Naive Bayes ... ")
-    runtime_nb, result_nb = run_naive_bayes(dataframe=dataframe,
+    runtime_nb, result_nb = run_naive_bayes(dataframe=df,
                                             target_column=target_column)
     result_nb.train_time = runtime_nb
     results.append(result_nb)
 
     # sklearn: Run Logistic Regression
     logging.debug(f"Training Logistic Regression ... ")
-    runtime_lr, result_lr = run_logistic_regression(dataframe=dataframe,
+    runtime_lr, result_lr = run_logistic_regression(dataframe=df,
                                                     target_column=target_column)
     result_lr.train_time = runtime_lr
     results.append(result_lr)
