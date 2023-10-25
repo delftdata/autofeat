@@ -8,6 +8,7 @@ import tqdm
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
+from feature_discovery.experiments.baselines import non_augmented
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
 from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
 from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon
@@ -35,20 +36,7 @@ def get_base_results(dataset: Dataset):
         escapechar="\\",
     )
 
-    features = list(dataframe.columns)
-
-    runtime, results = run_auto_gluon(
-        dataframe=dataframe[features],
-        target_column=dataset.target_column,
-        algorithms_to_run=hyper_parameters,
-        problem_type=dataset.dataset_type,
-    )
-
-    for res in results:
-        res.approach = Result.BASE
-        res.data_label = dataset.base_table_label
-        res.data_path = dataset.base_table_label
-        res.train_time = runtime
+    results = non_augmented(dataframe=dataframe, dataset=dataset)
 
     # Save intermediate results
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
