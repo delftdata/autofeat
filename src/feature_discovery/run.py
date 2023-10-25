@@ -8,12 +8,10 @@ import tqdm
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
-from feature_discovery.experiments.baselines import non_augmented, join_all_bfs, join_all_dfs
-from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
+from feature_discovery.experiments.baselines import non_augmented, join_all_bfs, join_all_dfs, arda
+from feature_discovery.experiments.dataset_object import Dataset
 from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
-from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon
 from feature_discovery.experiments.init_datasets import init_datasets
-from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 
@@ -50,49 +48,12 @@ def get_join_all_results(dataset: Dataset):
     results_bfs.extend(results_dfs)
 
     # Save intermediate results
-    pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all_BFS.csv", index=False)
+    pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
     return results_bfs
 
 
 def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
-    from feature_discovery.baselines.arda import select_arda_features_budget_join
-
-    logging.debug(f"ARDA result on table {dataset.base_table_id}")
-
-    start = time.time()
-    (
-        dataframe,
-        base_table_features,
-        selected_features,
-        join_name,
-    ) = select_arda_features_budget_join(
-        base_node_id=str(dataset.base_table_id),
-        target_column=dataset.target_column,
-        sample_size=sample_size,
-        regression=(dataset.dataset_type == REGRESSION),
-    )
-    end = time.time()
-    logging.debug(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
-
-    features = selected_features.copy()
-    features.append(dataset.target_column)
-    features.extend(base_table_features)
-
-    logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
-    runtime, results = run_auto_gluon(
-        dataframe=dataframe[features],
-        target_column=dataset.target_column,
-        algorithms_to_run=hyper_parameters,
-        problem_type=dataset.dataset_type
-    )
-    for result in results:
-        result.approach = Result.ARDA
-        result.data_label = dataset.base_table_label
-        result.data_path = join_name
-        result.feature_selection_time = end - start
-        result.train_time = runtime
-        result.total_time += result.feature_selection_time
-        result.total_time += result.train_time
+    results = arda(dataset, sample_size)
 
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 

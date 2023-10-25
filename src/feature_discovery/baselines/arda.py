@@ -318,9 +318,10 @@ def select_arda_features_budget_join(
         all_columns.remove(target_column)
 
         # Prepare data
-        X = AutoMLPipelineFeatureGenerator(
+        df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
         ).fit_transform(X=joined_tables_batch)
+        X = df.drop(columns=[target_column])
         y = joined_tables_batch[target_column]
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
