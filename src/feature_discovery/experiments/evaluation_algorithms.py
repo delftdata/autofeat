@@ -5,14 +5,16 @@ import numpy as np
 import pandas as pd
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from sklearn.model_selection import cross_validate
+from sklearn.model_selection import train_test_split
 
 from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
+hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+
 
 def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: str, algorithms_to_run: dict):
-    from sklearn.model_selection import train_test_split
     from autogluon.tabular import TabularPredictor
 
     start = time.time()
@@ -117,3 +119,63 @@ def run_naive_bayes(dataframe: pd.DataFrame, target_column: str):
     end = time.time()
 
     return end - start, entry
+
+
+def run_logistic_regression(dataframe: pd.DataFrame, target_column: str):
+    from sklearn.linear_model import LogisticRegressionCV
+
+    start = time.time()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        dataframe.drop(columns=[target_column]),
+        dataframe[[target_column]],
+        test_size=0.2,
+        random_state=10,
+    )
+    clf = LogisticRegressionCV(cv=10, random_state=0).fit(X_train, y_train)
+    entry = Result(
+        algorithm="LogisticRegression",
+        accuracy=clf.score(X_test, y_test),
+        join_path_features=list(X_train.columns),
+        feature_importance=dict(zip(list(X_train.columns), clf.coef_[0])),
+    )
+
+    end = time.time()
+    return end - start, entry
+
+
+def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem_tye: str = None):
+    # Run LightGBM, XGBoost, Random Forest, Extreme Randomised Trees
+    logging.debug(f"Training AutoGluon ... ")
+    runtime, results = run_auto_gluon(
+        dataframe=dataframe,
+        target_column=target_column,
+        algorithms_to_run=hyper_parameters,
+        problem_type=problem_tye,
+    )
+
+    for res in results:
+        res.train_time = runtime
+
+    # sklearn: Run SVM
+    logging.debug(f"Training SVM ... ")
+    runtime_svm, result_svm = run_svm(dataframe=dataframe,
+                                      target_column=target_column)
+    result_svm.train_time = runtime_svm
+    results.append(result_svm)
+
+    # sklearn: Run Naive Bayes
+    logging.debug(f"Training Naive Bayes ... ")
+    runtime_nb, result_nb = run_naive_bayes(dataframe=dataframe,
+                                            target_column=target_column)
+    result_nb.train_time = runtime_nb
+    results.append(result_nb)
+
+    # sklearn: Run Logistic Regression
+    logging.debug(f"Training Logistic Regression ... ")
+    runtime_lr, result_lr = run_logistic_regression(dataframe=dataframe,
+                                                    target_column=target_column)
+    result_lr.train_time = runtime_lr
+    results.append(result_lr)
+
+    return results
