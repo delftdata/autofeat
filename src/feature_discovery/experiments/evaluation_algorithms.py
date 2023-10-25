@@ -11,7 +11,9 @@ from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
+hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}, 'KNN': {},
+                    'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
+                    }
 
 
 def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: str, algorithms_to_run: dict):
@@ -157,25 +159,25 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem
     for res in results:
         res.train_time = runtime
 
-    # sklearn: Run SVM
-    logging.debug(f"Training SVM ... ")
-    runtime_svm, result_svm = run_svm(dataframe=df,
-                                      target_column=target_column)
-    result_svm.train_time = runtime_svm
-    results.append(result_svm)
-
-    # sklearn: Run Naive Bayes
-    logging.debug(f"Training Naive Bayes ... ")
-    runtime_nb, result_nb = run_naive_bayes(dataframe=df,
-                                            target_column=target_column)
-    result_nb.train_time = runtime_nb
-    results.append(result_nb)
-
-    # sklearn: Run Logistic Regression
-    logging.debug(f"Training Logistic Regression ... ")
-    runtime_lr, result_lr = run_logistic_regression(dataframe=df,
-                                                    target_column=target_column)
-    result_lr.train_time = runtime_lr
-    results.append(result_lr)
+    # # sklearn: Run SVM
+    # logging.debug(f"Training SVM ... ")
+    # runtime_svm, result_svm = run_svm(dataframe=df,
+    #                                   target_column=target_column)
+    # result_svm.train_time = runtime_svm
+    # results.append(result_svm)
+    #
+    # # sklearn: Run Naive Bayes
+    # logging.debug(f"Training Naive Bayes ... ")
+    # runtime_nb, result_nb = run_naive_bayes(dataframe=df,
+    #                                         target_column=target_column)
+    # result_nb.train_time = runtime_nb
+    # results.append(result_nb)
+    #
+    # # sklearn: Run Logistic Regression
+    # logging.debug(f"Training Logistic Regression ... ")
+    # runtime_lr, result_lr = run_logistic_regression(dataframe=df,
+    #                                                 target_column=target_column)
+    # result_lr.train_time = runtime_lr
+    # results.append(result_lr)
 
     return results
