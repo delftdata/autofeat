@@ -8,7 +8,7 @@ import tqdm
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
-from feature_discovery.experiments.baselines import non_augmented
+from feature_discovery.experiments.baselines import non_augmented, join_all_bfs, join_all_dfs
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
 from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
 from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon
@@ -42,6 +42,16 @@ def get_base_results(dataset: Dataset):
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
 
     return results
+
+
+def get_join_all_results(dataset: Dataset):
+    results_bfs = join_all_bfs(dataset)
+    results_dfs = join_all_dfs(dataset)
+    results_bfs.extend(results_dfs)
+
+    # Save intermediate results
+    pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all_BFS.csv", index=False)
+    return results_bfs
 
 
 def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:

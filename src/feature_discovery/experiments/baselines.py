@@ -1,21 +1,22 @@
-import logging
+import math
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from ITMO_FS.filters.univariate import spearman_corr
 
-from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.baselines.join_all import JoinAll
-from feature_discovery.config import RESULTS_FOLDER, DATA_FOLDER
 from feature_discovery.experiments.dataset_object import Dataset
-from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
-from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon, run_svm, evaluate_all_algorithms
+from feature_discovery.experiments.evaluation_algorithms import evaluate_all_algorithms, \
+    run_svm_wrapper
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
 def join_all_bfs(dataset: Dataset):
+    all_results = []
     joinall = JoinAll(
         base_table_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
@@ -23,44 +24,59 @@ def join_all_bfs(dataset: Dataset):
     dataframe = joinall.join_all_bfs(queue={str(dataset.base_table_id)})
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
 
-    results = []
+    # Evaluate Join-All with all features
+    results, df = evaluate_all_algorithms(dataframe=dataframe,
+                                          target_column=dataset.target_column,
+                                          problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_BFS
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+    all_results.extend(results)
 
-    # Join All simple scenario
-    runtime_svm, res = run_svm(dataframe=dataframe,
-                               target_column=dataset.target_column)
+    # Join-All with filter feature selection
+    start = time.time()
+    X = df.drop(columns=[dataset.target_column])
+    y = df[dataset.target_column]
+    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_corr(np.array(X), np.array(y))))),
+                                    key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
+    spearman_features = list(map(lambda x: x[0], sorted_features_scores))
+    selected_features = spearman_features.copy()
+    selected_features.append(dataset.target_column)
+    end = time.time()
 
-    res.approach = Result.JOIN_ALL_BFS
-    res.data_label = dataset.base_table_label
-    res.data_path = joinall.partial_join_name
-    res.train_time = runtime_svm
-    results.append(res)
+    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
+                                         target_column=dataset.target_column,
+                                         problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_BFS_F
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+        res.join_path_features = spearman_features
+        res.feature_selection_time = end - start
+        res.total_time += res.feature_selection_time
+    all_results.extend(results)
 
-    # Join All with Forward Selection scenario
-    runtime_svm, result = run_svm(dataframe=dataframe,
-                                  target_column=dataset.target_column,
-                                  backward_sel=True)
-    result.train_time = runtime_svm
-    result.data_path = joinall.partial_join_name
-    result.approach = Result.JOIN_ALL_BFS_BWD
-    result.data_label = dataset.base_table_label
-    results.append(result)
+    # Join-All with wrapper feature selection
+    feat_sel_time, new_X = run_svm_wrapper(X, y, forward_sel=True)
+    results, _ = evaluate_all_algorithms(
+        dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
+        target_column=dataset.target_column,
+        problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_BFS_W
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+        res.join_path_features = list(new_X.columns)
+        res.feature_selection_time = feat_sel_time
+        res.total_time += res.feature_selection_time
+    all_results.extend(results)
 
-    # Join All with Forward Selection scenario
-    runtime_svm, result = run_svm(dataframe=dataframe,
-                                  target_column=dataset.target_column,
-                                  forward_sel=True)
-    result.train_time = runtime_svm
-    result.data_path = joinall.partial_join_name
-    result.approach = Result.JOIN_ALL_BFS_FWD
-    result.data_label = dataset.base_table_label
-    results.append(result)
-
-    # Save intermediate results
-    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all_BFS.csv", index=False)
-    return results
+    return all_results
 
 
 def join_all_dfs(dataset: Dataset):
+    all_results = []
     joinall = JoinAll(
         base_table_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
@@ -77,41 +93,55 @@ def join_all_dfs(dataset: Dataset):
     )
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
 
-    results = []
+    # Evaluate Join-All with all features
+    results, df = evaluate_all_algorithms(dataframe=dataframe,
+                                          target_column=dataset.target_column,
+                                          problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_DFS
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+    all_results.extend(results)
 
-    # Join All simple scenario
-    runtime_svm, res = run_svm(dataframe=dataframe,
-                               target_column=dataset.target_column)
+    # Join-All with filter feature selection
+    start = time.time()
+    X = df.drop(columns=[dataset.target_column])
+    y = df[dataset.target_column]
+    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_corr(np.array(X), np.array(y))))),
+                                    key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
+    spearman_features = list(map(lambda x: x[0], sorted_features_scores))
+    selected_features = spearman_features.copy()
+    selected_features.append(dataset.target_column)
+    end = time.time()
 
-    res.approach = Result.JOIN_ALL_DFS
-    res.data_label = dataset.base_table_label
-    res.data_path = joinall.partial_join_name
-    res.train_time = runtime_svm
-    results.append(res)
+    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
+                                         target_column=dataset.target_column,
+                                         problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_DFS_F
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+        res.join_path_features = spearman_features
+        res.feature_selection_time = end - start
+        res.total_time += res.feature_selection_time
+    all_results.extend(results)
 
-    # Join All with Forward Selection scenario
-    runtime_svm, result = run_svm(dataframe=dataframe,
-                                  target_column=dataset.target_column,
-                                  backward_sel=True)
-    result.train_time = runtime_svm
-    result.data_path = joinall.partial_join_name
-    result.approach = Result.JOIN_ALL_DFS_BWD
-    result.data_label = dataset.base_table_label
-    results.append(result)
+    # Join-All with wrapper feature selection
+    feat_sel_time, new_X = run_svm_wrapper(X, y, forward_sel=True)
+    results, _ = evaluate_all_algorithms(
+        dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
+        target_column=dataset.target_column,
+        problem_tye=dataset.dataset_type)
+    for res in results:
+        res.approach = Result.JOIN_ALL_DFS_W
+        res.data_path = joinall.partial_join_name
+        res.data_label = dataset.base_table_label
+        res.join_path_features = list(new_X.columns)
+        res.feature_selection_time = feat_sel_time
+        res.total_time += res.feature_selection_time
+    all_results.extend(results)
 
-    # Join All with Forward Selection scenario
-    runtime_svm, result = run_svm(dataframe=dataframe,
-                                  target_column=dataset.target_column,
-                                  forward_sel=True)
-    result.train_time = runtime_svm
-    result.data_path = joinall.partial_join_name
-    result.approach = Result.JOIN_ALL_DFS_FWD
-    result.data_label = dataset.base_table_label
-    results.append(result)
-
-    # Save intermediate results
-    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all_DFS.csv", index=False)
-    return results
+    return all_results
 
 
 def non_augmented(dataframe: pd.DataFrame, dataset: Dataset):
@@ -131,4 +161,3 @@ if __name__ == "__main__":
     dataset = filter_datasets(["credit"])[0]
     # join_all_bfs(dataset)
     # join_all_dfs(dataset)
-

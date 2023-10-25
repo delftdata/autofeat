@@ -16,9 +16,8 @@ from feature_discovery.run import (
     get_tfd_results,
     get_all_results,
     get_results_tune_value_ratio_classification,
-    get_results_tune_k,
+    get_results_tune_k, get_join_all_results,
 )
-
 
 app = typer.Typer()
 
@@ -61,6 +60,29 @@ def run_base(
     datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in tqdm.tqdm(datasets):
         all_results.extend(get_base_results(dataset))
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
+
+
+@app.command()
+def run_join_all(
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        problem_type: Annotated[
+            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_join_all.csv",
+):
+    """Runs 4 experiments: join all tables in BFS and DFS order, then same approaches with filter
+    feature selection: spearman, and with wrapper feature selection: forward selection"""
+
+    all_results = []
+    datasets = filter_datasets(dataset_labels, problem_type)
+    for dataset in tqdm.tqdm(datasets):
+        all_results.extend(get_join_all_results(dataset))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 

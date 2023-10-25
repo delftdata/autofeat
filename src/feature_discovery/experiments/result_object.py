@@ -11,11 +11,11 @@ class Result:
     TFD_JMI = "AutoFeat-Spearman-JMI"
     ARDA = "ARDA"
     JOIN_ALL_BFS = "Join_All_BFS"
-    JOIN_ALL_BFS_BWD = "Join_All_BFS_Back"
-    JOIN_ALL_BFS_FWD = "Join_All_BFS_Forward"
+    JOIN_ALL_BFS_F = "Join_All_BFS_Filter"
+    JOIN_ALL_BFS_W = "Join_All_BFS_Wrapper"
     JOIN_ALL_DFS = "Join_All_DFS"
-    JOIN_ALL_DFS_BWD = "TJoin_All_DFS_Back"
-    JOIN_ALL_DFS_FWD = "TJoin_All_DFS_Forward"
+    JOIN_ALL_DFS_F = "Join_All_DFS_Filter"
+    JOIN_ALL_DFS_W = "Join_All_DFS_Wrapper"
     BASE = "BASE"
 
     algorithm: str

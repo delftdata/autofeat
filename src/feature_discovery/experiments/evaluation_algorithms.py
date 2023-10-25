@@ -99,6 +99,27 @@ def run_svm(dataframe: pd.DataFrame, target_column: str, backward_sel=False, for
     return end - start, entry
 
 
+def run_svm_wrapper(X, y, backward_sel=False, forward_sel=False):
+    from sklearn.svm import LinearSVC
+    from sklearn.feature_selection import RFECV, SequentialFeatureSelector
+
+    start = time.time()
+
+    if backward_sel:
+        selector = RFECV(LinearSVC(dual=False), cv=10)
+        new_X = selector.fit_transform(X, y)
+        new_df = pd.DataFrame(new_X, columns=selector.get_feature_names_out())
+
+    if forward_sel:
+        selector = SequentialFeatureSelector(LinearSVC(dual=False), n_features_to_select='auto', tol=1e-4)
+        new_X = selector.fit_transform(X, y)
+        new_df = pd.DataFrame(new_X, columns=selector.get_feature_names_out())
+
+    end = time.time()
+
+    return end-start, new_df
+
+
 def run_naive_bayes(dataframe: pd.DataFrame, target_column: str):
     from sklearn.naive_bayes import GaussianNB
 
@@ -158,6 +179,7 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem
 
     for res in results:
         res.train_time = runtime
+        res.total_time += res.train_time
 
     # # sklearn: Run SVM
     # logging.debug(f"Training SVM ... ")
@@ -180,4 +202,4 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem
     # result_lr.train_time = runtime_lr
     # results.append(result_lr)
 
-    return results
+    return results, df
