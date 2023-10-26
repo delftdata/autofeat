@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Tuple, List, Dict
 
 import pandas as pd
 
@@ -12,7 +13,8 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
-def autofeat_spearman(dataset: Dataset, value_ratio: float, top_k: int):
+def autofeat(dataset: Dataset, value_ratio: float, top_k: int, approach: str = Result.TFD,
+             pearson: bool = False, jmi: bool = False) -> Tuple[List[Result], List[Dict]]:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
@@ -23,119 +25,32 @@ def autofeat_spearman(dataset: Dataset, value_ratio: float, top_k: int):
         value_ratio=value_ratio,
         top_k=top_k,
         task=dataset.dataset_type,
+        pearson=pearson,
+        jmi=jmi
     )
     bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
     end = time.time()
 
-    logging.debug("FINISHED TFD - Pearson + MRMR")
+    logging.debug(f"FINISHED {approach}")
 
     all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
                                               problem_type=dataset.dataset_type,
-                                              approach=Result.TFD_Pearson)
-    logging.debug(top_k_paths)
+                                              )
+    for result in all_results:
+        result.approach = approach
+        result.feature_selection_time = end - start
+        result.total_time += result.feature_selection_time
+        result.top_k = top_k
+        result.data_label = dataset.base_table_label
+        result.cutoff_threshold = value_ratio
 
     logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_pearson_mrmr.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_{approach}.csv", index=False)
 
-    return all_results
-
-def autofeat_pearson_mrmr(dataset: Dataset, value_ratio: float, top_k: int):
-    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
-
-    start = time.time()
-    bfs_traversal = AutoFeat(
-        base_table_id=str(dataset.base_table_id),
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        top_k=top_k,
-        task=dataset.dataset_type,
-        pearson=True
-    )
-    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    end = time.time()
-
-    logging.debug("FINISHED TFD - Pearson + MRMR")
-
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
-                                              problem_type=dataset.dataset_type,
-                                              approach=Result.TFD_Pearson)
-    logging.debug(top_k_paths)
-
-    logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_pearson_mrmr.csv", index=False)
-
-    return all_results
-
-
-def autofeat_pearson_jmi(dataset: Dataset, value_ratio: float, top_k: int):
-    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
-
-    start = time.time()
-    bfs_traversal = AutoFeat(
-        base_table_id=str(dataset.base_table_id),
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        top_k=top_k,
-        task=dataset.dataset_type,
-        pearson=True,
-        jmi=True
-    )
-    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    end = time.time()
-
-    logging.debug("FINISHED TFD - Pearson + JMI")
-
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
-                                              problem_type=dataset.dataset_type,
-                                              approach=Result.TFD_Pearson_JMI)
-    logging.debug(top_k_paths)
-
-    logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_pearson_jmi.csv", index=False)
-
-    return all_results
-
-
-def autofeat_spearman_jmi(dataset: Dataset, value_ratio: float, top_k: int):
-    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
-
-    start = time.time()
-    bfs_traversal = AutoFeat(
-        base_table_id=str(dataset.base_table_id),
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        top_k=top_k,
-        task=dataset.dataset_type,
-        jmi=True
-    )
-    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    end = time.time()
-
-    logging.debug("FINISHED TFD - Spearman + MRMR")
-
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
-                                              problem_type=dataset.dataset_type,
-                                              approach=Result.TFD_JMI)
-    logging.debug(top_k_paths)
-
-    logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_spearman_jmi.csv", index=False)
-
-    return all_results
+    return all_results, top_k_paths
 
 
 if __name__ == "__main__":
     init_datasets()
     dataset = filter_datasets(["credit"])[0]
-    autofeat_pearson_jmi(dataset, value_ratio=0.65, top_k=15)
+    autofeat(dataset, value_ratio=0.65, top_k=15)

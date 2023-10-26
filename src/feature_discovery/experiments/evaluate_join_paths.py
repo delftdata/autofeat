@@ -1,13 +1,12 @@
 import logging
+from typing import Tuple, List, Dict
 
 import pandas as pd
 import tqdm
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.autofeat_pipeline.join_path_utils import get_path_length
-from feature_discovery.config import RESULTS_FOLDER
-from feature_discovery.experiments.evaluation_algorithms import run_auto_gluon, run_svm, run_naive_bayes
+from feature_discovery.experiments.evaluation_algorithms import evaluate_all_algorithms
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
@@ -22,8 +21,7 @@ hyper_parameters = {
 }
 
 
-def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, problem_type: str,
-                   approach: str = Result.TFD, top_k_paths: int = 15):
+def evaluate_paths(bfs_result: AutoFeat, problem_type: str, top_k_paths: int = 15) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
@@ -31,7 +29,6 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
 
     all_results = []
     for path in tqdm.tqdm(top_k_path_list):
-        print(path)
         join_name, rank = path
         if join_name == bfs_result.base_table_id:
             continue
@@ -63,49 +60,19 @@ def evaluate_paths(bfs_result: AutoFeat, top_k: int, feat_sel_time: float, probl
             path_list.append(path_aux)
 
         dataframe = join_from_path(path_list, bfs_result.target_column, bfs_result.base_table_id)
-        print(dataframe.shape)
         features = list(set(features).intersection(set(dataframe.columns)))
 
         if len(features) < 2:
             features = bfs_result.partial_join_selected_features[bfs_result.base_table_id]
             features.append(bfs_result.target_column)
 
-        def fill_in_result_object(result: Result, runtime: float):
-            result.feature_selection_time = feat_sel_time
-            result.train_time = runtime
-            result.total_time += feat_sel_time
-            result.total_time += runtime
+        results, _ = evaluate_all_algorithms(dataframe=dataframe[features],
+                                             target_column=bfs_result.target_column,
+                                             problem_tye=problem_type)
+        for result in results:
             result.rank = rank
-            result.top_k = top_k
             result.data_path = path_list
-            result.approach = approach
-            result.data_label = bfs_result.base_table_label
-            result.cutoff_threshold = bfs_result.value_ratio
-
-        dataframe = AutoMLPipelineFeatureGenerator(
-            enable_text_special_features=False, enable_text_ngram_features=False
-        ).fit_transform(X=dataframe[features])
-
-        # AutoGluon: Run LightGBM, XGBoost, Extreme Randomised Trees, Random Forest, CatBoost, KNN, Linear Classifier
-        runtime_ag, results_ag = run_auto_gluon(dataframe=dataframe,
-                                                target_column=bfs_result.target_column,
-                                                algorithms_to_run=hyper_parameters,
-                                                problem_type=problem_type)
-        for res in results_ag:
-            fill_in_result_object(res, runtime_ag)
-        all_results.extend(results_ag)
-
-        # sklearn: Run SVM
-        runtime_svm, results_svm = run_svm(dataframe=dataframe,
-                                           target_column=bfs_result.target_column)
-        fill_in_result_object(results_svm, runtime_svm)
-        all_results.append(results_svm)
-
-        # sklearn: Run Naive Bayes
-        runtime_nb, results_nb = run_naive_bayes(dataframe=dataframe,
-                                                 target_column=bfs_result.target_column)
-        fill_in_result_object(results_nb, runtime_nb)
-        all_results.append(results_nb)
+        all_results.extend(results)
 
         dataframe = None
 

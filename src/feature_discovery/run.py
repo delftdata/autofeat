@@ -1,17 +1,16 @@
 import logging
-import time
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 import tqdm
 
-from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
+from feature_discovery.experiments.ablation import autofeat
 from feature_discovery.experiments.baselines import non_augmented, join_all_bfs, join_all_dfs, arda
 from feature_discovery.experiments.dataset_object import Dataset
-from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
 from feature_discovery.experiments.init_datasets import init_datasets
+from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 
@@ -61,32 +60,30 @@ def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
 
 
 def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65) -> List:
-    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
-
-    start = time.time()
-    bfs_traversal = AutoFeat(
-        base_table_id=str(dataset.base_table_id),
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        top_k=top_k,
-        task=dataset.dataset_type
-    )
-    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    end = time.time()
-
-    logging.debug("FINISHED TFD")
-
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
-                                              problem_type=dataset.dataset_type)
-    logging.debug(top_k_paths)
+    spearman_mrmr_results, top_k_paths = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio)
 
     logging.debug("Save results ... ")
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
         f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
+    pd.DataFrame(spearman_mrmr_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd.csv", index=False)
 
+    return spearman_mrmr_results
+
+
+def get_autofeat_ablation(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65):
+    all_results = []
+    pearson_mrmr_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       approach=Result.TFD_Pearson, pearson=True)
+    all_results.extend(pearson_mrmr_results)
+    pearson_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                      approach=Result.TFD_Pearson_JMI, pearson=True, jmi=True)
+    all_results.extend(pearson_jmi_results)
+    spearman_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       approach=Result.TFD_JMI, jmi=True)
+    all_results.extend(spearman_jmi_results)
+
+    logging.debug("Save results ... ")
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_ablation.csv", index=False)
     return all_results
 
 
@@ -158,7 +155,8 @@ if __name__ == "__main__":
     # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
     #                       "original_data/originals/miniboone_dataset.arff")
     dataset = filter_datasets(["credit"])[0]
-    get_tfd_results(dataset, value_ratio=0.65, top_k=15)
+    # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
+    get_autofeat_ablation(dataset)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()
