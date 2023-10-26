@@ -101,7 +101,7 @@ def run_ablation(
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd_ablation.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs the TFD experiments."""
+    """Runs the 3 types of TFD experiments: Spearman + JMI, Pearson + MRMR, Pearson + JMI."""
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in tqdm.tqdm(datasets):
