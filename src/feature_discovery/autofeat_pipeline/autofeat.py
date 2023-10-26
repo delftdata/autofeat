@@ -33,6 +33,8 @@ class AutoFeat:
             sample_size: int = 3000,
             pearson: bool = False,
             jmi: bool = False,
+            no_relevance: bool = False,
+            no_redundancy: bool = False
     ):
         """
 
@@ -64,6 +66,8 @@ class AutoFeat:
         self.sample_data_step = True
         self.pearson = pearson
         self.jmi = jmi
+        self.no_relevance = no_relevance
+        self.no_redundancy = no_redundancy
 
     def initialisation(self):
         from sklearn.model_selection import train_test_split
@@ -193,7 +197,10 @@ class AutoFeat:
                                                                      new_features=list(right_df.columns),
                                                                      selected_features=
                                                                      self.partial_join_selected_features[
-                                                                         previous_join_name])
+                                                                         previous_join_name],
+                                                                     no_relevance=self.no_relevance,
+                                                                     no_redundancy=self.no_redundancy,
+                                                                     )
                         if result is not None:
                             self.ranking[join_name] = result[0]
                             all_selected_features = self.partial_join_selected_features[
@@ -213,8 +220,11 @@ class AutoFeat:
                 previous_queue.update(current_queue)
         self.streaming_feature_selection(all_neighbours, previous_queue)
 
-    def streaming_relevance_redundancy(self, dataframe, new_features, selected_features) -> Optional[
-        Tuple[float, List[dict]]]:
+    def streaming_relevance_redundancy(self, dataframe: pd.DataFrame,
+                                       new_features: List[str],
+                                       selected_features: List[str],
+                                       no_relevance: bool = False,
+                                       no_redundancy: bool = False) -> Optional[Tuple[float, List[dict]]]:
 
         df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
@@ -226,32 +236,40 @@ class AutoFeat:
         features = list(set(X.columns).intersection(set(new_features)))
         top_feat = len(features) if len(features) < self.top_k else self.top_k
 
-        feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
-                                                                 new_features=features,
-                                                                 target_column=y,
-                                                                 pearson=self.pearson)[:top_feat]
-        if len(feature_score_relevance) == 0:
-            return None
+        relevant_features = new_features
+        sum_m = 0
+        m = 1
+        if not no_relevance:
+            feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
+                                                                     new_features=features,
+                                                                     target_column=y,
+                                                                     pearson=self.pearson)[:top_feat]
+            if len(feature_score_relevance) == 0:
+                return None
+            relevant_features = list(dict(feature_score_relevance).keys())
+            m = len(feature_score_relevance) if len(feature_score_relevance) > 0 else m
+            sum_m = sum(list(map(lambda x: x[1], feature_score_relevance)))
 
-        feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
-                                                                   selected_features=selected_features,
-                                                                   relevant_features=list(
-                                                                       dict(feature_score_relevance).keys()),
-                                                                   target_column=y,
-                                                                   jmi=self.jmi)
+        final_features = relevant_features
+        sum_o = 0
+        o = 1
+        if not no_redundancy:
+            feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
+                                                                       selected_features=selected_features,
+                                                                       relevant_features=relevant_features,
+                                                                       target_column=y,
+                                                                       jmi=self.jmi)
 
-        if len(feature_score_redundancy) == 0:
-            return None
+            if len(feature_score_redundancy) == 0:
+                return None
 
-        m = len(feature_score_relevance) if len(feature_score_relevance) > 0 else 1
-        sum_m = sum(list(map(lambda x: x[1], feature_score_relevance)))
-
-        o = len(feature_score_redundancy) if feature_score_redundancy else 1
-        sum_o = sum(list(map(lambda x: x[1], feature_score_redundancy)))
+            o = len(feature_score_redundancy) if feature_score_redundancy else o
+            sum_o = sum(list(map(lambda x: x[1], feature_score_redundancy)))
+            final_features = list(dict(feature_score_redundancy).keys())
 
         score = (o * sum_m + m * sum_o) / (m * o)
 
-        return score, list(dict(feature_score_redundancy).keys())
+        return score, final_features
 
     def step_join(
             self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame, right_label: str

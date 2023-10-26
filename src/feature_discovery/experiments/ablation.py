@@ -14,7 +14,8 @@ from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
 def autofeat(dataset: Dataset, value_ratio: float, top_k: int, approach: str = Result.TFD,
-             pearson: bool = False, jmi: bool = False) -> Tuple[List[Result], List[Dict]]:
+             pearson: bool = False, jmi: bool = False,
+             no_relevance: bool = False, no_redundancy: bool = False) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
@@ -26,7 +27,9 @@ def autofeat(dataset: Dataset, value_ratio: float, top_k: int, approach: str = R
         top_k=top_k,
         task=dataset.dataset_type,
         pearson=pearson,
-        jmi=jmi
+        jmi=jmi,
+        no_redundancy=no_redundancy,
+        no_relevance=no_relevance,
     )
     bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
     end = time.time()

@@ -6,6 +6,8 @@ from typing import Dict, Optional, List
 class Result:
     TFD_PATH = "TFD_PATH"
     TFD = "AutoFeat"
+    TFD_REL = "AutoFeat_Rel"
+    TFD_RED = "AutoFeat_Red"
     TFD_Pearson = "AutoFeat-Pearson-MRMR"
     TFD_Pearson_JMI = "AutoFeat-Pearson-JMI"
     TFD_JMI = "AutoFeat-Spearman-JMI"
