@@ -3,8 +3,9 @@ from typing import List, Tuple, Optional
 import numpy as np
 import pandas as pd
 from ITMO_FS.filters.multivariate import CMIM, MRMR
-from ITMO_FS.filters.univariate import spearman_corr, pearson_corr
+from ITMO_FS.filters.univariate import spearman_corr
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
+from scipy import stats
 from sklearn.preprocessing import KBinsDiscretizer
 
 
@@ -29,11 +30,11 @@ class RelevanceRedundancy:
             return []
 
         if pearson:
-            correlation_score = abs(pearson_corr(np.array(dataframe[new_common_features]),
-                                                 np.array(target_column)))
+            correlation_score = abs(stats.pearsonr(np.array(dataframe[new_common_features]),
+                                                   np.array(target_column)))
         else:
-            correlation_score = abs(spearman_corr(np.array(dataframe[new_common_features]),
-                                                  np.array(target_column)))
+            correlation_score = abs(stats.spearmanr(np.array(dataframe[new_common_features]),
+                                                    np.array(target_column)))
 
         final_feature_scores_rel = []
         for value, name in list(zip(correlation_score, new_common_features)):
@@ -79,7 +80,7 @@ class RelevanceRedundancy:
                                                                 np.array(dataframe)[:, free_feature],
                                                                 target_column)))(np.array(new_features_int))
             mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy + (
-                        1 / np.array(selected_features_int).size) * cond_dependency
+                    1 / np.array(selected_features_int).size) * cond_dependency
         else:
             mrmr_scores = relevance - (1 / np.array(selected_features_int).size) * redundancy
 
