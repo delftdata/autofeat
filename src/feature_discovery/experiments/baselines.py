@@ -27,9 +27,9 @@ def join_all_bfs(dataset: Dataset):
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
 
     # Evaluate Join-All with all features
-    results, _ = evaluate_all_algorithms(dataframe=dataframe,
-                                         target_column=dataset.target_column,
-                                         problem_tye=dataset.dataset_type)
+    results, df = evaluate_all_algorithms(dataframe=dataframe,
+                                          target_column=dataset.target_column,
+                                          problem_tye=dataset.dataset_type)
     for res in results:
         res.approach = Result.JOIN_ALL_BFS
         res.data_path = joinall.partial_join_name
@@ -38,8 +38,8 @@ def join_all_bfs(dataset: Dataset):
 
     # Join-All with filter feature selection
     start = time.time()
-    X = dataframe.drop(columns=[dataset.target_column])
-    y = dataframe[dataset.target_column]
+    X = df.drop(columns=[dataset.target_column])
+    y = df[dataset.target_column]
     sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_correlation(np.array(X), np.array(y))))),
                                     key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
     spearman_features = list(map(lambda x: x[0], sorted_features_scores))
@@ -47,7 +47,7 @@ def join_all_bfs(dataset: Dataset):
     selected_features.append(dataset.target_column)
     end = time.time()
 
-    results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
+    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
                                          target_column=dataset.target_column,
                                          problem_tye=dataset.dataset_type)
     for res in results:
