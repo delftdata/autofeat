@@ -5,8 +5,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from ITMO_FS.filters.univariate import spearman_corr
 
+from feature_discovery.autofeat_pipeline.feature_selection import spearman_correlation
 from feature_discovery.baselines.arda import select_arda_features_budget_join
 from feature_discovery.baselines.join_all import JoinAll
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
@@ -27,7 +27,7 @@ def join_all_bfs(dataset: Dataset):
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
 
     # Evaluate Join-All with all features
-    results, _ = evaluate_all_algorithms(dataframe=dataframe,
+    results, df = evaluate_all_algorithms(dataframe=dataframe,
                                           target_column=dataset.target_column,
                                           problem_tye=dataset.dataset_type)
     for res in results:
@@ -38,9 +38,9 @@ def join_all_bfs(dataset: Dataset):
 
     # Join-All with filter feature selection
     start = time.time()
-    X = dataframe.drop(columns=[dataset.target_column])
-    y = dataframe[dataset.target_column]
-    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_corr(np.array(X), np.array(y))))),
+    X = df.drop(columns=[dataset.target_column])
+    y = df[dataset.target_column]
+    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_correlation(np.array(X), np.array(y))))),
                                     key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
     spearman_features = list(map(lambda x: x[0], sorted_features_scores))
     selected_features = spearman_features.copy()
@@ -109,7 +109,7 @@ def join_all_dfs(dataset: Dataset):
     start = time.time()
     X = df.drop(columns=[dataset.target_column])
     y = df[dataset.target_column]
-    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_corr(np.array(X), np.array(y))))),
+    sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_correlation(np.array(X), np.array(y))))),
                                     key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
     spearman_features = list(map(lambda x: x[0], sorted_features_scores))
     selected_features = spearman_features.copy()

@@ -1,26 +1,21 @@
 import logging
 import math
-import time
 from typing import List
 
-import deprecation as deprecation
 import numpy as np
 import pandas as pd
 import tqdm as tqdm
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
-from feature_discovery.autofeat_pipeline.join_data import join_directly_connected
 from feature_discovery.autofeat_pipeline.join_path_utils import compute_join_name
 from feature_discovery.config import DATA_FOLDER
-
 from feature_discovery.graph_processing.neo4j_transactions import (
     get_relation_properties_node_name,
     get_adjacent_nodes,
     get_node_by_id,
 )
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -46,7 +41,7 @@ def gen_features(A: pd.DataFrame, eta: float):
 
 
 def _bin_count_ranking(
-    feature_importance_scores: np.ndarray, mask: np.ndarray, bin_size: int
+        feature_importance_scores: np.ndarray, mask: np.ndarray, bin_size: int
 ) -> List:
     """
     Count how often the "real" features appear in front of the generated features
@@ -74,12 +69,12 @@ def _bin_count_ranking(
 
 
 def select_features(
-    normalised_matrix: pd.DataFrame,
-    y: pd.Series,
-    tau=0.1,
-    eta=0.2,
-    k=10,
-    regression: bool = False,
+        normalised_matrix: pd.DataFrame,
+        y: pd.Series,
+        tau=0.1,
+        eta=0.2,
+        k=10,
+        regression: bool = False,
 ) -> List:
     """
     Algorithm 1 from "ARDA: Automatic Relational Data Augmentation for Machine Learning"
@@ -117,12 +112,12 @@ def select_features(
 
 
 def wrapper_algo(
-    normalised_matrix: pd.DataFrame,
-    y: pd.Series,
-    T: List[float],
-    eta=0.2,
-    k=10,
-    regression: bool = False,
+        normalised_matrix: pd.DataFrame,
+        y: pd.Series,
+        T: List[float],
+        eta=0.2,
+        k=10,
+        regression: bool = False,
 ) -> List:
     """
     Algorithm 3 from "ARDA: Automatic Relational Data Augmentation for Machine Learning"
@@ -177,7 +172,7 @@ def wrapper_algo(
 
 
 def select_arda_features_budget_join(
-    base_node_id: str, target_column: str, sample_size: int, regression: bool = False
+        base_node_id: str, target_column: str, sample_size: int, regression: bool = False
 ):
     random_state = 42
     final_selected_features = []
@@ -260,8 +255,8 @@ def select_arda_features_budget_join(
 
             # Join tables, drop the right key as we don't need it anymore
             if (
-                left_table[f"{from_table}.{from_column}"].dtype
-                != right_table[f"{to_table}.{to_column}"].dtype
+                    left_table[f"{from_table}.{from_column}"].dtype
+                    != right_table[f"{to_table}.{to_column}"].dtype
             ):
                 continue
 
@@ -323,7 +318,9 @@ def select_arda_features_budget_join(
         ).fit_transform(X=joined_tables_batch)
 
         # Imputation of nan - with mean if not categorical, else with most common value
-        df = df.apply(lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(x.value_counts().index[0]))
+        df = df.apply(
+            lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
+                x.value_counts().index[0]))
 
         y = df[target_column]
         X = df.drop(columns=[target_column])

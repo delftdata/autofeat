@@ -3,10 +3,10 @@ from typing import List, Tuple, Optional
 import numpy as np
 import pandas as pd
 from ITMO_FS.filters.multivariate import CMIM, MRMR
-from ITMO_FS.filters.univariate import spearman_corr
 from ITMO_FS.utils.information_theory import entropy, conditional_mutual_information, conditional_entropy
-from scipy import stats
 from sklearn.preprocessing import KBinsDiscretizer
+
+from feature_discovery.autofeat_pipeline.feature_selection import pearson_correlation, spearman_correlation
 
 
 class RelevanceRedundancy:
@@ -30,11 +30,11 @@ class RelevanceRedundancy:
             return []
 
         if pearson:
-            correlation_score = abs(stats.pearsonr(np.array(dataframe[new_common_features]),
-                                                   np.array(target_column)))
+            correlation_score = abs(pearson_correlation(np.array(dataframe[new_common_features]),
+                                                        np.array(target_column)))
         else:
-            correlation_score = abs(stats.spearmanr(np.array(dataframe[new_common_features]),
-                                                    np.array(target_column)))
+            correlation_score = abs(spearman_correlation(np.array(dataframe[new_common_features]),
+                                                         np.array(target_column)))
 
         final_feature_scores_rel = []
         for value, name in list(zip(correlation_score, new_common_features)):
@@ -170,7 +170,7 @@ def measure_relevance(dataframe: pd.DataFrame,
     features = dataframe[common_features]
     # scores = information_gain(np.array(features), np.array(target_column)) / max(entropy(features),
     #                                                                              entropy(target_column))
-    scores = abs(spearman_corr(np.array(features), np.array(target_column)))
+    scores = abs(spearman_correlation(np.array(features), np.array(target_column)))
 
     final_feature_scores = []
     final_features = []
