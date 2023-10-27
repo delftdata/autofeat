@@ -47,7 +47,7 @@ def join_all_bfs(dataset: Dataset):
     selected_features.append(dataset.target_column)
     end = time.time()
 
-    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
+    results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
                                          target_column=dataset.target_column,
                                          problem_tye=dataset.dataset_type)
     for res in results:
