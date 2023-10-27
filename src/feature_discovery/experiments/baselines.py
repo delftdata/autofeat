@@ -47,7 +47,7 @@ def join_all_bfs(dataset: Dataset):
     selected_features.append(dataset.target_column)
     end = time.time()
 
-    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
+    results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
                                          target_column=dataset.target_column,
                                          problem_tye=dataset.dataset_type)
     for res in results:
@@ -60,10 +60,11 @@ def join_all_bfs(dataset: Dataset):
     all_results.extend(results)
 
     # Join-All with wrapper feature selection
-    X = df.apply(
+    df = df.apply(
         lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
             x.value_counts().index[0]))
-    feat_sel_time, new_X = run_svm_wrapper(X, y, forward_sel=True)
+    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[[dataset.target_column]],
+                                           forward_sel=True)
     results, _ = evaluate_all_algorithms(
         dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
         target_column=dataset.target_column,
@@ -119,7 +120,7 @@ def join_all_dfs(dataset: Dataset):
     selected_features.append(dataset.target_column)
     end = time.time()
 
-    results, _ = evaluate_all_algorithms(dataframe=df[selected_features],
+    results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
                                          target_column=dataset.target_column,
                                          problem_tye=dataset.dataset_type)
     for res in results:
@@ -132,10 +133,11 @@ def join_all_dfs(dataset: Dataset):
     all_results.extend(results)
 
     # Join-All with wrapper feature selection
-    X = df.apply(
+    df = df.apply(
         lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
             x.value_counts().index[0]))
-    feat_sel_time, new_X = run_svm_wrapper(X, y, forward_sel=True)
+    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[[dataset.target_column]],
+                                           forward_sel=True)
     results, _ = evaluate_all_algorithms(
         dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
         target_column=dataset.target_column,
