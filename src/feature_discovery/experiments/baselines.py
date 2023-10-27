@@ -147,9 +147,9 @@ def join_all_dfs(dataset: Dataset):
 
 
 def non_augmented(dataframe: pd.DataFrame, dataset: Dataset):
-    results = evaluate_all_algorithms(dataframe=dataframe,
-                                      target_column=dataset.target_column,
-                                      problem_tye=dataset.dataset_type)
+    results, _ = evaluate_all_algorithms(dataframe=dataframe,
+                                         target_column=dataset.target_column,
+                                         problem_tye=dataset.dataset_type)
     for res in results:
         res.approach = Result.BASE
         res.data_path = dataset.base_table_label
