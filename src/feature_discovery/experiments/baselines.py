@@ -60,6 +60,9 @@ def join_all_bfs(dataset: Dataset):
     all_results.extend(results)
 
     # Join-All with wrapper feature selection
+    X = df.apply(
+        lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
+            x.value_counts().index[0]))
     feat_sel_time, new_X = run_svm_wrapper(X, y, forward_sel=True)
     results, _ = evaluate_all_algorithms(
         dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
