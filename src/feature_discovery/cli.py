@@ -148,7 +148,7 @@ def run_all(
         ] = "all_results_autogluon.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs all experiments (ARDA + base + TFD)."""
+    """Runs all experiments (ARDA + Base + TFD + Ablation + Join-All)."""
     get_all_results(value_ratio, problem_type, dataset_labels, results_file)
 
 

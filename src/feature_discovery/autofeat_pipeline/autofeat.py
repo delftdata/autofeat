@@ -226,12 +226,12 @@ class AutoFeat:
                                        no_relevance: bool = False,
                                        no_redundancy: bool = False) -> Optional[Tuple[float, List[dict]]]:
 
-        df = AutoMLPipelineFeatureGenerator(
-            enable_text_special_features=False, enable_text_ngram_features=False
-        ).fit_transform(X=dataframe)
+        # df = AutoMLPipelineFeatureGenerator(
+        #     enable_text_special_features=False, enable_text_ngram_features=False
+        # ).fit_transform(X=dataframe)
 
-        X = df.drop(columns=[self.target_column])
-        y = df[self.target_column]
+        X = dataframe.drop(columns=[self.target_column])
+        y = dataframe[self.target_column]
 
         features = list(set(X.columns).intersection(set(new_features)))
         top_feat = len(features) if len(features) < self.top_k else self.top_k

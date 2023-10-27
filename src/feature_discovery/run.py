@@ -65,7 +65,6 @@ def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65
     logging.debug("Save results ... ")
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
         f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
-    pd.DataFrame(spearman_mrmr_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd.csv", index=False)
 
     return spearman_mrmr_results
 
@@ -109,6 +108,11 @@ def get_all_results(
         all_results.extend(result_base)
         result_arda = get_arda_results(dataset)
         all_results.extend(result_arda)
+        results_ablation = get_autofeat_ablation(dataset)
+        all_results.extend(results_ablation)
+        results_join_all = get_join_all_results(dataset)
+        all_results.extend(results_join_all)
+        pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_all_results.csv", index=False)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -160,9 +164,10 @@ def transform_arff_to_csv(save_path: str, dataset_path: str):
 if __name__ == "__main__":
     # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
     #                       "original_data/originals/miniboone_dataset.arff")
-    dataset = filter_datasets(["credit"])[0]
+    dataset = filter_datasets(["school"])[0]
     # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
-    get_autofeat_ablation(dataset)
+    get_join_all_results(dataset)
+    # get_autofeat_ablation(dataset)
     # get_arda_results(dataset)
     # get_base_results(dataset)
     # export_neo4j_connections()
