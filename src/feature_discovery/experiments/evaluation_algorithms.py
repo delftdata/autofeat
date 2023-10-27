@@ -11,7 +11,7 @@ from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}, 'KNN': {},
+hyper_parameters = {'KNN': {},
                     'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
                     }
 
@@ -117,7 +117,7 @@ def run_svm_wrapper(X, y, backward_sel=False, forward_sel=False):
 
     end = time.time()
 
-    return end-start, new_df
+    return end - start, new_df
 
 
 def run_naive_bayes(dataframe: pd.DataFrame, target_column: str):
