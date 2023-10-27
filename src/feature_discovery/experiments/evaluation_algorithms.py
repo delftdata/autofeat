@@ -11,7 +11,11 @@ from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
-hyper_parameters = {'KNN': {},
+hyper_parameters = {"RF": {},
+                    "GBM": {},
+                    "XT": {},
+                    "XGB": {},
+                    'KNN': {},
                     'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
                     }
 

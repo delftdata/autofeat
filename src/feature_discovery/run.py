@@ -16,8 +16,6 @@ from feature_discovery.graph_processing.neo4j_transactions import export_dataset
 
 logging.getLogger().setLevel(logging.WARNING)
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
-
 init_datasets()
 
 

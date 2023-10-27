@@ -10,16 +10,6 @@ from feature_discovery.experiments.evaluation_algorithms import evaluate_all_alg
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
-hyper_parameters = {
-    "RF": {},
-    "GBM": {},
-    "XT": {},
-    "XGB": {},
-    "KNN": {},
-    "CAT": {},
-    "LR": {}
-}
-
 
 def evaluate_paths(bfs_result: AutoFeat, problem_type: str, top_k_paths: int = 15) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
