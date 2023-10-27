@@ -321,8 +321,12 @@ def select_arda_features_budget_join(
         df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
         ).fit_transform(X=joined_tables_batch)
+
+        # Imputation of nan - with mean if not categorical, else with most common value
+        df = df.apply(lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(x.value_counts().index[0]))
+
+        y = df[target_column]
         X = df.drop(columns=[target_column])
-        y = joined_tables_batch[target_column]
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
         T = np.arange(0.0, 1.0, 0.1)
