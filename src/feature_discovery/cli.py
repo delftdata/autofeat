@@ -16,8 +16,7 @@ from feature_discovery.run import (
     get_tfd_results,
     get_all_results,
     get_results_tune_value_ratio_classification,
-    get_results_tune_k, get_join_all_results, get_autofeat_ablation, get_autofeat_disable_components,
-)
+    get_results_tune_k, get_join_all_results, get_autofeat_ablation, )
 
 app = typer.Typer()
 
@@ -101,34 +100,13 @@ def run_ablation(
             str, typer.Option(help="CSV file where the results will be written")] = "results_tfd_ablation.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs the 3 types of TFD experiments: Spearman + JMI, Pearson + MRMR, Pearson + JMI."""
+    """Runs the 5 types of TFD experiments: Spearman + JMI, Pearson + MRMR, Pearson + JMI,
+    (no relevance) MRMR, (no redundancy) Spearman
+    """
     all_results = []
     datasets = filter_datasets(dataset_labels, problem_type)
     for dataset in tqdm.tqdm(datasets):
         all_results.extend(get_autofeat_ablation(dataset, top_k, value_ratio))
-
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
-
-
-@app.command()
-def run_remove_components(
-        top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
-        dataset_labels: Annotated[
-            Optional[List[str]], typer.Option(
-                help="Whether to run only on a list of datasets. Filters by dataset labels")
-        ] = None,
-        problem_type: Annotated[
-            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
-        ] = None,
-        results_file: Annotated[
-            str, typer.Option(help="CSV file where the results will be written")] = "results_tfd_ablation.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
-):
-    """Runs the 3 types of TFD experiments: Spearman + JMI, Pearson + MRMR, Pearson + JMI."""
-    all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
-    for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_autofeat_disable_components(dataset, top_k, value_ratio))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 

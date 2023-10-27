@@ -81,14 +81,6 @@ def get_autofeat_ablation(dataset: Dataset, top_k: int = 15, value_ratio: float 
     spearman_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
                                        approach=Result.TFD_JMI, jmi=True)
     all_results.extend(spearman_jmi_results)
-
-    logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_ablation.csv", index=False)
-    return all_results
-
-
-def get_autofeat_disable_components(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65):
-    all_results = []
     non_redundant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
                                          approach=Result.TFD_RED, no_relevance=True)
     all_results.extend(non_redundant_features)
@@ -97,8 +89,7 @@ def get_autofeat_disable_components(dataset: Dataset, top_k: int = 15, value_rat
     all_results.extend(relevant_features)
 
     logging.debug("Save results ... ")
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_disable_components.csv",
-                                     index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_ablation.csv", index=False)
     return all_results
 
 
