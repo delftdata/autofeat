@@ -63,7 +63,7 @@ def join_all_bfs(dataset: Dataset):
     df = df.apply(
         lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
             x.value_counts().index[0]))
-    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[[dataset.target_column]],
+    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[dataset.target_column],
                                            forward_sel=True)
     results, _ = evaluate_all_algorithms(
         dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
@@ -136,7 +136,7 @@ def join_all_dfs(dataset: Dataset):
     df = df.apply(
         lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
             x.value_counts().index[0]))
-    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[[dataset.target_column]],
+    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[dataset.target_column],
                                            forward_sel=True)
     results, _ = evaluate_all_algorithms(
         dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),

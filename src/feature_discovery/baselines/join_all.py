@@ -106,6 +106,8 @@ class JoinAll:
             logging.debug(f"\tJoin name: {join_name}")
 
             # Step - Join
+            print(prop)
+            print(join_prop)
             joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
                                                                     left_df=previous_join,
                                                                     right_df=right_df,
