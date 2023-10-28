@@ -92,6 +92,9 @@ class JoinAll:
             if join_prop['from_label'] != from_table:
                 if join_prop['to_label'] == from_table:
                     join_prop['from_label'] = to_table
+                    aux = join_prop['from_column']
+                    join_prop['from_column'] = join_prop['to_column']
+                    join_prop['to_column'] = aux
                     join_prop['to_label'] = from_table
                 else:
                     continue
@@ -106,8 +109,6 @@ class JoinAll:
             logging.debug(f"\tJoin name: {join_name}")
 
             # Step - Join
-            print(prop)
-            print(join_prop)
             joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
                                                                     left_df=previous_join,
                                                                     right_df=right_df,
