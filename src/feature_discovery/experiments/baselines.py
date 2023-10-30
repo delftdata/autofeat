@@ -25,6 +25,7 @@ def join_all_bfs(dataset: Dataset):
     )
     dataframe = joinall.join_all_bfs(queue={str(dataset.base_table_id)})
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
+    print(dataframe.shape)
 
     # Evaluate Join-All with all features
     results, df = evaluate_all_algorithms(dataframe=dataframe,
