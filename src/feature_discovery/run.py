@@ -41,8 +41,8 @@ def get_base_results(dataset: Dataset):
 
 def get_join_all_results(dataset: Dataset):
     results_bfs = join_all_bfs(dataset)
-    results_dfs = join_all_dfs(dataset)
-    results_bfs.extend(results_dfs)
+    # results_dfs = join_all_dfs(dataset)
+    # results_bfs.extend(results_dfs)
 
     # Save intermediate results
     pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
