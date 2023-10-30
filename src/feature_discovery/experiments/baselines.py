@@ -60,23 +60,23 @@ def join_all_bfs(dataset: Dataset):
     all_results.extend(results)
 
     # Join-All with wrapper feature selection
-    df = df.apply(
-        lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
-            x.value_counts().index[0]))
-    feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[dataset.target_column],
-                                           forward_sel=True)
-    results, _ = evaluate_all_algorithms(
-        dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
-        target_column=dataset.target_column,
-        problem_tye=dataset.dataset_type)
-    for res in results:
-        res.approach = Result.JOIN_ALL_BFS_W
-        res.data_path = joinall.partial_join_name
-        res.data_label = dataset.base_table_label
-        res.join_path_features = list(new_X.columns)
-        res.feature_selection_time = feat_sel_time
-        res.total_time += res.feature_selection_time
-    all_results.extend(results)
+    # df = df.apply(
+    #     lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
+    #         x.value_counts().index[0]))
+    # feat_sel_time, new_X = run_svm_wrapper(df.drop(columns=[dataset.target_column]), df[dataset.target_column],
+    #                                        forward_sel=True)
+    # results, _ = evaluate_all_algorithms(
+    #     dataframe=pd.concat([new_X.reset_index(drop=True), y.reset_index(drop=True)], axis=1),
+    #     target_column=dataset.target_column,
+    #     problem_tye=dataset.dataset_type)
+    # for res in results:
+    #     res.approach = Result.JOIN_ALL_BFS_W
+    #     res.data_path = joinall.partial_join_name
+    #     res.data_label = dataset.base_table_label
+    #     res.join_path_features = list(new_X.columns)
+    #     res.feature_selection_time = feat_sel_time
+    #     res.total_time += res.feature_selection_time
+    # all_results.extend(results)
 
     return all_results
 

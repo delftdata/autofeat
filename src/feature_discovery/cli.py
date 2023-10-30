@@ -122,7 +122,7 @@ def run_tfd(
             str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
         ] = None,
         results_file: Annotated[
-            str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
+            str, typer.Option(help="CSV file where the results will be written")] = "results_autofeat.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
     """Runs the TFD experiments."""
