@@ -1,7 +1,6 @@
 import logging
 import math
 import time
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,8 +9,7 @@ from feature_discovery.autofeat_pipeline.feature_selection import spearman_corre
 from feature_discovery.baselines.arda import select_arda_features_budget_join
 from feature_discovery.baselines.join_all import JoinAll
 from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
-from feature_discovery.experiments.evaluation_algorithms import evaluate_all_algorithms, \
-    run_svm_wrapper
+from feature_discovery.experiments.evaluation_algorithms import evaluate_all_algorithms
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets

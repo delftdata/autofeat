@@ -1,10 +1,8 @@
 import logging
 import time
 
-import numpy as np
 import pandas as pd
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from sklearn.model_selection import cross_validate
 from sklearn.model_selection import train_test_split
 
 from feature_discovery.config import AUTO_GLUON_FOLDER
@@ -12,12 +10,12 @@ from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
 hyper_parameters = {
-    # "RF": {},
-    # "GBM": {},
-    # "XT": {},
-    # "XGB": {},
-    'KNN': {},
-    'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
+    "RF": {},
+    "GBM": {},
+    "XT": {},
+    "XGB": {},
+    # 'KNN': {},
+    # 'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
 }
 
 
