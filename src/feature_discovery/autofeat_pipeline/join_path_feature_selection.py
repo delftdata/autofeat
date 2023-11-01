@@ -58,7 +58,7 @@ class RelevanceRedundancy:
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
         new_features_int = [i for i, value in enumerate(dataframe.columns) if value in relevant_features]
 
-        est = KBinsDiscretizer(n_bins=5, encode='ordinal')
+        est = KBinsDiscretizer(strategy='uniform', encode='ordinal')
         try:
             discr_dataframe = est.fit_transform(dataframe)
         except ValueError:
