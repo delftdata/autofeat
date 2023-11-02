@@ -112,7 +112,7 @@ def run_ablation(
 
 
 @app.command()
-def run_tfd(
+def run_autofeat(
         top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
@@ -125,7 +125,7 @@ def run_tfd(
             str, typer.Option(help="CSV file where the results will be written")] = "results_autofeat.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs the TFD experiments."""
+    """Runs the AutoFeat experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels)
     for dataset in tqdm.tqdm(datasets):

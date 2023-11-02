@@ -105,15 +105,17 @@ def get_all_results(
     datasets = filter_datasets(dataset_labels)
 
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
-        all_results.extend(result_bfs)
         result_base = get_base_results(dataset, algorithm=algorithm)
         all_results.extend(result_base)
+    for dataset in tqdm.tqdm(datasets):
         result_arda = get_arda_results(dataset, algorithm=algorithm)
         all_results.extend(result_arda)
-        results_join_all = get_join_all_results(dataset)
+    for dataset in tqdm.tqdm(datasets):
+        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
+        all_results.extend(result_bfs)
+    for dataset in tqdm.tqdm(datasets):
+        results_join_all = get_join_all_results(dataset, algorithm=algorithm)
         all_results.extend(results_join_all)
-        pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_all_results.csv", index=False)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
