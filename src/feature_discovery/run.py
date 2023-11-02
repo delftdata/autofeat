@@ -7,7 +7,7 @@ import tqdm
 
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
 from feature_discovery.experiments.ablation import autofeat
-from feature_discovery.experiments.baselines import non_augmented, join_all_bfs, arda
+from feature_discovery.experiments.baselines import non_augmented, arda, join_all
 from feature_discovery.experiments.dataset_object import Dataset
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
@@ -40,11 +40,11 @@ def get_base_results(dataset: Dataset, algorithm: str):
 
 
 def get_join_all_results(dataset: Dataset, algorithm: str):
-    results_bfs = join_all_bfs(dataset, algorithm)
+    results = join_all(dataset, algorithm)
 
     # Save intermediate results
-    pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
-    return results_bfs
+    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
+    return results
 
 
 def get_arda_results(dataset: Dataset, algorithm: str, sample_size: int = 3000) -> List:
@@ -165,10 +165,10 @@ def transform_arff_to_csv(save_path: str, dataset_path: str):
 if __name__ == "__main__":
     # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
     #                       "original_data/originals/miniboone_dataset.arff")
-    dataset = filter_datasets(["school"])[0]
+    dataset = filter_datasets(["eyemove"])[0]
     # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
-    # get_join_all_results(dataset)
+    get_join_all_results(dataset, 'XGB')
     # get_autofeat_ablation(dataset)
     # get_arda_results(dataset)
     # get_base_results(dataset)
-    export_neo4j_connections()
+    # export_neo4j_connections()

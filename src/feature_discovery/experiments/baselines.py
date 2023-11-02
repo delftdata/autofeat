@@ -1,6 +1,7 @@
 import logging
 import math
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -63,6 +64,67 @@ def join_all_bfs(dataset: Dataset, algorithm: str):
     return all_results
 
 
+def join_all(dataset: Dataset, algorithm: str):
+    start = time.time()
+    all_results = []
+    joinall = JoinAll(
+        base_table_id=str(dataset.base_table_id),
+        target_column=dataset.target_column,
+    )
+    join_all_paths = joinall.join_all(queue_with_nodes={str(dataset.base_table_id)})
+    end = time.time()
+
+    for path in join_all_paths:
+        dataframe = pd.read_csv(
+                Path(joinall.temp_dir.name) / joinall.join_name_mapping[path],
+                header=0,
+                engine="python",
+                encoding="utf8",
+                quotechar='"',
+                escapechar='\\',
+            )
+
+        dataframe.drop(columns=joinall.join_keys[path], inplace=True)
+
+        # Evaluate Join-All with all features
+        results, df = evaluate_all_algorithms(dataframe=dataframe,
+                                              target_column=dataset.target_column,
+                                              problem_type=dataset.dataset_type,
+                                              algorithm=algorithm)
+        for res in results:
+            res.total_time += end - start
+            res.approach = Result.JOIN_ALL_BFS
+            res.data_path = path
+            res.data_label = dataset.base_table_label
+        all_results.extend(results)
+
+        # Join-All with filter feature selection
+        start = time.time()
+        X = df.drop(columns=[dataset.target_column])
+        y = df[dataset.target_column]
+        sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_correlation(np.array(X), np.array(y))))),
+                                        key=lambda s: s[1], reverse=True)[:math.floor(len(X.columns) / 2)]
+        spearman_features = list(map(lambda x: x[0], sorted_features_scores))
+        selected_features = spearman_features.copy()
+        selected_features.append(dataset.target_column)
+        end = time.time()
+
+        results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
+                                             target_column=dataset.target_column,
+                                             problem_type=dataset.dataset_type,
+                                             algorithm=algorithm)
+        for res in results:
+            res.approach = Result.JOIN_ALL_BFS_F
+            res.data_path = joinall.partial_join_name
+            res.data_label = dataset.base_table_label
+            res.join_path_features = spearman_features
+            res.feature_selection_time = end - start
+            res.total_time += res.feature_selection_time
+        all_results.extend(results)
+
+    return all_results
+
+
 def non_augmented(dataframe: pd.DataFrame, dataset: Dataset, algorithm: str):
     results, _ = evaluate_all_algorithms(dataframe=dataframe,
                                          target_column=dataset.target_column,
@@ -117,5 +179,5 @@ def arda(dataset: Dataset, algorithm: str, sample_size: int):
 if __name__ == "__main__":
     init_datasets()
     dataset = filter_datasets(["credit"])[0]
+    join_all(dataset, 'XGB')
     # join_all_bfs(dataset)
-    # join_all_dfs(dataset)
