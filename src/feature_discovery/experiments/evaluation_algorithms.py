@@ -1,7 +1,9 @@
 import logging
 import time
+from typing import Optional, List
 
 import pandas as pd
+import typer as typer
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from sklearn.model_selection import train_test_split
 
@@ -9,14 +11,27 @@ from feature_discovery.config import AUTO_GLUON_FOLDER
 from feature_discovery.experiments.dataset_object import REGRESSION
 from feature_discovery.experiments.result_object import Result
 
-hyper_parameters = {
-    "RF": {},
-    "GBM": {},
-    "XT": {},
-    "XGB": {},
-    'KNN': {},
-    'LR': [{'penalty': 'L1'}, {'penalty': 'L2'}]
-}
+hyper_parameters = [
+    {"RF": {}},
+    {"GBM": {}},
+    {"XT": {}},
+    {"XGB": {}},
+    {'KNN': {}},
+    {'LR': {'penalty': 'L1'}},
+]
+
+
+def get_hyperparameters(algorithm: Optional[str] = None) -> List[dict]:
+    if algorithm is None:
+        return hyper_parameters
+
+    model = {algorithm: {}}
+    if model in hyper_parameters:
+        return [model]
+    else:
+        raise typer.BadParameter(
+            "Unsupported algorithm. Choose one from the list: [RF, GBM, XT, XGB, KNN, LR1]."
+        )
 
 
 def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: str, algorithms_to_run: dict):
@@ -68,21 +83,25 @@ def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: st
     return end - start, results
 
 
-def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, problem_tye: str = None):
+def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, algorithm: str, problem_type: str = 'binary'):
+    hyperparams = get_hyperparameters(algorithm)
+    all_results = []
     df = AutoMLPipelineFeatureGenerator(
         enable_text_special_features=False, enable_text_ngram_features=False
     ).fit_transform(X=dataframe)
 
     logging.debug(f"Training AutoGluon ... ")
-    runtime, results = run_auto_gluon(
-        dataframe=df,
-        target_column=target_column,
-        algorithms_to_run=hyper_parameters,
-        problem_type=problem_tye,
-    )
+    for model in hyperparams:
+        runtime, results = run_auto_gluon(
+            dataframe=df,
+            target_column=target_column,
+            algorithms_to_run=model,
+            problem_type=problem_type,
+        )
 
-    for res in results:
-        res.train_time = runtime
-        res.total_time += res.train_time
+        for res in results:
+            res.train_time = runtime
+            res.total_time += res.train_time
+        all_results.extend(results)
 
-    return results, df
+    return all_results, df

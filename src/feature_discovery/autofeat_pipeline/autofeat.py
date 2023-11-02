@@ -58,14 +58,12 @@ class AutoFeat:
 
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
-        self.rel_red = RelevanceRedundancy(target_column)
+        self.rel_red = RelevanceRedundancy(target_column, jmi=jmi, pearson=pearson)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.partial_join = self.initialisation()
 
         # Ablation study parameters
         self.sample_data_step = True
-        self.pearson = pearson
-        self.jmi = jmi
         self.no_relevance = no_relevance
         self.no_redundancy = no_redundancy
 
@@ -198,8 +196,6 @@ class AutoFeat:
                                                                      selected_features=
                                                                      self.partial_join_selected_features[
                                                                          previous_join_name],
-                                                                     no_relevance=self.no_relevance,
-                                                                     no_redundancy=self.no_redundancy,
                                                                      )
                         if result is not None:
                             self.ranking[join_name] = result[0]
@@ -222,9 +218,7 @@ class AutoFeat:
 
     def streaming_relevance_redundancy(self, dataframe: pd.DataFrame,
                                        new_features: List[str],
-                                       selected_features: List[str],
-                                       no_relevance: bool = False,
-                                       no_redundancy: bool = False) -> Optional[Tuple[float, List[dict]]]:
+                                       selected_features: List[str]) -> Optional[Tuple[float, List[dict]]]:
 
         df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
@@ -239,11 +233,10 @@ class AutoFeat:
         relevant_features = new_features
         sum_m = 0
         m = 1
-        if not no_relevance:
+        if not self.no_relevance:
             feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
                                                                      new_features=features,
-                                                                     target_column=y,
-                                                                     pearson=self.pearson)[:top_feat]
+                                                                     target_column=y)[:top_feat]
             if len(feature_score_relevance) == 0:
                 return None
             relevant_features = list(dict(feature_score_relevance).keys())
@@ -253,12 +246,11 @@ class AutoFeat:
         final_features = relevant_features
         sum_o = 0
         o = 1
-        if not no_redundancy:
+        if not self.no_redundancy:
             feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
                                                                        selected_features=selected_features,
                                                                        relevant_features=relevant_features,
-                                                                       target_column=y,
-                                                                       jmi=self.jmi)
+                                                                       target_column=y)
 
             if len(feature_score_redundancy) == 0:
                 return None

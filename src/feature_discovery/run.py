@@ -19,7 +19,7 @@ logging.getLogger().setLevel(logging.WARNING)
 init_datasets()
 
 
-def get_base_results(dataset: Dataset):
+def get_base_results(dataset: Dataset, algorithm: str):
     logging.debug(f"Base result on table {dataset.base_table_id}")
 
     dataframe = pd.read_csv(
@@ -31,7 +31,7 @@ def get_base_results(dataset: Dataset):
         escapechar="\\",
     )
 
-    results = non_augmented(dataframe=dataframe, dataset=dataset)
+    results = non_augmented(dataframe=dataframe, dataset=dataset, algorithm=algorithm)
 
     # Save intermediate results
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
@@ -39,24 +39,27 @@ def get_base_results(dataset: Dataset):
     return results
 
 
-def get_join_all_results(dataset: Dataset):
-    results_bfs = join_all_bfs(dataset)
+def get_join_all_results(dataset: Dataset, algorithm: str):
+    results_bfs = join_all_bfs(dataset, algorithm)
 
     # Save intermediate results
     pd.DataFrame(results_bfs).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
     return results_bfs
 
 
-def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
-    results = arda(dataset, sample_size)
+def get_arda_results(dataset: Dataset, algorithm: str, sample_size: int = 3000) -> List:
+    results = arda(dataset, algorithm, sample_size)
 
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 
     return results
 
 
-def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65) -> List:
-    spearman_mrmr_results, top_k_paths = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio)
+def get_tfd_results(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65) -> List:
+    spearman_mrmr_results, top_k_paths = autofeat(dataset=dataset,
+                                                  top_k=top_k,
+                                                  value_ratio=value_ratio,
+                                                  algorithm=algorithm)
 
     logging.debug("Save results ... ")
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
@@ -65,21 +68,26 @@ def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65
     return spearman_mrmr_results
 
 
-def get_autofeat_ablation(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65):
+def get_autofeat_ablation(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65):
     all_results = []
     pearson_mrmr_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       algorithm=algorithm,
                                        approach=Result.TFD_Pearson, pearson=True)
     all_results.extend(pearson_mrmr_results)
     pearson_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                      algorithm=algorithm,
                                       approach=Result.TFD_Pearson_JMI, pearson=True, jmi=True)
     all_results.extend(pearson_jmi_results)
     spearman_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       algorithm=algorithm,
                                        approach=Result.TFD_JMI, jmi=True)
     all_results.extend(spearman_jmi_results)
     non_redundant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                         algorithm=algorithm,
                                          approach=Result.TFD_RED, no_relevance=True)
     all_results.extend(non_redundant_features)
     relevant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                    algorithm=algorithm,
                                     approach=Result.TFD_REL, no_redundancy=True)
     all_results.extend(relevant_features)
 
@@ -89,23 +97,20 @@ def get_autofeat_ablation(dataset: Dataset, top_k: int = 15, value_ratio: float 
 
 
 def get_all_results(
-        value_ratio: float,
-        problem_type: Optional[str],
         dataset_labels: Optional[List[str]] = None,
-        results_file: str = "all_results_autogluon.csv",
+        algorithm: Optional[str] = None,
+        results_file: str = "all_results.csv",
 ):
     all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
+    datasets = filter_datasets(dataset_labels)
 
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, value_ratio=value_ratio)
+        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
         all_results.extend(result_bfs)
-        result_base = get_base_results(dataset)
+        result_base = get_base_results(dataset, algorithm=algorithm)
         all_results.extend(result_base)
-        result_arda = get_arda_results(dataset)
+        result_arda = get_arda_results(dataset, algorithm=algorithm)
         all_results.extend(result_arda)
-        results_ablation = get_autofeat_ablation(dataset)
-        all_results.extend(results_ablation)
         results_join_all = get_join_all_results(dataset)
         all_results.extend(results_join_all)
         pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_all_results.csv", index=False)
@@ -162,8 +167,8 @@ if __name__ == "__main__":
     #                       "original_data/originals/miniboone_dataset.arff")
     dataset = filter_datasets(["school"])[0]
     # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
-    get_join_all_results(dataset)
+    # get_join_all_results(dataset)
     # get_autofeat_ablation(dataset)
     # get_arda_results(dataset)
     # get_base_results(dataset)
-    # export_neo4j_connections()
+    export_neo4j_connections()

@@ -11,7 +11,7 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
 
-def evaluate_paths(bfs_result: AutoFeat, problem_type: str, top_k_paths: int = 15) -> Tuple[List[Result], List[Tuple]]:
+def evaluate_paths(bfs_result: AutoFeat, problem_type: str, algorithm: str, top_k_paths: int = 15) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
     sorted_paths = sorted(bfs_result.ranking.items(), key=lambda r: (r[1], -get_path_length(r[0])), reverse=True)
     top_k_path_list = sorted_paths if len(sorted_paths) < top_k_paths else sorted_paths[:top_k_paths]
@@ -58,7 +58,8 @@ def evaluate_paths(bfs_result: AutoFeat, problem_type: str, top_k_paths: int = 1
 
         results, _ = evaluate_all_algorithms(dataframe=dataframe[features],
                                              target_column=bfs_result.target_column,
-                                             problem_tye=problem_type)
+                                             problem_type=problem_type,
+                                             algorithm=algorithm)
         for result in results:
             result.rank = rank
             result.data_path = path_list

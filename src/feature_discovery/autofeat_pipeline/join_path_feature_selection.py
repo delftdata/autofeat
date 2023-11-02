@@ -10,17 +10,18 @@ from feature_discovery.autofeat_pipeline.feature_selection import pearson_correl
 
 
 class RelevanceRedundancy:
-    def __init__(self, target_column: str):
+    def __init__(self, target_column: str, jmi: bool = False, pearson: bool = False):
         self.target_column = target_column
         self.target_entropy = None
         self.dataframe_entropy = {}
         self.dataframe_conditional_entropy = {}
+        self.jmi = jmi
+        self.pearson = pearson
 
     def measure_relevance(self,
                           dataframe: pd.DataFrame,
                           new_features: List[str],
-                          target_column: pd.Series,
-                          pearson=False) -> List[tuple]:
+                          target_column: pd.Series) -> List[tuple]:
 
         if self.target_column in new_features:
             new_features.remove(self.target_column)
@@ -29,7 +30,7 @@ class RelevanceRedundancy:
         if len(new_common_features) == 0:
             return []
 
-        if pearson:
+        if self.pearson:
             correlation_score = abs(pearson_correlation(np.array(dataframe[new_common_features]),
                                                         np.array(target_column)))
         else:
@@ -52,8 +53,7 @@ class RelevanceRedundancy:
                            dataframe: pd.DataFrame,
                            selected_features: List[str],
                            relevant_features: List[str],
-                           target_column: pd.Series,
-                           jmi: bool = False) -> List[tuple]:
+                           target_column: pd.Series) -> List[tuple]:
 
         selected_features_int = [i for i, value in enumerate(dataframe.columns) if value in selected_features]
         new_features_int = [i for i, value in enumerate(dataframe.columns) if value in relevant_features]
@@ -73,7 +73,7 @@ class RelevanceRedundancy:
                                                             np.array(discr_dataframe)[:, free_feature])))(
             new_features_int)
 
-        if jmi:
+        if self.jmi:
             cond_dependency = np.vectorize(
                 lambda free_feature: np.sum(np.apply_along_axis(self.cached_conditional_mutual_information, 0,
                                                                 np.array(dataframe)[:, np.array(selected_features_int)],

@@ -15,7 +15,7 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
-def join_all_bfs(dataset: Dataset):
+def join_all_bfs(dataset: Dataset, algorithm: str):
     all_results = []
     joinall = JoinAll(
         base_table_id=str(dataset.base_table_id),
@@ -28,7 +28,8 @@ def join_all_bfs(dataset: Dataset):
     # Evaluate Join-All with all features
     results, df = evaluate_all_algorithms(dataframe=dataframe,
                                           target_column=dataset.target_column,
-                                          problem_tye=dataset.dataset_type)
+                                          problem_type=dataset.dataset_type,
+                                          algorithm=algorithm)
     for res in results:
         res.approach = Result.JOIN_ALL_BFS
         res.data_path = joinall.partial_join_name
@@ -48,7 +49,8 @@ def join_all_bfs(dataset: Dataset):
 
     results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
                                          target_column=dataset.target_column,
-                                         problem_tye=dataset.dataset_type)
+                                         problem_type=dataset.dataset_type,
+                                         algorithm=algorithm)
     for res in results:
         res.approach = Result.JOIN_ALL_BFS_F
         res.data_path = joinall.partial_join_name
@@ -61,10 +63,11 @@ def join_all_bfs(dataset: Dataset):
     return all_results
 
 
-def non_augmented(dataframe: pd.DataFrame, dataset: Dataset):
+def non_augmented(dataframe: pd.DataFrame, dataset: Dataset, algorithm: str):
     results, _ = evaluate_all_algorithms(dataframe=dataframe,
                                          target_column=dataset.target_column,
-                                         problem_tye=dataset.dataset_type)
+                                         problem_type=dataset.dataset_type,
+                                         algorithm=algorithm)
     for res in results:
         res.approach = Result.BASE
         res.data_path = dataset.base_table_label
@@ -73,7 +76,7 @@ def non_augmented(dataframe: pd.DataFrame, dataset: Dataset):
     return results
 
 
-def arda(dataset: Dataset, sample_size: int):
+def arda(dataset: Dataset, algorithm: str, sample_size: int):
     logging.debug(f"ARDA result on table {dataset.base_table_id}")
 
     start = time.time()
@@ -99,7 +102,8 @@ def arda(dataset: Dataset, sample_size: int):
     logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
     results, _ = evaluate_all_algorithms(dataframe=dataframe[features],
                                          target_column=dataset.target_column,
-                                         problem_tye=dataset.dataset_type)
+                                         algorithm=algorithm,
+                                         problem_type=dataset.dataset_type)
     for result in results:
         result.approach = Result.ARDA
         result.data_label = dataset.base_table_label

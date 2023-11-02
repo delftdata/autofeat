@@ -13,7 +13,8 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
-def autofeat(dataset: Dataset, value_ratio: float, top_k: int, approach: str = Result.TFD,
+def autofeat(dataset: Dataset, value_ratio: float, top_k: int, algorithm: str,
+             approach: str = Result.TFD,
              pearson: bool = False, jmi: bool = False,
              no_relevance: bool = False, no_redundancy: bool = False) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
@@ -38,6 +39,7 @@ def autofeat(dataset: Dataset, value_ratio: float, top_k: int, approach: str = R
 
     all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
                                               problem_type=dataset.dataset_type,
+                                              algorithm=algorithm
                                               )
     for result in all_results:
         result.approach = approach
