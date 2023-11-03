@@ -250,42 +250,42 @@ class JoinAll:
         # 1) in the first iteration: queue = base_node_id
         # 2) in all the other iterations: queue = neighbours of the previous node
         all_neighbours = set()
-        queue_with_nodes_permutations = itertools.permutations(queue_with_nodes, len(queue_with_nodes))
-        for qp in queue_with_nodes_permutations:
-            queue_nodes = list(qp)
-            node_perm_queue_with_paths = queue_with_paths.copy()
-            while len(queue_nodes) > 0:
-                # Get the current/base node
-                base_node_id = queue_nodes.pop()
-                self.discovered.add(base_node_id)
-                logging.debug(f"New iteration with base node: {base_node_id}")
+        # queue_with_nodes_permutations = itertools.permutations(queue_with_nodes, len(queue_with_nodes))
+        # for qp in queue_with_nodes_permutations:
+        #     queue_nodes = list(qp)
+        # node_perm_queue_with_paths = queue_with_paths.copy()
+        while len(queue_with_nodes) > 0:
+            # Get the current/base node
+            base_node_id = queue_with_nodes.pop()
+            self.discovered.add(base_node_id)
+            logging.debug(f"New iteration with base node: {base_node_id}")
 
-                # Determine the neighbours (unvisited)
-                neighbours = sorted(set(get_adjacent_nodes(base_node_id)) - set(self.discovered))
-                if len(neighbours) == 0:
-                    continue
+            # Determine the neighbours (unvisited)
+            neighbours = sorted(set(get_adjacent_nodes(base_node_id)) - set(self.discovered))
+            if len(neighbours) == 0:
+                continue
 
-                all_neighbours.update(neighbours)
-                neighbours_permutations = itertools.permutations(neighbours, len(neighbours))
+            all_neighbours.update(neighbours)
+            neighbours_permutations = itertools.permutations(neighbours, len(neighbours))
 
-                # Process every neighbour - join, determine quality, get features
-                current_path_storage = set()
-                for perm in neighbours_permutations:
-                    perm_neighbours = list(perm)
+            # Process every neighbour - join, determine quality, get features
+            current_path_storage = set()
+            for perm in neighbours_permutations:
+                perm_neighbours = list(perm)
 
-                    neigh_perm_queue_with_paths = node_perm_queue_with_paths.copy()
-                    while len(neigh_perm_queue_with_paths) > 0:
-                        previous_join_name = neigh_perm_queue_with_paths.pop()
+                neigh_perm_queue_with_paths = queue_with_paths.copy()
+                while len(neigh_perm_queue_with_paths) > 0:
+                    previous_join_name = neigh_perm_queue_with_paths.pop()
 
-                        next_join_name = self.join_neighbours(all_neighbours, base_node_id, perm_neighbours,
-                                                              previous_join_name)
+                    next_join_name = self.join_neighbours(all_neighbours, base_node_id, perm_neighbours,
+                                                          previous_join_name)
 
-                        current_path_storage.add(next_join_name)
-                        # Initialise the queue with the new paths (current_queue)
+                    current_path_storage.add(next_join_name)
+                    # Initialise the queue with the new paths (current_queue)
 
-                node_perm_queue_with_paths = current_path_storage.copy()
-            next_queue.update(node_perm_queue_with_paths)
-        return self.join_all(all_neighbours, next_queue)
+            queue_with_paths = current_path_storage.copy()
+        # next_queue.update(node_perm_queue_with_paths)
+        return self.join_all(all_neighbours, queue_with_paths)
 
     def join_neighbours(self, all_neighbours, base_node_id, perm_neighbours, previous_join_name):
         for node in perm_neighbours:
