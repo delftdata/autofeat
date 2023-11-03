@@ -322,7 +322,7 @@ def select_arda_features_budget_join(
         #     lambda x: x.fillna(x.mean()) if x.name not in df.select_dtypes(include='category').columns else x.fillna(
         #         x.value_counts().index[0]))
 
-        y = joined_tables_batch[target_column]
+        y = X[target_column]
         X = X.drop(columns=[target_column])
 
         # Run ARDA - RIFS (Random Injection Feature Selection) algorithm
