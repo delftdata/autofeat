@@ -113,9 +113,9 @@ def get_all_results(
     for dataset in tqdm.tqdm(datasets):
         result_bfs = get_tfd_results(dataset, algorithm=algorithm)
         all_results.extend(result_bfs)
-    for dataset in tqdm.tqdm(datasets):
-        results_join_all = get_join_all_results(dataset, algorithm=algorithm)
-        all_results.extend(results_join_all)
+    # for dataset in tqdm.tqdm(datasets):
+    #     results_join_all = get_join_all_results(dataset, algorithm=algorithm)
+    #     all_results.extend(results_join_all)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -167,10 +167,10 @@ def transform_arff_to_csv(save_path: str, dataset_path: str):
 if __name__ == "__main__":
     # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
     #                       "original_data/originals/miniboone_dataset.arff")
-    dataset = filter_datasets(["eyemove"])[0]
+    dataset = filter_datasets(["credit"])[0]
     # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
-    get_join_all_results(dataset, 'XGB')
+    # get_join_all_results(dataset, 'XGB')
     # get_autofeat_ablation(dataset)
-    # get_arda_results(dataset)
+    get_arda_results(dataset, algorithm='XGB')
     # get_base_results(dataset)
     # export_neo4j_connections()
