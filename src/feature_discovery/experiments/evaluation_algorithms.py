@@ -25,12 +25,15 @@ def get_hyperparameters(algorithm: Optional[str] = None) -> List[dict]:
     if algorithm is None:
         return hyper_parameters
 
+    if algorithm == 'LR':
+        return [{'LR': {'penalty': 'L1'}}]
+
     model = {algorithm: {}}
     if model in hyper_parameters:
         return [model]
     else:
         raise typer.BadParameter(
-            "Unsupported algorithm. Choose one from the list: [RF, GBM, XT, XGB, KNN, LR1]."
+            "Unsupported algorithm. Choose one from the list: [RF, GBM, XT, XGB, KNN, LR]."
         )
 
 
