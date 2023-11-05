@@ -147,13 +147,16 @@ class AutoFeat:
                         previous_join_name = self.base_table_id
                         previous_join = self.partial_join.copy()
                     else:
-                        previous_join = pd.read_csv(
+                        # previous_join = pd.read_csv(
+                        #     Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
+                        #     header=0,
+                        #     engine="python",
+                        #     encoding="utf8",
+                        #     quotechar='"',
+                        #     escapechar='\\',
+                        # )
+                        previous_join = pd.read_parquet(
                             Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
-                            header=0,
-                            engine="python",
-                            encoding="utf8",
-                            quotechar='"',
-                            escapechar='\\',
                         )
 
                     # The current node can only be joined through the base node.
@@ -286,6 +289,7 @@ class AutoFeat:
             left_column_name=left_on,
             right_column_name=right_on,
             join_path=Path(self.temp_dir.name) / join_filename,
+            csv=False,
         )
         if joined_df is None:
             return None, join_filename, []
