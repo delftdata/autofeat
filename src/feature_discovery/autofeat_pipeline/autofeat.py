@@ -278,7 +278,7 @@ class AutoFeat:
             sampled_right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1, random_state=42)
 
         # File naming convention as the filename can be gigantic
-        join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{str(uuid.uuid4())}.csv"
+        join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{str(uuid.uuid4())}.parquet"
 
         # Join
         left_on = f"{from_table}.{join_prop['from_column']}"
