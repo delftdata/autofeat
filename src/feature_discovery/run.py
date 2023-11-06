@@ -55,40 +55,61 @@ def get_arda_results(dataset: Dataset, algorithm: str, sample_size: int = 3000) 
     return results
 
 
-def get_tfd_results(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65) -> List:
-    spearman_mrmr_results, top_k_paths = autofeat(dataset=dataset,
-                                                  top_k=top_k,
-                                                  value_ratio=value_ratio,
-                                                  algorithm=algorithm)
+def get_tfd_results(dataset: Dataset, algorithms: List[str], top_k: int = 15, value_ratio: float = 0.65) -> List:
+    spearman_mrmr_results, top_k_paths = autofeat(
+        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithms=algorithms
+    )
 
     logging.debug("Save results ... ")
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
-        f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
+        f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False
+    )
 
     return spearman_mrmr_results
 
 
-def get_autofeat_ablation(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65):
+def get_autofeat_ablation(dataset: Dataset, algorithms: List[str], top_k: int = 15, value_ratio: float = 0.65):
     all_results = []
-    pearson_mrmr_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
-                                       algorithm=algorithm,
-                                       approach=Result.TFD_Pearson, pearson=True)
+    pearson_mrmr_results, _ = autofeat(
+        dataset=dataset,
+        top_k=top_k,
+        value_ratio=value_ratio,
+        algorithms=algorithms,
+        approach=Result.TFD_Pearson,
+        pearson=True,
+    )
     all_results.extend(pearson_mrmr_results)
-    pearson_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
-                                      algorithm=algorithm,
-                                      approach=Result.TFD_Pearson_JMI, pearson=True, jmi=True)
+    pearson_jmi_results, _ = autofeat(
+        dataset=dataset,
+        top_k=top_k,
+        value_ratio=value_ratio,
+        algorithms=algorithms,
+        approach=Result.TFD_Pearson_JMI,
+        pearson=True,
+        jmi=True,
+    )
     all_results.extend(pearson_jmi_results)
-    spearman_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
-                                       algorithm=algorithm,
-                                       approach=Result.TFD_JMI, jmi=True)
+    spearman_jmi_results, _ = autofeat(
+        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithms=algorithms, approach=Result.TFD_JMI, jmi=True
+    )
     all_results.extend(spearman_jmi_results)
-    non_redundant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
-                                         algorithm=algorithm,
-                                         approach=Result.TFD_RED, no_relevance=True)
+    non_redundant_features, _ = autofeat(
+        dataset=dataset,
+        top_k=top_k,
+        value_ratio=value_ratio,
+        algorithms=algorithms,
+        approach=Result.TFD_RED,
+        no_relevance=True,
+    )
     all_results.extend(non_redundant_features)
-    relevant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
-                                    algorithm=algorithm,
-                                    approach=Result.TFD_REL, no_redundancy=True)
+    relevant_features, _ = autofeat(
+        dataset=dataset,
+        top_k=top_k,
+        value_ratio=value_ratio,
+        algorithms=algorithms,
+        approach=Result.TFD_REL,
+        no_redundancy=True,
+    )
     all_results.extend(relevant_features)
 
     logging.debug("Save results ... ")
@@ -97,9 +118,9 @@ def get_autofeat_ablation(dataset: Dataset, algorithm: str, top_k: int = 15, val
 
 
 def get_all_results(
-        dataset_labels: Optional[List[str]] = None,
-        algorithm: Optional[str] = None,
-        results_file: str = "all_results.csv",
+    dataset_labels: Optional[List[str]] = None,
+    algorithm: Optional[str] = None,
+    results_file: str = "all_results.csv",
 ):
     all_results = []
     datasets = filter_datasets(dataset_labels)
@@ -157,6 +178,7 @@ def export_neo4j_connections(dataset_label: str = None):
 
 def transform_arff_to_csv(save_path: str, dataset_path: str):
     from scipy.io import arff
+
     data = arff.loadarff(ROOT_FOLDER / dataset_path)
     dataframe = pd.DataFrame(data[0])
     catCols = [col for col in dataframe.columns if dataframe[col].dtype == "O"]
