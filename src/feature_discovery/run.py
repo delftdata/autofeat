@@ -55,9 +55,9 @@ def get_arda_results(dataset: Dataset, algorithm: str, sample_size: int = 3000) 
     return results
 
 
-def get_tfd_results(dataset: Dataset, algorithms: List[str], top_k: int = 15, value_ratio: float = 0.65) -> List:
+def get_tfd_results(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65) -> List:
     spearman_mrmr_results, top_k_paths = autofeat(
-        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithms=algorithms
+        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithm=algorithm
     )
 
     logging.debug("Save results ... ")
@@ -68,13 +68,13 @@ def get_tfd_results(dataset: Dataset, algorithms: List[str], top_k: int = 15, va
     return spearman_mrmr_results
 
 
-def get_autofeat_ablation(dataset: Dataset, algorithms: List[str], top_k: int = 15, value_ratio: float = 0.65):
+def get_autofeat_ablation(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65):
     all_results = []
     pearson_mrmr_results, _ = autofeat(
         dataset=dataset,
         top_k=top_k,
         value_ratio=value_ratio,
-        algorithms=algorithms,
+        algorithm=algorithm,
         approach=Result.TFD_Pearson,
         pearson=True,
     )
@@ -83,21 +83,21 @@ def get_autofeat_ablation(dataset: Dataset, algorithms: List[str], top_k: int = 
         dataset=dataset,
         top_k=top_k,
         value_ratio=value_ratio,
-        algorithms=algorithms,
+        algorithm=algorithm,
         approach=Result.TFD_Pearson_JMI,
         pearson=True,
         jmi=True,
     )
     all_results.extend(pearson_jmi_results)
     spearman_jmi_results, _ = autofeat(
-        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithms=algorithms, approach=Result.TFD_JMI, jmi=True
+        dataset=dataset, top_k=top_k, value_ratio=value_ratio, algorithm=algorithm, approach=Result.TFD_JMI, jmi=True
     )
     all_results.extend(spearman_jmi_results)
     non_redundant_features, _ = autofeat(
         dataset=dataset,
         top_k=top_k,
         value_ratio=value_ratio,
-        algorithms=algorithms,
+        algorithm=algorithm,
         approach=Result.TFD_RED,
         no_relevance=True,
     )
@@ -106,7 +106,7 @@ def get_autofeat_ablation(dataset: Dataset, algorithms: List[str], top_k: int = 
         dataset=dataset,
         top_k=top_k,
         value_ratio=value_ratio,
-        algorithms=algorithms,
+        algorithm=algorithm,
         approach=Result.TFD_REL,
         no_redundancy=True,
     )
@@ -132,7 +132,7 @@ def get_all_results(
         result_arda = get_arda_results(dataset, algorithm=algorithm)
         all_results.extend(result_arda)
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, algorithms=[algorithm])
+        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
         all_results.extend(result_bfs)
     # for dataset in tqdm.tqdm(datasets):
     #     results_join_all = get_join_all_results(dataset, algorithm=algorithm)

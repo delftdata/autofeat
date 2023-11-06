@@ -17,7 +17,7 @@ def autofeat(
     dataset: Dataset,
     value_ratio: float,
     top_k: int,
-    algorithms: List[str],
+    algorithm: str,
     approach: str = Result.TFD,
     pearson: bool = False,
     jmi: bool = False,
@@ -48,21 +48,16 @@ def autofeat(
 
     logging.debug(f"FINISHED {approach}")
 
-    all_results = []
-    top_k_paths = {}
-    for algorithm in algorithms:
-        results, top_k_paths = evaluate_paths(
-            bfs_result=bfs_traversal, problem_type=dataset.dataset_type, algorithm=algorithm
-        )
-        for result in results:
-            result.approach = approach
-            result.feature_selection_time = end - start
-            result.total_time += result.feature_selection_time
-            result.top_k = top_k
-            result.data_label = dataset.base_table_label
-            result.cutoff_threshold = value_ratio
-
-        all_results.extend(results)
+    all_results, top_k_paths = evaluate_paths(
+        bfs_result=bfs_traversal, problem_type=dataset.dataset_type, algorithm=algorithm
+    )
+    for result in all_results:
+        result.approach = approach
+        result.feature_selection_time = end - start
+        result.total_time += result.feature_selection_time
+        result.top_k = top_k
+        result.data_label = dataset.base_table_label
+        result.cutoff_threshold = value_ratio
 
     logging.debug("Save results ... ")
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_{approach}.csv", index=False)

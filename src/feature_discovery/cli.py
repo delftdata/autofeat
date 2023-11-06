@@ -109,7 +109,7 @@ def run_autofeat(
         Optional[List[str]], typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels")
     ] = None,
     algorithm: Annotated[
-        str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1, all]")
+        str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR]")
     ] = None,
     results_file: Annotated[
         str, typer.Option(help="CSV file where the results will be written")
@@ -119,13 +119,9 @@ def run_autofeat(
     """Runs the AutoFeat experiments."""
     all_results = []
     datasets = filter_datasets(dataset_labels)
-    if algorithm == "all":
-        algorithms = ["GBM", "XT", "XGB", "KNN", "LR"]
-    else:
-        algorithms = [algorithm]
 
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_tfd_results(dataset, algorithms, top_k, value_ratio))
+        all_results.extend(get_tfd_results(dataset, algorithm, top_k, value_ratio))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
