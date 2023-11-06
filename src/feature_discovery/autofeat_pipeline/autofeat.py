@@ -73,6 +73,7 @@ class AutoFeat:
 
         # Whether to save the joins to disk or not
         self.save_joins_to_disk = save_joins_to_disk
+        self.iters = 0
         if self.save_joins_to_disk is not True:
             self.joins_to_df: Dict[str, pd.DataFrame] = {}
         else:
@@ -90,10 +91,13 @@ class AutoFeat:
         if self.sample_size < base_table_df.shape[0]:
             if self.task == CLASSIFICATION:
                 X_train, X_test = train_test_split(
-                    base_table_df, train_size=self.sample_size, stratify=base_table_df[self.target_column]
+                    base_table_df,
+                    train_size=self.sample_size,
+                    stratify=base_table_df[self.target_column],
+                    random_state=42,
                 )
             else:
-                X_train, X_test = train_test_split(base_table_df, train_size=self.sample_size)
+                X_train, X_test = train_test_split(base_table_df, train_size=self.sample_size, random_state=42)
         else:
             X_train = base_table_df
 
@@ -172,6 +176,9 @@ class AutoFeat:
                             previous_join = self.joins_to_df[filename_key]
                             # del self.joins_to_df[filename_key]
 
+                    # self.iters += 1
+                    # print(self.iters)
+
                     # The current node can only be joined through the base node.
                     # If the base node doesn't exist in the previous join path, the join can't be performed
 
@@ -244,7 +251,7 @@ class AutoFeat:
     ) -> Optional[Tuple[float, List[dict]]]:
         df = AutoMLPipelineFeatureGenerator(
             enable_text_special_features=False, enable_text_ngram_features=False
-        ).fit_transform(X=dataframe)
+        ).fit_transform(X=dataframe, random_state=42, random_seed=42)
 
         X = df.drop(columns=[self.target_column])
         y = df[self.target_column]
@@ -299,9 +306,6 @@ class AutoFeat:
         if self.sample_data_step:
             if self.use_polars:
                 right_df_pl = pl.from_pandas(right_df)
-                # sampled_right_df = right_df_pl.groupby(f"{right_label}.{join_prop['to_column']}").apply(
-                #     lambda x: x.sample(n=1, seed=42)
-                # )
                 sampled_right_df = right_df_pl.filter(
                     pl.int_range(0, pl.count()).shuffle(seed=42).over(f"{right_label}.{join_prop['to_column']}") < 1
                 )

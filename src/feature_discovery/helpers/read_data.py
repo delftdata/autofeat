@@ -18,7 +18,6 @@ def get_df_with_prefix(
             only needed when the dataset to read contains the class.
     :return: 0: A pandas dataframe whose columns are prefixed with the node label, 1: the node label
     """
-
     node_label = get_node_by_id(node_id).get("id")
     if use_polars:
         dataframe = pl.read_csv(str(DATA_FOLDER / node_id), encoding="utf8", quote_char='"')

@@ -27,7 +27,6 @@ def join_all_bfs(dataset: Dataset, algorithm: str):
     print(dataframe.shape)
 
     # Evaluate Join-All with all features
-    algorithm = 'LR'
     results, df = evaluate_all_algorithms(dataframe=dataframe,
                                           target_column=dataset.target_column,
                                           problem_type=dataset.dataset_type,

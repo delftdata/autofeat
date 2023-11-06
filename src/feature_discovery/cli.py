@@ -1,5 +1,9 @@
 from typing import Optional, List
 
+import numpy as np
+
+np.random.seed(42)
+
 import pandas as pd
 import tqdm
 import typer
@@ -108,9 +112,7 @@ def run_autofeat(
     dataset_labels: Annotated[
         Optional[List[str]], typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels")
     ] = None,
-    algorithm: Annotated[
-        str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR]")
-    ] = None,
+    algorithm: Annotated[str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR]")] = None,
     results_file: Annotated[
         str, typer.Option(help="CSV file where the results will be written")
     ] = "results_autofeat.csv",
