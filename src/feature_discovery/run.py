@@ -7,7 +7,7 @@ import tqdm
 
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
 from feature_discovery.experiments.ablation import autofeat
-from feature_discovery.experiments.baselines import non_augmented, arda, join_all
+from feature_discovery.experiments.baselines import non_augmented, arda, join_all, join_all_bfs
 from feature_discovery.experiments.dataset_object import Dataset
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
@@ -40,7 +40,8 @@ def get_base_results(dataset: Dataset, algorithm: str):
 
 
 def get_join_all_results(dataset: Dataset, algorithm: str):
-    results = join_all(dataset, algorithm)
+    # results = join_all(dataset, algorithm)
+    results = join_all_bfs(dataset, algorithm)
 
     # Save intermediate results
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
