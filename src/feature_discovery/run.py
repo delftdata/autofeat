@@ -132,7 +132,7 @@ def get_all_results(
         result_arda = get_arda_results(dataset, algorithm=algorithm)
         all_results.extend(result_arda)
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
+        result_bfs = get_tfd_results(dataset, algorithms=[algorithm])
         all_results.extend(result_bfs)
     # for dataset in tqdm.tqdm(datasets):
     #     results_join_all = get_join_all_results(dataset, algorithm=algorithm)
