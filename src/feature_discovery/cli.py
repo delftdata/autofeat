@@ -101,7 +101,7 @@ def run_ablation(
     all_results = []
     datasets = filter_datasets(dataset_labels)
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_autofeat_ablation(dataset, [algorithm], top_k, value_ratio))
+        all_results.extend(get_autofeat_ablation(dataset, algorithm, top_k, value_ratio))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 

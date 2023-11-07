@@ -136,6 +136,7 @@ dmypy.json
 */**/.DS_Store
 /env/*
 /data/*
+/data-split/*
 !/data/.keep
 /experiment_results/*
 /experiments/AutogluonModels/*
@@ -146,7 +147,13 @@ dmypy.json
 /plots/*
 /results/*
 /results_workshop/
+/results_*/*
 
 # AutoGluon
 /AutogluonModels/*
 /src/feature_discovery/**/AutogluonModels/*
+
+neo4j-data/
+paths_*.csv
+tfd/*
+*nohup*.out
