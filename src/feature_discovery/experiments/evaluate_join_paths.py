@@ -100,11 +100,17 @@ def evaluate_paths_from_file(filename: str, algorithm: str, top_k_paths: int = 1
         for result in results:
             result.rank = rank
             result.data_path = path_list
+            result.approach = Result.TFD
+            result.feature_selection_time = pd.eval(row['feature_selection_time'])
+            result.total_time += pd.eval(row['total_time'])
+            result.top_k = pd.eval(row['top_k'])
+            result.data_label = dataset.base_table_label
+            result.cutoff_threshold = pd.eval(row['cutoff_threshold'])
         all_results.extend(results)
 
         dataframe = None
 
-    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"results_autofeat_from_path_knn.csv", index=False)
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"results_autofeat_from_path_{algorithm}.csv", index=False)
 
     return all_results
 
