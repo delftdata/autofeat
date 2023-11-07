@@ -6,8 +6,11 @@ import tqdm
 
 from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.autofeat_pipeline.join_path_utils import get_path_length
+from feature_discovery.config import RESULTS_FOLDER
 from feature_discovery.experiments.evaluation_algorithms import evaluate_all_algorithms
+from feature_discovery.experiments.init_datasets import ALL_DATASETS
 from feature_discovery.experiments.result_object import Result
+from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.helpers.read_data import get_df_with_prefix
 
 
@@ -68,6 +71,42 @@ def evaluate_paths(bfs_result: AutoFeat, problem_type: str, algorithm: str, top_
         dataframe = None
 
     return all_results, top_k_path_list
+
+
+def evaluate_paths_from_file(filename: str, algorithm: str, top_k_paths: int = 15) -> List[Result]:
+    logging.debug(f"Evaluate top-{top_k_paths} paths ... ")
+
+    data = pd.read_csv(RESULTS_FOLDER / filename)
+
+    data_paths = data[~data['data_label'].isin(['air', 'yprop', 'superconduct'])]
+    data_paths = data_paths.loc[data_paths.groupby(by=['data_path'])['accuracy'].idxmax()]
+
+    all_results = []
+    for index, row in data_paths.iterrows():
+        dataset = filter_datasets([row['data_label']])[0]
+        path_list = pd.eval(row['data_path'])
+        rank = pd.eval(row['rank'])
+        features = pd.eval(row['join_path_features'])
+        logging.debug(f"Feature before join_key removal:\n{features}")
+
+        dataframe = join_from_path(path_list, dataset.target_column, dataset.base_table_id)
+        features = list(set(features).intersection(set(dataframe.columns)))
+        target = f"{dataset.base_table_label}/{dataset.base_table_name}.{dataset.target_column}"
+        features.append(target)
+
+        results, _ = evaluate_all_algorithms(dataframe=dataframe[features],
+                                             target_column=target,
+                                             algorithm=algorithm)
+        for result in results:
+            result.rank = rank
+            result.data_path = path_list
+        all_results.extend(results)
+
+        dataframe = None
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"results_autofeat_from_path_knn.csv", index=False)
+
+    return all_results
 
 
 def join_from_path(path, target, base_node):

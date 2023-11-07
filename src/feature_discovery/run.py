@@ -9,6 +9,7 @@ from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
 from feature_discovery.experiments.ablation import autofeat
 from feature_discovery.experiments.baselines import non_augmented, arda, join_all
 from feature_discovery.experiments.dataset_object import Dataset
+from feature_discovery.experiments.evaluate_join_paths import evaluate_paths_from_file
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
@@ -168,9 +169,11 @@ if __name__ == "__main__":
     # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
     #                       "original_data/originals/miniboone_dataset.arff")
     dataset = filter_datasets(["credit"])[0]
+
+    evaluate_paths_from_file("results_tfd_train_all.csv", algorithm='KNN')
     # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
     # get_join_all_results(dataset, 'XGB')
     # get_autofeat_ablation(dataset)
-    get_arda_results(dataset, algorithm='XGB')
+    # get_arda_results(dataset, algorithm='XGB')
     # get_base_results(dataset)
     # export_neo4j_connections()
