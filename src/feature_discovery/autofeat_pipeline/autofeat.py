@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 
 import pandas as pd
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+
 
 from feature_discovery.autofeat_pipeline.join_data import join_and_save
 from feature_discovery.autofeat_pipeline.join_path_feature_selection import RelevanceRedundancy
@@ -29,6 +31,10 @@ class AutoFeat:
             value_ratio: float = 0.65,
             top_k: int = 5,
             sample_size: int = 3000,
+            pearson: bool = False,
+            jmi: bool = False,
+            no_relevance: bool = False,
+            no_redundancy: bool = False
     ):
         """
 
@@ -52,12 +58,14 @@ class AutoFeat:
 
         self.ranking: Dict[str, float] = {}
         self.join_keys: Dict[str, list] = {}
-        self.rel_red = RelevanceRedundancy(target_column)
+        self.rel_red = RelevanceRedundancy(target_column, jmi=jmi, pearson=pearson)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.partial_join = self.initialisation()
 
         # Ablation study parameters
         self.sample_data_step = True
+        self.no_relevance = no_relevance
+        self.no_redundancy = no_redundancy
 
     def initialisation(self):
         from sklearn.model_selection import train_test_split
@@ -86,7 +94,7 @@ class AutoFeat:
 
         return X_train
 
-    def streaming_feature_selection(self, queue: set, previous_queue: set = None, prev_node_id: str = None):
+    def streaming_feature_selection(self, queue: set, previous_queue: set = None):
         if len(queue) == 0:
             return
 
@@ -139,13 +147,16 @@ class AutoFeat:
                         previous_join_name = self.base_table_id
                         previous_join = self.partial_join.copy()
                     else:
-                        previous_join = pd.read_csv(
+                        # previous_join = pd.read_csv(
+                        #     Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
+                        #     header=0,
+                        #     engine="python",
+                        #     encoding="utf8",
+                        #     quotechar='"',
+                        #     escapechar='\\',
+                        # )
+                        previous_join = pd.read_parquet(
                             Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
-                            header=0,
-                            engine="python",
-                            encoding="utf8",
-                            quotechar='"',
-                            escapechar='\\',
                         )
 
                     # The current node can only be joined through the base node.
@@ -187,7 +198,8 @@ class AutoFeat:
                                                                      new_features=list(right_df.columns),
                                                                      selected_features=
                                                                      self.partial_join_selected_features[
-                                                                         previous_join_name])
+                                                                         previous_join_name],
+                                                                     )
                         if result is not None:
                             self.ranking[join_name] = result[0]
                             all_selected_features = self.partial_join_selected_features[
@@ -207,39 +219,52 @@ class AutoFeat:
                 previous_queue.update(current_queue)
         self.streaming_feature_selection(all_neighbours, previous_queue)
 
-    def streaming_relevance_redundancy(self, dataframe, new_features, selected_features) -> Optional[
-        Tuple[float, List[dict]]]:
-        X = dataframe.drop(columns=[self.target_column])
-        y = dataframe[self.target_column]
+    def streaming_relevance_redundancy(self, dataframe: pd.DataFrame,
+                                       new_features: List[str],
+                                       selected_features: List[str]) -> Optional[Tuple[float, List[dict]]]:
+
+        df = AutoMLPipelineFeatureGenerator(
+            enable_text_special_features=False, enable_text_ngram_features=False
+        ).fit_transform(X=dataframe)
+
+        X = df.drop(columns=[self.target_column])
+        y = df[self.target_column]
 
         features = list(set(X.columns).intersection(set(new_features)))
         top_feat = len(features) if len(features) < self.top_k else self.top_k
 
-        feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
-                                                                 new_features=features,
-                                                                 target_column=y)[:top_feat]
-        if len(feature_score_relevance) == 0:
-            return None
+        relevant_features = new_features
+        sum_m = 0
+        m = 1
+        if not self.no_relevance:
+            feature_score_relevance = self.rel_red.measure_relevance(dataframe=X,
+                                                                     new_features=features,
+                                                                     target_column=y)[:top_feat]
+            if len(feature_score_relevance) == 0:
+                return None
+            relevant_features = list(dict(feature_score_relevance).keys())
+            m = len(feature_score_relevance) if len(feature_score_relevance) > 0 else m
+            sum_m = sum(list(map(lambda x: x[1], feature_score_relevance)))
 
-        feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
-                                                                   selected_features=selected_features,
-                                                                   # selected_features=self.partial_join_selected_features[join_name],
-                                                                   relevant_features=list(
-                                                                       dict(feature_score_relevance).keys()),
-                                                                   target_column=y)
+        final_features = relevant_features
+        sum_o = 0
+        o = 1
+        if not self.no_redundancy:
+            feature_score_redundancy = self.rel_red.measure_redundancy(dataframe=X,
+                                                                       selected_features=selected_features,
+                                                                       relevant_features=relevant_features,
+                                                                       target_column=y)
 
-        if len(feature_score_redundancy) == 0:
-            return None
+            if len(feature_score_redundancy) == 0:
+                return None
 
-        m = len(feature_score_relevance) if len(feature_score_relevance) > 0 else 1
-        sum_m = sum(list(map(lambda x: x[1], feature_score_relevance)))
-
-        o = len(feature_score_redundancy) if feature_score_redundancy else 1
-        sum_o = sum(list(map(lambda x: x[1], feature_score_redundancy)))
+            o = len(feature_score_redundancy) if feature_score_redundancy else o
+            sum_o = sum(list(map(lambda x: x[1], feature_score_redundancy)))
+            final_features = list(dict(feature_score_redundancy).keys())
 
         score = (o * sum_m + m * sum_o) / (m * o)
 
-        return score, list(dict(feature_score_redundancy).keys())
+        return score, final_features
 
     def step_join(
             self, join_key_properties: tuple, left_df: pd.DataFrame, right_df: pd.DataFrame, right_label: str
@@ -253,7 +278,7 @@ class AutoFeat:
             sampled_right_df = right_df.groupby(f"{right_label}.{join_prop['to_column']}").sample(n=1, random_state=42)
 
         # File naming convention as the filename can be gigantic
-        join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{str(uuid.uuid4())}.csv"
+        join_filename = f"{self.base_table_label}_join_BFS_{self.value_ratio}_{str(uuid.uuid4())}.parquet"
 
         # Join
         left_on = f"{from_table}.{join_prop['from_column']}"
@@ -264,6 +289,7 @@ class AutoFeat:
             left_column_name=left_on,
             right_column_name=right_on,
             join_path=Path(self.temp_dir.name) / join_filename,
+            csv=False,
         )
         if joined_df is None:
             return None, join_filename, []

@@ -16,9 +16,7 @@ from feature_discovery.run import (
     get_tfd_results,
     get_all_results,
     get_results_tune_value_ratio_classification,
-    get_results_tune_k,
-)
-
+    get_results_tune_k, get_join_all_results, get_autofeat_ablation, )
 
 app = typer.Typer()
 
@@ -29,17 +27,17 @@ def run_arda(
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
-        problem_type: Annotated[
-            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1]")
         ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_arda.csv",
 ):
     """Runs the ARDA experiments."""
     all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
+    datasets = filter_datasets(dataset_labels)
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_arda_results(dataset))
+        all_results.extend(get_arda_results(dataset, algorithm))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -50,40 +48,88 @@ def run_base(
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
-        problem_type: Annotated[
-            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1]")
         ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")] = "results_base.csv",
 ):
     """Runs the base experiments."""
     all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
+    datasets = filter_datasets(dataset_labels)
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_base_results(dataset))
+        all_results.extend(get_base_results(dataset, algorithm))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
 
 @app.command()
-def run_tfd(
+def run_join_all(
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1]")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_join_all.csv",
+):
+    """Runs 4 experiments: join all tables in BFS and DFS order, then same approaches with filter
+    feature selection: spearman, and with wrapper feature selection: forward selection"""
+
+    all_results = []
+    datasets = filter_datasets(dataset_labels)
+    for dataset in tqdm.tqdm(datasets):
+        all_results.extend(get_join_all_results(dataset, algorithm))
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
+
+
+@app.command()
+def run_ablation(
         top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
         dataset_labels: Annotated[
             Optional[List[str]], typer.Option(
                 help="Whether to run only on a list of datasets. Filters by dataset labels")
         ] = None,
-        problem_type: Annotated[
-            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1]")
         ] = None,
         results_file: Annotated[
-            str, typer.Option(help="CSV file where the results will be written")] = "results_tfd.csv",
+            str, typer.Option(help="CSV file where the results will be written")] = "results_tfd_ablation.csv",
         value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs the TFD experiments."""
+    """Runs the 5 types of TFD experiments: Spearman + JMI, Pearson + MRMR, Pearson + JMI,
+    (no relevance) MRMR, (no redundancy) Spearman
+    """
     all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
+    datasets = filter_datasets(dataset_labels)
     for dataset in tqdm.tqdm(datasets):
-        all_results.extend(get_tfd_results(dataset, top_k, value_ratio))
+        all_results.extend(get_autofeat_ablation(dataset, algorithm, top_k, value_ratio))
+
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
+
+
+@app.command()
+def run_autofeat(
+        top_k: Annotated[int, typer.Option(help="Number of features and paths")] = 15,
+        dataset_labels: Annotated[
+            Optional[List[str]], typer.Option(
+                help="Whether to run only on a list of datasets. Filters by dataset labels")
+        ] = None,
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR1]")
+        ] = None,
+        results_file: Annotated[
+            str, typer.Option(help="CSV file where the results will be written")] = "results_autofeat.csv",
+        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
+):
+    """Runs the AutoFeat experiments."""
+    all_results = []
+    datasets = filter_datasets(dataset_labels)
+    for dataset in tqdm.tqdm(datasets):
+        all_results.extend(get_tfd_results(dataset, algorithm, top_k, value_ratio))
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -94,16 +140,15 @@ def run_all(
             Optional[List[str]],
             typer.Option(help="Whether to run only on a list of datasets. Filters by dataset labels"),
         ] = None,
-        problem_type: Annotated[
-            str, typer.Option(help="Type of prediction problem: binary, regression, None (automatically detect)")
+        algorithm: Annotated[
+            str, typer.Option(help="ML algorithm for evaluation: [RF, GBM, XT, XGB, KNN, LR]")
         ] = None,
         results_file: Annotated[
             str, typer.Option(help="CSV file where the results will be written")
         ] = "all_results_autogluon.csv",
-        value_ratio: Annotated[float, typer.Option(help="Value ratio to be used in the TFD experiments")] = 0.65,
 ):
-    """Runs all experiments (ARDA + base + TFD)."""
-    get_all_results(value_ratio, problem_type, dataset_labels, results_file)
+    """Runs all experiments (ARDA + Base + TFD + Ablation + Join-All)."""
+    get_all_results(dataset_labels, algorithm, results_file)
 
 
 @app.command()

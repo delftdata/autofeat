@@ -1,7 +1,7 @@
 FROM --platform=amd64 python:3.8-slim-buster
 
 # Install java for valentine
-RUN apt update && apt install -y default-jre
+RUN apt update && apt install -y default-jre htop
 
 ENV NEO4J_HOST="neo4j://feature-discovery-neo4j:7687"
 ENV NEO4J_USER="neo4j"

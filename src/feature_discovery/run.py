@@ -1,29 +1,26 @@
 import logging
-import time
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 import tqdm
 
-from feature_discovery.autofeat_pipeline.autofeat import AutoFeat
 from feature_discovery.config import DATA_FOLDER, RESULTS_FOLDER, ROOT_FOLDER
-from feature_discovery.experiments.dataset_object import Dataset, REGRESSION
-from feature_discovery.experiments.evaluate_join_paths import evaluate_paths
+from feature_discovery.experiments.ablation import autofeat
+from feature_discovery.experiments.baselines import non_augmented, arda, join_all
+from feature_discovery.experiments.dataset_object import Dataset
+from feature_discovery.experiments.evaluate_join_paths import evaluate_paths_from_file
 from feature_discovery.experiments.init_datasets import init_datasets
 from feature_discovery.experiments.result_object import Result
-from feature_discovery.experiments.train_autogluon import run_auto_gluon
 from feature_discovery.experiments.utils_dataset import filter_datasets
 from feature_discovery.graph_processing.neo4j_transactions import export_dataset_connections, export_all_connections
 
 logging.getLogger().setLevel(logging.WARNING)
 
-hyper_parameters = {"RF": {}, "GBM": {}, "XGB": {}, "XT": {}}
-
 init_datasets()
 
 
-def get_base_results(dataset: Dataset):
+def get_base_results(dataset: Dataset, algorithm: str):
     logging.debug(f"Base result on table {dataset.base_table_id}")
 
     dataframe = pd.read_csv(
@@ -35,17 +32,7 @@ def get_base_results(dataset: Dataset):
         escapechar="\\",
     )
 
-    features = list(dataframe.columns)
-
-    _, results = run_auto_gluon(
-        approach=Result.BASE,
-        dataframe=dataframe[features],
-        target_column=dataset.target_column,
-        data_label=dataset.base_table_label,
-        join_name=dataset.base_table_label,
-        algorithms_to_run=hyper_parameters,
-        problem_type=dataset.dataset_type,
-    )
+    results = non_augmented(dataframe=dataframe, dataset=dataset, algorithm=algorithm)
 
     # Save intermediate results
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_base.csv", index=False)
@@ -53,99 +40,83 @@ def get_base_results(dataset: Dataset):
     return results
 
 
-def get_arda_results(dataset: Dataset, sample_size: int = 3000) -> List:
-    from feature_discovery.arda.arda import select_arda_features_budget_join
+def get_join_all_results(dataset: Dataset, algorithm: str):
+    results = join_all(dataset, algorithm)
 
-    logging.debug(f"ARDA result on table {dataset.base_table_id}")
+    # Save intermediate results
+    pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_join_all.csv", index=False)
+    return results
 
-    start = time.time()
-    (
-        dataframe,
-        base_table_features,
-        selected_features,
-        join_name,
-    ) = select_arda_features_budget_join(
-        base_node_id=str(dataset.base_table_id),
-        target_column=dataset.target_column,
-        sample_size=sample_size,
-        regression=(dataset.dataset_type == REGRESSION),
-    )
-    end = time.time()
-    logging.debug(f"X shape: {dataframe.shape}\nSelected features:\n\t{selected_features}")
 
-    features = selected_features.copy()
-    features.append(dataset.target_column)
-    features.extend(base_table_features)
-
-    logging.debug(f"Running on ARDA Feature Selection result with AutoGluon")
-    start_ag = time.time()
-    _, results = run_auto_gluon(
-        approach=Result.ARDA,
-        dataframe=dataframe[features],
-        target_column=dataset.target_column,
-        data_label=dataset.base_table_label,
-        join_name=join_name,
-        algorithms_to_run=hyper_parameters,
-        problem_type=dataset.dataset_type
-    )
-    end_ag = time.time()
-    for result in results:
-        result.feature_selection_time = end - start
-        result.train_time = end_ag - start_ag
-        result.total_time += result.feature_selection_time
-        result.total_time += result.train_time
+def get_arda_results(dataset: Dataset, algorithm: str, sample_size: int = 3000) -> List:
+    results = arda(dataset, algorithm, sample_size)
 
     pd.DataFrame(results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_arda.csv", index=False)
 
     return results
 
 
-def get_tfd_results(dataset: Dataset, top_k: int = 15, value_ratio: float = 0.65) -> List:
-    logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
-
-    start = time.time()
-    bfs_traversal = AutoFeat(
-        base_table_id=str(dataset.base_table_id),
-        base_table_label=dataset.base_table_label,
-        target_column=dataset.target_column,
-        value_ratio=value_ratio,
-        top_k=top_k,
-        task=dataset.dataset_type
-    )
-    bfs_traversal.streaming_feature_selection(queue={str(dataset.base_table_id)})
-    end = time.time()
-
-    logging.debug("FINISHED TFD")
-
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              top_k=top_k,
-                                              feat_sel_time=end - start,
-                                              problem_type=dataset.dataset_type)
-    logging.debug(top_k_paths)
+def get_tfd_results(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65) -> List:
+    spearman_mrmr_results, top_k_paths = autofeat(dataset=dataset,
+                                                  top_k=top_k,
+                                                  value_ratio=value_ratio,
+                                                  algorithm=algorithm)
 
     logging.debug("Save results ... ")
     pd.DataFrame(top_k_paths, columns=['path', 'score']).to_csv(
         f"paths_tfd_{dataset.base_table_label}_{value_ratio}.csv", index=False)
 
+    return spearman_mrmr_results
+
+
+def get_autofeat_ablation(dataset: Dataset, algorithm: str, top_k: int = 15, value_ratio: float = 0.65):
+    all_results = []
+    pearson_mrmr_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       algorithm=algorithm,
+                                       approach=Result.TFD_Pearson, pearson=True)
+    all_results.extend(pearson_mrmr_results)
+    pearson_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                      algorithm=algorithm,
+                                      approach=Result.TFD_Pearson_JMI, pearson=True, jmi=True)
+    all_results.extend(pearson_jmi_results)
+    spearman_jmi_results, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                       algorithm=algorithm,
+                                       approach=Result.TFD_JMI, jmi=True)
+    all_results.extend(spearman_jmi_results)
+    non_redundant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                         algorithm=algorithm,
+                                         approach=Result.TFD_RED, no_relevance=True)
+    all_results.extend(non_redundant_features)
+    relevant_features, _ = autofeat(dataset=dataset, top_k=top_k, value_ratio=value_ratio,
+                                    algorithm=algorithm,
+                                    approach=Result.TFD_REL, no_redundancy=True)
+    all_results.extend(relevant_features)
+
+    logging.debug("Save results ... ")
+    pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / f"{dataset.base_table_label}_tfd_ablation.csv", index=False)
     return all_results
 
 
 def get_all_results(
-        value_ratio: float,
-        problem_type: Optional[str],
         dataset_labels: Optional[List[str]] = None,
-        results_file: str = "all_results_autogluon.csv",
+        algorithm: Optional[str] = None,
+        results_file: str = "all_results.csv",
 ):
     all_results = []
-    datasets = filter_datasets(dataset_labels, problem_type)
+    datasets = filter_datasets(dataset_labels)
 
     for dataset in tqdm.tqdm(datasets):
-        result_bfs = get_tfd_results(dataset, value_ratio=value_ratio)
-        all_results.extend(result_bfs)
-        result_base = get_base_results(dataset)
+        result_base = get_base_results(dataset, algorithm=algorithm)
         all_results.extend(result_base)
-        result_arda = get_arda_results(dataset)
+    for dataset in tqdm.tqdm(datasets):
+        result_arda = get_arda_results(dataset, algorithm=algorithm)
         all_results.extend(result_arda)
+    for dataset in tqdm.tqdm(datasets):
+        result_bfs = get_tfd_results(dataset, algorithm=algorithm)
+        all_results.extend(result_bfs)
+    # for dataset in tqdm.tqdm(datasets):
+    #     results_join_all = get_join_all_results(dataset, algorithm=algorithm)
+    #     all_results.extend(results_join_all)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 
@@ -195,9 +166,14 @@ def transform_arff_to_csv(save_path: str, dataset_path: str):
 
 
 if __name__ == "__main__":
-    transform_arff_to_csv("original_data/original/miniboone_dataset.csv", "original_data/originals/miniboone_dataset.arff")
-    # dataset = filter_datasets(["covertype"])[0]
-    # get_tfd_results(dataset, value_ratio=0.65, join_all=True, top_k=15)
-    # get_arda_results(dataset)
+    # transform_arff_to_csv("original_data/original/miniboone_dataset.csv",
+    #                       "original_data/originals/miniboone_dataset.arff")
+    dataset = filter_datasets(["credit"])[0]
+
+    evaluate_paths_from_file("results_tfd_train_all.csv", algorithm='KNN')
+    # get_tfd_results(dataset, value_ratio=0.65, top_k=15)
+    # get_join_all_results(dataset, 'XGB')
+    # get_autofeat_ablation(dataset)
+    # get_arda_results(dataset, algorithm='XGB')
     # get_base_results(dataset)
     # export_neo4j_connections()

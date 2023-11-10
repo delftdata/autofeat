@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 
 from feature_discovery.graph_processing.neo4j_transactions import (
@@ -37,7 +39,8 @@ def join_and_save(
         right_df: pd.DataFrame,
         left_column_name: str,
         right_column_name: str,
-        join_path: str,
+        join_path: Path,
+        csv: bool = True
 ) -> pd.DataFrame or None:
     """
     Join two dataframes and save the result on disk.
@@ -47,6 +50,7 @@ def join_and_save(
     :param left_column_name: The left join column
     :param right_column_name: The right join column
     :param join_path: The path to save the join result.
+    :param csv: Whether to save as CSV or not.
     :return: The join result.
     """
     if left_df[left_column_name].dtype != right_df[right_column_name].dtype:
@@ -60,5 +64,8 @@ def join_and_save(
         right_on=right_column_name,
     )
     # Save join result
-    partial_join.to_csv(join_path, index=False)
+    if csv:
+        partial_join.to_csv(join_path, index=False)
+    else:
+        partial_join.to_parquet(join_path, index=False)
     return partial_join

@@ -5,10 +5,19 @@ from typing import Dict, Optional, List
 @dataclass
 class Result:
     TFD_PATH = "TFD_PATH"
-    TFD = "TFD_BFS"
+    TFD = "AutoFeat"
+    TFD_REL = "AutoFeat_Rel"
+    TFD_RED = "AutoFeat_Red"
+    TFD_Pearson = "AutoFeat-Pearson-MRMR"
+    TFD_Pearson_JMI = "AutoFeat-Pearson-JMI"
+    TFD_JMI = "AutoFeat-Spearman-JMI"
     ARDA = "ARDA"
-    JOIN_ALL = "TFD_JOIN_ALL"
-    JOIN_ALL_FS = "TFD_JOIN_ALL_FS"
+    JOIN_ALL_BFS = "Join_All_BFS"
+    JOIN_ALL_BFS_F = "Join_All_BFS_Filter"
+    JOIN_ALL_BFS_W = "Join_All_BFS_Wrapper"
+    JOIN_ALL_DFS = "Join_All_DFS"
+    JOIN_ALL_DFS_F = "Join_All_DFS_Filter"
+    JOIN_ALL_DFS_W = "Join_All_DFS_Wrapper"
     BASE = "BASE"
 
     algorithm: str
