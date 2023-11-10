@@ -140,17 +140,17 @@ class JoinAll:
 
     def join_all_bfs(self, queue: set) -> pd.DataFrame:
         if len(queue) == 0:
-            # previous_join = pd.read_csv(
-            #     Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
-            #     header=0,
-            #     engine="python",
-            #     encoding="utf8",
-            #     quotechar='"',
-            #     escapechar='\\',
-            # )
-            previous_join = pd.read_parquet(
+            previous_join = pd.read_csv(
                 Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
+                header=0,
+                engine="python",
+                encoding="utf8",
+                quotechar='"',
+                escapechar='\\',
             )
+            # previous_join = pd.read_parquet(
+            #     Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
+            # )
             return previous_join
 
         # Iterate through all the elements of the queue:
@@ -169,79 +169,73 @@ class JoinAll:
                 continue
 
             all_neighbours.update(neighbours)
-            neighbours_permutations = itertools.permutations(neighbours, len(neighbours))
-
             # Process every neighbour - join, determine quality, get features
-            join_variations = []
-            for perm in neighbours_permutations:
-                perm_neighbours = list(perm)
-                for node in perm_neighbours:
-                    self.discovered.add(node)
-                    logging.debug(f"Adjacent node: {node}")
 
-                    # Get the join keys with the highest score
-                    join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
+            for node in neighbours:
+                self.discovered.add(node)
+                logging.debug(f"Adjacent node: {node}")
 
-                    # Read the neighbour node
-                    right_df, right_label = get_df_with_prefix(node)
-                    logging.debug(f"\tRight table shape: {right_df.shape}")
+                # Get the join keys with the highest score
+                join_keys = get_relation_properties_node_name(from_id=base_node_id, to_id=node)
 
-                    # Get the data which has been joined so far
-                    if self.partial_join_name == self.base_table_id:
-                        previous_join = self.partial_join.copy()
-                    else:
-                        # previous_join = pd.read_csv(
-                        #     Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
-                        #     header=0,
-                        #     engine="python",
-                        #     encoding="utf8",
-                        #     quotechar='"',
-                        #     escapechar='\\',
-                        # )
-                        previous_join = pd.read_parquet(
-                            Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name]
-                        )
+                # Read the neighbour node
+                right_df, right_label = get_df_with_prefix(node)
+                logging.debug(f"\tRight table shape: {right_df.shape}")
 
-                    # The current node can only be joined through the base node.
-                    # If the base node doesn't exist in the previous join path, the join can't be performed
-                    if base_node_id not in self.partial_join_name:
-                        logging.debug(f"\tBase node {base_node_id} not in partial join {self.partial_join_name}")
+                # Get the data which has been joined so far
+                if self.partial_join_name == self.base_table_id:
+                    previous_join = self.partial_join.copy()
+                else:
+                    previous_join = pd.read_csv(
+                        Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name],
+                        header=0,
+                        engine="python",
+                        encoding="utf8",
+                        quotechar='"',
+                        escapechar='\\',
+                    )
+                    # previous_join = pd.read_parquet(
+                    #     Path(self.temp_dir.name) / self.join_name_mapping[self.partial_join_name]
+                    # )
+
+                # The current node can only be joined through the base node.
+                # If the base node doesn't exist in the previous join path, the join can't be performed
+                if base_node_id not in self.partial_join_name:
+                    logging.debug(f"\tBase node {base_node_id} not in partial join {self.partial_join_name}")
+                    continue
+
+                join_name = None
+                for prop in join_keys:
+                    join_prop, from_table, to_table = prop
+                    if join_prop['from_label'] != from_table:
                         continue
 
-                    join_name = None
-                    for prop in join_keys:
-                        join_prop, from_table, to_table = prop
-                        if join_prop['from_label'] != from_table:
-                            continue
+                    if join_prop['from_column'] == self.target_column:
+                        continue
 
-                        if join_prop['from_column'] == self.target_column:
-                            continue
+                    logging.debug(f"\t\tJoin properties: {join_prop}")
 
-                        logging.debug(f"\t\tJoin properties: {join_prop}")
+                    # Step - Explore all possible join paths based on the join keys - Compute the name of the join
+                    join_name = compute_join_name(join_key_property=prop, partial_join_name=self.partial_join_name)
+                    logging.debug(f"\tJoin name: {join_name}")
 
-                        # Step - Explore all possible join paths based on the join keys - Compute the name of the join
-                        join_name = compute_join_name(join_key_property=prop, partial_join_name=self.partial_join_name)
-                        logging.debug(f"\tJoin name: {join_name}")
+                    # Step - Join
+                    joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
+                                                                            left_df=previous_join,
+                                                                            right_df=right_df,
+                                                                            right_label=right_label)
+                    if joined_df is None:
+                        continue
 
-                        # Step - Join
-                        joined_df, join_filename, join_columns = self.step_join(join_key_properties=prop,
-                                                                                left_df=previous_join,
-                                                                                right_df=right_df,
-                                                                                right_label=right_label)
-                        if joined_df is None:
-                            continue
+                    join_columns.extend(self.join_keys[self.partial_join_name])
+                    self.join_keys[join_name] = list(set(join_columns))
+                    self.join_name_mapping[join_name] = join_filename
+                    self.partial_join_name = join_name
+                    break
 
-                        join_columns.extend(self.join_keys[self.partial_join_name])
-                        self.join_keys[join_name] = list(set(join_columns))
-                        self.join_name_mapping[join_name] = join_filename
-                        self.partial_join_name = join_name
-                        break
-
-                    # If the
-                    if join_name and self.partial_join_name != join_name:
-                        all_neighbours.remove(node)
-
-                    join_variations.append(self.partial_join_name)
+                # If the
+                if join_name and self.partial_join_name != join_name:
+                    all_neighbours.remove(node)
 
         return self.join_all_bfs(all_neighbours)
 
@@ -312,17 +306,17 @@ class JoinAll:
                 previous_join_name = self.base_table_id
                 previous_join = self.partial_join.copy()
             else:
-                # previous_join = pd.read_csv(
-                #     Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
-                #     header=0,
-                #     engine="python",
-                #     encoding="utf8",
-                #     quotechar='"',
-                #     escapechar='\\',
-                # )
-                previous_join = pd.read_parquet(
+                previous_join = pd.read_csv(
                     Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
+                    header=0,
+                    engine="python",
+                    encoding="utf8",
+                    quotechar='"',
+                    escapechar='\\',
                 )
+                # previous_join = pd.read_parquet(
+                #     Path(self.temp_dir.name) / self.join_name_mapping[previous_join_name],
+                # )
 
             # The current node can only be joined through the base node.
             # If the base node doesn't exist in the previous join path, the join can't be performed
@@ -391,7 +385,6 @@ class JoinAll:
             left_column_name=left_on,
             right_column_name=right_on,
             join_path=Path(self.temp_dir.name) / join_filename,
-            csv=False,
         )
         if joined_df is None:
             return None, join_filename, []

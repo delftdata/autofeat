@@ -13,16 +13,27 @@ from feature_discovery.experiments.result_object import Result
 from feature_discovery.experiments.utils_dataset import filter_datasets
 
 
-def autofeat(dataset: Dataset, value_ratio: float, top_k: int, algorithm: str,
-             approach: str = Result.TFD,
-             pearson: bool = False, jmi: bool = False,
-             no_relevance: bool = False, no_redundancy: bool = False) -> Tuple[List[Result], List[Tuple]]:
+def autofeat(
+    dataset: Dataset,
+    value_ratio: float,
+    top_k: int,
+    algorithm: str,
+    approach: str = Result.TFD,
+    pearson: bool = False,
+    jmi: bool = False,
+    no_relevance: bool = False,
+    no_redundancy: bool = False,
+    save_joins_to_disk: bool = True,
+    use_polars: bool = True,
+) -> Tuple[List[Result], List[Tuple]]:
     logging.debug(f"Running on TFD (Transitive Feature Discovery) result with AutoGluon")
 
     start = time.time()
     bfs_traversal = AutoFeat(
         base_table_id=str(dataset.base_table_id),
         base_table_label=dataset.base_table_label,
+        save_joins_to_disk=save_joins_to_disk,
+        use_polars=use_polars,
         target_column=dataset.target_column,
         value_ratio=value_ratio,
         top_k=top_k,
@@ -37,10 +48,9 @@ def autofeat(dataset: Dataset, value_ratio: float, top_k: int, algorithm: str,
 
     logging.debug(f"FINISHED {approach}")
 
-    all_results, top_k_paths = evaluate_paths(bfs_result=bfs_traversal,
-                                              problem_type=dataset.dataset_type,
-                                              algorithm=algorithm
-                                              )
+    all_results, top_k_paths = evaluate_paths(
+        bfs_result=bfs_traversal, problem_type=dataset.dataset_type, algorithm=algorithm
+    )
     for result in all_results:
         result.approach = approach
         result.feature_selection_time = end - start

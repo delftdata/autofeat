@@ -18,12 +18,14 @@ from feature_discovery.experiments.utils_dataset import filter_datasets
 
 def join_all_bfs(dataset: Dataset, algorithm: str):
     all_results = []
+    start = time.time()
     joinall = JoinAll(
         base_table_id=str(dataset.base_table_id),
         target_column=dataset.target_column,
     )
     dataframe = joinall.join_all_bfs(queue={str(dataset.base_table_id)})
     dataframe.drop(columns=joinall.join_keys[joinall.partial_join_name], inplace=True)
+    end = time.time()
     print(dataframe.shape)
 
     # Evaluate Join-All with all features
@@ -35,10 +37,13 @@ def join_all_bfs(dataset: Dataset, algorithm: str):
         res.approach = Result.JOIN_ALL_BFS
         res.data_path = joinall.partial_join_name
         res.data_label = dataset.base_table_label
+        res.join_time = end - start
+        res.total_time += res.join_time
+
     all_results.extend(results)
 
     # Join-All with filter feature selection
-    start = time.time()
+    start_fs = time.time()
     X = df.drop(columns=[dataset.target_column])
     y = df[dataset.target_column]
     sorted_features_scores = sorted(list(zip(list(X.columns), abs(spearman_correlation(np.array(X), np.array(y))))),
@@ -46,7 +51,7 @@ def join_all_bfs(dataset: Dataset, algorithm: str):
     spearman_features = list(map(lambda x: x[0], sorted_features_scores))
     selected_features = spearman_features.copy()
     selected_features.append(dataset.target_column)
-    end = time.time()
+    end_fs = time.time()
 
     results, _ = evaluate_all_algorithms(dataframe=dataframe[selected_features],
                                          target_column=dataset.target_column,
@@ -57,8 +62,10 @@ def join_all_bfs(dataset: Dataset, algorithm: str):
         res.data_path = joinall.partial_join_name
         res.data_label = dataset.base_table_label
         res.join_path_features = spearman_features
-        res.feature_selection_time = end - start
-        res.total_time += res.feature_selection_time
+        res.feature_selection_time = end_fs - start_fs
+        res.join_time = end - start
+        res.total_time += res.feature_selection_time + res.join_time
+
     all_results.extend(results)
 
     return all_results

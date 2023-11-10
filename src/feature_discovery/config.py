@@ -12,7 +12,7 @@ DATASET_TYPE = "benchmark"
 DATA = "data"
 DATA_FOLDER = ROOT_FOLDER / DATA / DATASET_TYPE
 # RESULTS_FOLDER = ROOT_FOLDER / "results" / "revision-test"
-RESULTS_FOLDER = ROOT_FOLDER / "results"
+RESULTS_FOLDER = ROOT_FOLDER / "results_polars"
 AUTO_GLUON_FOLDER = ROOT_FOLDER / "AutogluonModels"
 
 ### CREDENTIALS ###

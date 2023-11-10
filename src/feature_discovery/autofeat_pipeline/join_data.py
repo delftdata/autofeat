@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import pandas as pd
+import polars as pl
+from polars import col
 
 from feature_discovery.graph_processing.neo4j_transactions import (
     get_pk_fk_nodes,
@@ -34,13 +36,25 @@ def join_directly_connected(base_table_id: str):
     return partial_join
 
 
+def pl_outer_join(df1: pl.DataFrame, df2: pl.DataFrame, how, left_on, right_on):
+    new_names = [f"{x}_tmp" for x in [left_on, right_on]]
+
+    # replicate join columns with new names
+    df1 = df1.with_columns(col(left_on).alias(new_names[0]))
+    df2 = df2.with_columns(col(right_on).alias(new_names[1]))
+
+    # perform join and drop columns
+    return df1.join(df2, left_on=new_names[0], right_on=new_names[1], how=how).drop(new_names)
+
+
 def join_and_save(
-        left_df: pd.DataFrame,
-        right_df: pd.DataFrame,
-        left_column_name: str,
-        right_column_name: str,
-        join_path: Path,
-        csv: bool = True
+    left_df: pd.DataFrame,
+    right_df: pd.DataFrame,
+    left_column_name: str,
+    right_column_name: str,
+    join_path: Path,
+    csv: bool = True,
+    save_to_disk: bool = True,
 ) -> pd.DataFrame or None:
     """
     Join two dataframes and save the result on disk.
@@ -56,16 +70,29 @@ def join_and_save(
     if left_df[left_column_name].dtype != right_df[right_column_name].dtype:
         return None
 
-    partial_join = pd.merge(
-        left_df,
-        right_df,
-        how="left",
-        left_on=left_column_name,
-        right_on=right_column_name,
-    )
-    # Save join result
-    if csv:
-        partial_join.to_csv(join_path, index=False)
+    if isinstance(left_df, pl.DataFrame):
+        partial_join = pl_outer_join(
+            left_df,
+            right_df,
+            how="left",
+            left_on=left_column_name,
+            right_on=right_column_name,
+        ).to_pandas()
+    elif isinstance(left_df, pd.DataFrame):
+        partial_join = pd.merge(
+            left_df,
+            right_df,
+            how="left",
+            left_on=left_column_name,
+            right_on=right_column_name,
+        )
     else:
-        partial_join.to_parquet(join_path, index=False)
+        raise Exception("Unknown dataframe type")
+
+    if save_to_disk:
+        if csv:
+            partial_join.to_csv(join_path, index=False)
+        else:
+            partial_join.to_parquet(join_path, index=False)
+
     return partial_join
