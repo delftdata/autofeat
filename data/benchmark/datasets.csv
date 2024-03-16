@@ -7,4 +7,3 @@ eyemove,table_0_0.csv,eyemove,label,binary
 bioresponse,table_0_0.csv,bioresponse,target,binary
 school,base.csv,school,class,binary
 covertype,table_0_0.csv,covertype,class,binary
-crypto_smartphone,base_table.csv,crypto_smartphone,label,binary
