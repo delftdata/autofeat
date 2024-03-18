@@ -12,3 +12,4 @@ seaborn == 0.11.2
 tqdm == 4.64.0
 typer == 0.9.0
 valentine == 0.1.6
+qpsolvers[open_source_solvers]

@@ -1,8 +1,9 @@
 import glob
+from pathlib import Path
 
 import pandas as pd
 
-from feature_discovery.config import CONNECTIONS, DATA_FOLDER
+from feature_discovery.config import CONNECTIONS, DATA_FOLDER, SLASH
 from feature_discovery.dataset_relation_graph.dataset_discovery import profile_valentine_all, profile_valentine_dataset
 from feature_discovery.experiments.dataset_object import Dataset
 from feature_discovery.graph_processing.neo4j_transactions import merge_nodes_relation_tables, create_node
@@ -52,13 +53,16 @@ def ingest_nodes(dataset_folder_name: str = None) -> None:
         files = glob.glob(f"{DATA_FOLDER / dataset_folder_name}/**/*.csv", recursive=True)
     else:
         files = glob.glob(f"{DATA_FOLDER}/**/*.csv", recursive=True)
-
+    
     for f in files:
         if "datasets.csv" in f:
             continue
-        table_path = f.partition(f"{DATA_FOLDER}/")[2]
-        table_name = table_path.split("/")[-1]
+        table_path = f.partition(f"{DATA_FOLDER}{SLASH}")[2]
+        table_name = table_path.split(f"{SLASH}")[-1]
+
         create_node(table_path, table_name)
+
+    return files
 
 
 def ingest_data_with_pk_fk(dataset: Dataset, profile_valentine: bool = False, mix_datasets: bool = False):
