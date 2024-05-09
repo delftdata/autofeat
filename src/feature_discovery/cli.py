@@ -210,14 +210,15 @@ def ingest_data(
     discover_connections_data_lake: Annotated[
         bool, typer.Option(help="Run dataset discovery to find more connections within the entire data lake")
     ] = False,
+    
 ):
     """
     Ingest all dataset from specified "data" folder.
     """
-    ingest_nodes()
+    files = ingest_nodes()
 
     if data_discovery_threshold and discover_connections_data_lake:
-        profile_valentine_all(valentine_threshold=data_discovery_threshold)
+        profile_valentine_all(valentine_threshold=data_discovery_threshold, files=files)
         return
 
     if data_discovery_threshold and not discover_connections_data_lake:
