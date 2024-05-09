@@ -1,5 +1,5 @@
 # AutoFeat: Transitive Feature Discovery over Join Paths
-This repo contains the development and experimental codebase of AutoFeat.
+This repo contains the development and experimental codebase of [AutoFeat: Transitive Feature Discovery over Join Paths](ICDE_FeatureDiscovery.pdf)
 
 
 [![Python 3.7+](https://img.shields.io/badge/python-3.8.2-blue.svg)](https://www.python.org/downloads/release/python-380/)
