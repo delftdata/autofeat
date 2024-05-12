@@ -73,7 +73,7 @@ training dataset for decision tree Machine Learning (ML) algorithms.
 
 - ICDE 2024 Poster 
 
-[![Poster companion to the paper](assets/poster/AutoFeat_poster.png)](assets/poster/AutoFeat_poster-no-bleed.pdf)
+[Poster - companion to the paper](assets/poster/AutoFeat_poster-no-bleed.pdf)
 
 
 - ICDE 2024 Presentation
