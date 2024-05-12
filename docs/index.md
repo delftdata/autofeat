@@ -27,6 +27,12 @@ training dataset for decision tree Machine Learning (ML) algorithms.
 
 
 <figure class="item" style="vertical-align:top; display: inline-block; text-align:center; width:200px">
+    <a href="https://rihanhai.com/"><img src="./assets/img/rihan_hai.jpg" height="auto" width="80" style="border-radius:50%"/></a>
+    <figcaption class="caption" style="display:block">Rihan Hai <br> TU Delft</figcaption>
+</figure>
+
+
+<figure class="item" style="vertical-align:top; display: inline-block; text-align:center; width:200px">
     <a href="http://asterios.katsifodimos.com/"><img src="./assets/img/asterios_katsifodimos.jpg" height="auto" width="80" style="border-radius:50%"/></a>
     <figcaption class="caption" style="display:block">Asterios Katsifodimos <br>TU Delft</figcaption>
 </figure>
