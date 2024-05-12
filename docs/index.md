@@ -60,7 +60,7 @@ training dataset for decision tree Machine Learning (ML) algorithms.
 | [school](https://arxiv.org/pdf/2003.09758)                                                                       |  1775  |           None            |        16         |       731        |                             [original data](https://surfdrive.surf.nl/files/index.php/s/9zye8gWOvc96iWY)                                |
 
 
-## Repository
+## Repositories
 
 - <https://github.com/delftdata/autofeat> : Main repository containing the AutoFeat source code. 
 - <https://github.com/kirilvasilev16/PythonTableDivider> : Repository containing the dataset processing strategies. 
