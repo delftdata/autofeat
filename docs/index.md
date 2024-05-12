@@ -58,7 +58,7 @@ training dataset for decision tree Machine Learning (ML) algorithms.
 
 - <https://github.com/delftdata/autofeat> : Main repository containing the AutoFeat source code. 
 - <https://github.com/kirilvasilev16/PythonTableDivider> : Repository containing the dataset processing strategies. 
-- < https://github.com/delftdata/bsc_research_project_q4_2023/tree/main/autofeat_experimental_analysis > : Repository containing the evaluation of relevance and redundancy methods.  
+- <https://github.com/delftdata/bsc_research_project_q4_2023/tree/main/autofeat_experimental_analysis> : Repository containing the evaluation of relevance and redundancy methods.  
 
 ## AutoFeat Papers
 - [[Pre-print](assets/papers/ICDE_FeatureDiscovery.pdf)] AutoFeat: Transitive Feature Discovery over Join Paths 
@@ -67,9 +67,10 @@ training dataset for decision tree Machine Learning (ML) algorithms.
 
 - ICDE 2024 Poster 
 
-[Poster companion to the paper](assets/poster/AutoFeat_poster-no-bleed.pdf)
+[![Poster companion to the paper](assets/poster/AutoFeat_poster-no-bleed.pdf)](assets/poster/AutoFeat_poster-no-bleed.pdf)
+
 
 - ICDE 2024 Presentation
 
-[Slides](assets/presentation/AutoFeat-presentation.pdf)
+[![Slides](assets/presentation/slide_0.png)](assets/presentation/AutoFeat-presentation.pdf)
 
