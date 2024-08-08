@@ -123,6 +123,7 @@ def get_all_results(
     dataset_labels: Optional[List[str]] = None,
     algorithm: Optional[str] = None,
     results_file: str = "all_results.csv",
+    join_all: bool = False
 ):
     all_results = []
     datasets = filter_datasets(dataset_labels)
@@ -136,9 +137,11 @@ def get_all_results(
     for dataset in tqdm.tqdm(datasets):
         result_bfs = get_tfd_results(dataset, algorithm=algorithm)
         all_results.extend(result_bfs)
-    # for dataset in tqdm.tqdm(datasets):
-    #     results_join_all = get_join_all_results(dataset, algorithm=algorithm)
-    #     all_results.extend(results_join_all)
+
+    if join_all:
+        for dataset in tqdm.tqdm(datasets):
+            results_join_all = get_join_all_results(dataset, algorithm=algorithm)
+            all_results.extend(results_join_all)
 
     pd.DataFrame(all_results).to_csv(RESULTS_FOLDER / results_file, index=False)
 

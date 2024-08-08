@@ -1,0 +1,6 @@
+theme: jekyll-theme-slate
+
+title: "AutoFeat: Transitive Feature Discovery over Join Paths"
+description: "Webpage containing information on the automatic feature discovery approach AutoFeat"
+
+show_downloads: false

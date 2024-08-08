@@ -16,8 +16,8 @@ hyper_parameters = [
     {"GBM": {}},
     {"XT": {}},
     {"XGB": {}},
-    {'KNN': {}},
-    {'LR': {'penalty': 'L1'}},
+    # {'KNN': {}},
+    # {'LR': {'penalty': 'L1'}},
 ]
 
 
