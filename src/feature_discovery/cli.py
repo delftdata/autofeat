@@ -138,9 +138,12 @@ def run_all(
     results_file: Annotated[
         str, typer.Option(help="CSV file where the results will be written")
     ] = "all_results_autogluon.csv",
+    join_all: Annotated[
+        bool, typer.Option(help="Run the Join-All experiments")
+    ] = True,
 ):
-    """Runs all experiments (ARDA + Base + TFD + Ablation + Join-All)."""
-    get_all_results(dataset_labels, algorithm, results_file)
+    """Runs all experiments (ARDA + Base + TFD + Join-All)."""
+    get_all_results(dataset_labels, algorithm, results_file, join_all)
 
 
 @app.command()
