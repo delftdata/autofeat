@@ -69,7 +69,7 @@ The Docker image already contains all the necesarry for development.
 ```
 
 # 2. Data setup
-1. [Download](https://surfdrive.surf.nl/files/index.php/s/1t1MTW8s8cfTDwc) our experimental datasets and put them in [data/benchmark](data/benchmark).
+1. [Download](https://zenodo.org/records/12755486) our experimental datasets from Zenodo and put them in [data/benchmark](data/benchmark). You can see in Zenodo the same structure for the project. 
 
 To ingest the data in the local development, it is necessary to follow the steps from [Neo4j Desktop setup](#neo4j-desktop-setup) beforehand.
 
